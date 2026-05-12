@@ -1,0 +1,30 @@
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useEffect } from 'react'
+
+import { Route as RootRoute } from './__root'
+
+export const Route = createFileRoute('/')({ component: Home })
+
+function Home() {
+  const { sessionData } = RootRoute.useLoaderData()
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!sessionData?.user) {
+      navigate({ to: "/auth/login" });
+    } else {
+      const role = sessionData.user.user_metadata?.role;
+      if (role === "admin" || role === "lecturer") {
+        navigate({ to: "/admin" });
+      } else if (role === "tutor") {
+        navigate({ to: "/tutor" });
+      }
+    }
+  }, [sessionData, navigate]);
+
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-600 border-t-transparent" />
+    </div>
+  )
+}
