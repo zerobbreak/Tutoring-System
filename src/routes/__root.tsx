@@ -11,8 +11,12 @@ import { getCurrentUserFn } from '../lib/auth-server'
 
 export const Route = createRootRoute({
   loader: async () => {
-    const sessionData = await getCurrentUserFn()
-    return { sessionData }
+    try {
+      const sessionData = await getCurrentUserFn()
+      return { sessionData }
+    } catch {
+      return { sessionData: null }
+    }
   },
   head: () => ({
     meta: [
@@ -45,8 +49,15 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  const { sessionData } = Route.useLoaderData()
-  const [session, setSession] = useState<any>(sessionData?.session || null)
+  const loaderData = Route.useLoaderData()
+  const sessionData = loaderData?.sessionData
+  const [session, setSession] = useState<any>(sessionData?.session ?? null)
+
+  useEffect(() => {
+    if (sessionData?.session) {
+      setSession(sessionData.session)
+    }
+  }, [sessionData])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
