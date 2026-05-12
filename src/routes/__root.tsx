@@ -102,7 +102,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body
-        className={`min-h-screen bg-gray-50${isTutorShell ? " flex flex-col" : ""}`}
+        className={`bg-gray-50 ${isTutorShell ? "flex h-screen flex-col overflow-hidden" : "min-h-screen"}`}
       >
         {!isAuthPage && !isTutorShell && (
           <nav className="border-b bg-white px-4 py-3 shadow-sm">

@@ -1,6 +1,6 @@
-import type { LucideIcon } from "lucide-react"
-import type { CSSProperties, ReactNode } from "react"
-import { Link, useRouterState } from "@tanstack/react-router"
+import type { LucideIcon } from "lucide-react";
+import type { CSSProperties, ReactNode } from "react";
+import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Calendar,
   ChevronRight,
@@ -11,16 +11,16 @@ import {
   NotebookPen,
   Settings,
   Video,
-} from "lucide-react"
-import { Avatar, AvatarFallback, AvatarImage } from "#/components/ui/avatar"
-import { Button } from "#/components/ui/button"
+} from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "#/components/ui/avatar";
+import { Button } from "#/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "#/components/ui/dropdown-menu"
+} from "#/components/ui/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -34,42 +34,50 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-} from "#/components/ui/sidebar"
-import { supabase } from "#/lib/supabase"
+} from "#/components/ui/sidebar";
+import { supabase } from "#/lib/supabase";
 
 const OVERVIEW_NAV = [
   { to: "/tutor", label: "Dashboard", icon: LayoutDashboard },
   { to: "/tutor/sessions", label: "Sessions", icon: Video },
-] as const
+] as const;
 
 const TEACHING_NAV = [
   { to: "/tutor/messaging", label: "Messaging", icon: MessageSquare },
   { to: "/tutor/schedules", label: "Schedules", icon: Calendar },
   { to: "/tutor/notes", label: "Notes", icon: NotebookPen },
-  { to: "/tutor/register-generation", label: "Register generation", icon: FileSpreadsheet },
-] as const
+  {
+    to: "/tutor/register-generation",
+    label: "Register generation",
+    icon: FileSpreadsheet,
+  },
+] as const;
 
-const ALL_NAV = [...OVERVIEW_NAV, ...TEACHING_NAV] as const
+const ALL_NAV = [...OVERVIEW_NAV, ...TEACHING_NAV] as const;
 
 function navItemActive(pathname: string, to: string) {
-  if (to === "/tutor") return pathname === "/tutor" || pathname === "/tutor/"
-  return pathname === to || pathname.startsWith(`${to}/`)
+  if (to === "/tutor") return pathname === "/tutor" || pathname === "/tutor/";
+  return pathname === to || pathname.startsWith(`${to}/`);
 }
 
 function pageTitleFromPath(pathname: string) {
-  const hit = ALL_NAV.find((n) => navItemActive(pathname, n.to))
-  return hit?.label ?? "Tutor"
+  const hit = ALL_NAV.find((n) => navItemActive(pathname, n.to));
+  return hit?.label ?? "Tutor";
 }
 
 function renderNavBlock(
   pathname: string,
-  items: readonly { readonly to: string; readonly label: string; readonly icon: LucideIcon }[],
+  items: readonly {
+    readonly to: string;
+    readonly label: string;
+    readonly icon: LucideIcon;
+  }[],
 ) {
   return (
     <SidebarMenu>
       {items.map((item) => {
-        const active = navItemActive(pathname, item.to)
-        const Icon = item.icon
+        const active = navItemActive(pathname, item.to);
+        const Icon = item.icon;
         return (
           <SidebarMenuItem key={item.to}>
             <SidebarMenuButton asChild isActive={active}>
@@ -79,21 +87,21 @@ function renderNavBlock(
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
-        )
+        );
       })}
     </SidebarMenu>
-  )
+  );
 }
 
 export function TutorAppShell({
   user,
   children,
 }: {
-  user: { email?: string; user_metadata?: Record<string, string | undefined> }
-  children: ReactNode
+  user: { email?: string; user_metadata?: Record<string, string | undefined> };
+  children: ReactNode;
 }) {
-  const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const title = pageTitleFromPath(pathname)
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const title = pageTitleFromPath(pathname);
 
   const initials = user.user_metadata?.full_name
     ? user.user_metadata.full_name
@@ -101,12 +109,12 @@ export function TutorAppShell({
         .map((n) => n[0])
         .join("")
         .toUpperCase()
-    : user.email?.[0]?.toUpperCase() ?? "?"
+    : (user.email?.[0]?.toUpperCase() ?? "?");
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
-    window.location.href = "/auth/login"
-  }
+    await supabase.auth.signOut();
+    window.location.href = "/auth/login";
+  };
 
   return (
     <SidebarProvider
@@ -116,7 +124,7 @@ export function TutorAppShell({
       <Sidebar
         collapsible="none"
         variant="sidebar"
-        className="min-h-0 shrink-0 border-r border-sidebar-border bg-sidebar"
+        className="h-svh shrink-0 border-r border-sidebar-border bg-sidebar"
       >
         <SidebarHeader className="shrink-0 border-b border-sidebar-border">
           <SidebarMenu>
@@ -127,8 +135,12 @@ export function TutorAppShell({
                     <span className="text-xs font-bold">TS</span>
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold tracking-tight">Tutor Studio</span>
-                    <span className="truncate text-xs text-muted-foreground">Emeris Learning</span>
+                    <span className="truncate font-semibold tracking-tight">
+                      Tutor Studio
+                    </span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      Emeris Learning
+                    </span>
                   </div>
                 </Link>
               </SidebarMenuButton>
@@ -136,19 +148,21 @@ export function TutorAppShell({
           </SidebarMenu>
         </SidebarHeader>
 
-        <SidebarContent className="!min-h-0 !flex-none overflow-y-auto overscroll-contain">
+        <SidebarContent className="flex-1 overflow-y-auto overscroll-contain">
           <SidebarGroup>
             <SidebarGroupLabel>Overview</SidebarGroupLabel>
-            <SidebarGroupContent>{renderNavBlock(pathname, OVERVIEW_NAV)}</SidebarGroupContent>
+            <SidebarGroupContent>
+              {renderNavBlock(pathname, OVERVIEW_NAV)}
+            </SidebarGroupContent>
           </SidebarGroup>
 
           <SidebarGroup>
             <SidebarGroupLabel>Teaching</SidebarGroupLabel>
-            <SidebarGroupContent>{renderNavBlock(pathname, TEACHING_NAV)}</SidebarGroupContent>
+            <SidebarGroupContent>
+              {renderNavBlock(pathname, TEACHING_NAV)}
+            </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-
-        <div className="min-h-0 flex-1 bg-sidebar" aria-hidden />
 
         <SidebarGroup className="shrink-0 border-t border-sidebar-border">
           <SidebarGroupContent>
@@ -156,7 +170,10 @@ export function TutorAppShell({
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname === "/settings" || pathname.startsWith("/settings/")}
+                  isActive={
+                    pathname === "/settings" ||
+                    pathname.startsWith("/settings/")
+                  }
                 >
                   <Link to="/settings">
                     <Settings />
@@ -176,7 +193,6 @@ export function TutorAppShell({
           </SidebarGroupContent>
         </SidebarGroup>
 
-
         <SidebarFooter className="shrink-0 gap-0 border-t border-sidebar-border bg-sidebar p-0 px-2 pt-2 pb-0">
           <SidebarMenu>
             <SidebarMenuItem>
@@ -188,7 +204,10 @@ export function TutorAppShell({
                   >
                     <Avatar className="size-8 rounded-lg">
                       {user.user_metadata?.avatar_url ? (
-                        <AvatarImage src={user.user_metadata.avatar_url} alt={user.email ?? ""} />
+                        <AvatarImage
+                          src={user.user_metadata.avatar_url}
+                          alt={user.email ?? ""}
+                        />
                       ) : (
                         <AvatarFallback className="rounded-lg text-xs font-medium">
                           {initials}
@@ -199,16 +218,26 @@ export function TutorAppShell({
                       <span className="truncate font-semibold">
                         {user.user_metadata?.full_name ?? "Tutor"}
                       </span>
-                      <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {user.email}
+                      </span>
                     </div>
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56" side="bottom" align="end" sideOffset={4}>
+                <DropdownMenuContent
+                  className="w-56"
+                  side="bottom"
+                  align="end"
+                  sideOffset={4}
+                >
                   <DropdownMenuItem asChild>
                     <Link to="/settings">Settings</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem variant="destructive" onClick={handleLogout}>
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onClick={handleLogout}
+                  >
                     Log out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -220,19 +249,26 @@ export function TutorAppShell({
 
       <SidebarInset className="flex min-h-0 min-w-0 flex-1 flex-col border-l border-border bg-background md:m-0 md:rounded-none md:shadow-none">
         <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-background px-4 md:px-6">
-          <nav aria-label="Breadcrumb" className="flex min-w-0 flex-1 items-center gap-1 text-sm text-muted-foreground">
+          <nav
+            aria-label="Breadcrumb"
+            className="flex min-w-0 flex-1 items-center gap-1 text-sm text-muted-foreground"
+          >
             <Link to="/tutor" className="truncate hover:text-foreground">
               Home
             </Link>
             <ChevronRight className="size-4 shrink-0 opacity-50" aria-hidden />
-            <span className="truncate font-medium text-foreground">{title}</span>
+            <span className="truncate font-medium text-foreground">
+              {title}
+            </span>
           </nav>
           <Button variant="outline" size="sm" className="hidden sm:inline-flex">
             Quick create
           </Button>
         </header>
-        <div className="flex flex-1 flex-col gap-6 bg-muted/30 p-4 md:p-6">{children}</div>
+        <div className="flex flex-1 flex-col gap-6 bg-muted/30 p-4 md:p-6">
+          {children}
+        </div>
       </SidebarInset>
     </SidebarProvider>
-  )
+  );
 }
