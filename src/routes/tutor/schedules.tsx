@@ -107,7 +107,9 @@ function TutorSchedulesPage() {
   const displayEvents = useMemo(() => {
     if (!result?.events.length) return [];
     if (showFullTimetable) return result.events;
-    return result.events.filter(isTutorialTimetableEvent);
+    return result.events.filter((ev) =>
+      isTutorialTimetableEvent(ev, result.sessionTypeColumnPresent),
+    );
   }, [result, showFullTimetable]);
 
   useEffect(() => {
@@ -161,7 +163,9 @@ function TutorSchedulesPage() {
             "Check the header row and column names, or try the sample CSV.",
         });
       } else {
-        const tutorRows = data.events.filter(isTutorialTimetableEvent).length;
+        const tutorRows = data.events.filter((ev) =>
+          isTutorialTimetableEvent(ev, data.sessionTypeColumnPresent),
+        ).length;
         if (tutorRows === 0) {
           toast.message("Imported timetable", {
             description:
@@ -213,10 +217,10 @@ function TutorSchedulesPage() {
           Schedules
         </h1>
         <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          Upload a row-based timetable as CSV or Excel. By default only{" "}
-          <strong>tutor/tutorial</strong> style blocks are shown (e.g. titles containing “Tutor
-          session”, “tutorial”, or a <strong>Type</strong> column set to Tutorial). Use{" "}
-          <strong>Full timetable</strong> to preview lectures and everything else.
+          Upload a row-based CSV or Excel file using the same layout as the sample. When your sheet
+          includes a <strong>Type</strong> column, those values decide tutor vs class slots; if the
+          Type cell is empty, the title is used as a fallback. Without a Type column, only title
+          patterns apply. Use <strong>Full timetable</strong> to see every row.
         </p>
       </div>
 
@@ -282,9 +286,10 @@ function TutorSchedulesPage() {
                   times are only times (e.g. <code>08H00</code> or <code>08:00</code>)
                 </li>
                 <li>
-                  Optional <strong>Type</strong> / <strong>Kind</strong> / <strong>Category</strong>{" "}
-                  column: values like <code>Tutorial</code> or <code>Tutor session</code> mark
-                  tutor blocks; <code>Lecture</code>, <code>Lab</code>, etc. count as class slots.
+                  <strong>Type</strong> (or Kind / Category): recommended values{" "}
+                  <code>Tutorial</code>, <code>Lecture</code>, <code>Lab</code>, <code>Other</code>.
+                  If this column exists, it is <strong>authoritative</strong> for each non-empty
+                  cell (unknown values get a warning). Leave Type blank to infer from the title.
                 </li>
               </ul>
             </div>
@@ -375,7 +380,9 @@ function TutorSchedulesPage() {
                       <CardDescription>
                         {showFullTimetable
                           ? "Showing every parsed row. Dots mark days that have at least one block."
-                          : "Showing tutor/tutorial rows only. Dots mark days with at least one of those blocks."}{" "}
+                          : result.sessionTypeColumnPresent
+                            ? "Tutor view: non-empty Type cells are authoritative; blank Type falls back to the title. Dots mark days with at least one tutor/tutorial row."
+                            : "Tutor view: no Type column — only title patterns select tutor/tutorial rows. Dots mark those days."}{" "}
                         Nothing is saved yet.
                       </CardDescription>
                     </div>

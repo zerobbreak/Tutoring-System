@@ -28,6 +28,8 @@ export type ScheduleParseResult = {
   headerRow: number;
   matchedHeaders: Record<string, string>;
   sheetsParsed: string[];
+  /** When true, a Type/Kind/Category column was detected — use {@link isTutorialTimetableEvent} with this flag. */
+  sessionTypeColumnPresent: boolean;
 };
 
 type ColumnKey =
@@ -75,10 +77,45 @@ const FIELD_ALIASES: Record<ColumnKey, string[]> = {
 
 const MODULE_CODE_RE = /\b([A-Z]{2,6}\d{4})\b/;
 
-/** Explicit non-tutor labels in a dedicated Type/Kind column. */
-const SESSION_TYPE_EXCLUDES_TUTOR =
-  /^(lecture|class|lab|seminar|workshop|meridian|break|other|exam|test)$/i;
-const SESSION_TYPE_INCLUDES_TUTOR = /tutor|tutorial|tutoring|consult/i;
+/**
+ * Closed vocabulary for spreadsheet **Type** (case-insensitive, spaces/underscores normalized).
+ * Recommended values: `Tutorial`, `Lecture`, `Lab`, `Other` (plus synonyms below).
+ */
+export function normalizeScheduleTypeInput(raw: string): string {
+  return raw.trim().toLowerCase().replace(/_/g, " ").replace(/\s+/g, " ");
+}
+
+export function classifySessionTypeValue(
+  raw: string,
+): "tutorial" | "nontutorial" | "unknown" {
+  const s = normalizeScheduleTypeInput(raw);
+  if (!s) return "unknown";
+
+  if (
+    s.includes("tutor session") ||
+    s.includes("tutorial") ||
+    s.includes("tutoring") ||
+    /\btutor\b/.test(s) ||
+    s.includes("consult") ||
+    s.includes("drop-in") ||
+    s.includes("dropin") ||
+    /^office hours?$/.test(s)
+  ) {
+    return "tutorial";
+  }
+
+  if (
+    /^(lecture|lab|class|seminar|workshop|exam|test|other|practical|break)\b/.test(
+      s,
+    ) ||
+    s.startsWith("meridian") ||
+    s.startsWith("student experience")
+  ) {
+    return "nontutorial";
+  }
+
+  return "unknown";
+}
 
 function titleHintsTutor(ev: ScheduleParsedEvent): boolean {
   const title = ev.title.trim();
@@ -103,14 +140,28 @@ function titleHintsTutor(ev: ScheduleParsedEvent): boolean {
 }
 
 /**
- * True when this row is treated as a tutor/tutorial slot (not a full class timetable).
- * Uses optional {@link ScheduleParsedEvent.sessionType} when present, otherwise title/location text.
+ * True when this row counts as a tutor/tutorial slot for filtering.
+ *
+ * **Policy (recommended):**
+ * - If `sessionTypeColumnPresent` is true (sheet has a Type/Kind/Category column), a **non-empty**
+ *   {@link ScheduleParsedEvent.sessionType} cell is **authoritative** after
+ *   {@link classifySessionTypeValue} (title is not used to override Lecture vs Tutorial).
+ * - If that cell is **empty**, fall back to {@link titleHintsTutor} for that row.
+ * - If there is **no** Type column on the sheet, only {@link titleHintsTutor} is used.
  */
-export function isTutorialTimetableEvent(ev: ScheduleParsedEvent): boolean {
-  const st = ev.sessionType?.trim();
-  if (st) {
-    if (SESSION_TYPE_INCLUDES_TUTOR.test(st)) return true;
-    if (SESSION_TYPE_EXCLUDES_TUTOR.test(st) && !titleHintsTutor(ev)) return false;
+export function isTutorialTimetableEvent(
+  ev: ScheduleParsedEvent,
+  sessionTypeColumnPresent: boolean,
+): boolean {
+  if (sessionTypeColumnPresent) {
+    const raw = ev.sessionType?.trim();
+    if (raw) {
+      const bucket = classifySessionTypeValue(raw);
+      if (bucket === "tutorial") return true;
+      if (bucket === "nontutorial") return false;
+      return false;
+    }
+    return titleHintsTutor(ev);
   }
 
   return titleHintsTutor(ev);
@@ -326,11 +377,13 @@ export function parseScheduleFromMatrix(
       headerRow: 0,
       matchedHeaders: {},
       sheetsParsed: sheet ? [sheet] : [],
+      sessionTypeColumnPresent: false,
     };
   }
 
   const { rowIndex, columns, labels } = detected;
   const hasDateCol = columns.date !== undefined;
+  const sessionTypeColumnPresent = columns.sessionType !== undefined;
   const events: ScheduleParsedEvent[] = [];
   const rowIssues: ScheduleParseRowIssue[] = [];
 
@@ -415,6 +468,16 @@ export function parseScheduleFromMatrix(
       else title = "Untitled block";
     }
 
+    if (sessionTypeColumnPresent && sessionTypeRaw) {
+      if (classifySessionTypeValue(sessionTypeRaw) === "unknown") {
+        rowIssues.push({
+          rowNumber: r + 1,
+          sheet,
+          message: `Unrecognized Type "${sessionTypeRaw}". Use Tutorial, Lecture, Lab, or Other (same spelling as the template).`,
+        });
+      }
+    }
+
     events.push({
       start: formatLocalIso(start),
       end: formatLocalIso(end),
@@ -432,6 +495,7 @@ export function parseScheduleFromMatrix(
     headerRow: rowIndex,
     matchedHeaders: labels,
     sheetsParsed: sheet ? [sheet] : [],
+    sessionTypeColumnPresent,
   };
 }
 
@@ -451,11 +515,13 @@ export function mergeScheduleParseResults(
   }
 
   const headerRow = parts[0]?.headerRow ?? 0;
+  const sessionTypeColumnPresent = parts.some((p) => p.sessionTypeColumnPresent);
   return {
     events,
     rowIssues,
     headerRow,
     matchedHeaders: matched,
     sheetsParsed,
+    sessionTypeColumnPresent,
   };
 }
