@@ -1,5 +1,6 @@
 import { createFileRoute, getRouteApi, Link } from "@tanstack/react-router"
 import { ArrowUpRight, Clock, MoreHorizontal, Settings, Star, TrendingUp, Users, Video } from "lucide-react"
+import { TutorSessionsActivityChart } from "#/components/tutor-sessions-activity-chart"
 import { Button } from "#/components/ui/button"
 import {
   Card,
@@ -49,12 +50,6 @@ const KPI_CARDS = [
     trend: "neutral" as const,
     icon: Star,
   },
-]
-
-const UPCOMING_ROWS = [
-  { student: "Alex Johnson", subject: "Advanced Calculus", when: "Today · 2:00 PM", status: "Confirmed" },
-  { student: "Jamik Tashpulatov", subject: "Quantum Physics", when: "Tomorrow · 10:30 AM", status: "Pending" },
-  { student: "Sarah Miller", subject: "AP Chemistry", when: "Thu · 4:15 PM", status: "Confirmed" },
 ]
 
 function TutorDashboard() {
@@ -126,47 +121,19 @@ function TutorDashboard() {
         <Card className="border-border shadow-sm lg:col-span-4">
           <CardHeader className="flex flex-row items-start justify-between space-y-0">
             <div>
-              <CardTitle className="text-base font-semibold">Upcoming sessions</CardTitle>
-              <CardDescription>Next bookings on your calendar</CardDescription>
+              <CardTitle className="text-base font-semibold">Session activity</CardTitle>
+              <CardDescription>Sessions per day — hover a point to see hours worked</CardDescription>
             </div>
             <Button variant="ghost" size="icon" className="size-8 shrink-0" aria-label="More options">
               <MoreHorizontal className="size-4" />
             </Button>
           </CardHeader>
-          <CardContent className="px-0">
-            <div className="border-t">
-              <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 border-b bg-muted/40 px-6 py-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                <span>Student</span>
-                <span>Subject</span>
-                <span>When</span>
-                <span className="text-right">Status</span>
-              </div>
-              {UPCOMING_ROWS.map((row) => (
-                <div
-                  key={row.student + row.when}
-                  className="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-3 border-b px-6 py-3 text-sm last:border-0 hover:bg-muted/30"
-                >
-                  <span className="font-medium text-foreground">{row.student}</span>
-                  <span className="text-muted-foreground">{row.subject}</span>
-                  <span className="text-muted-foreground">{row.when}</span>
-                  <span className="text-right">
-                    <span
-                      className={
-                        row.status === "Confirmed"
-                          ? "inline-flex rounded-md bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400"
-                          : "inline-flex rounded-md bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-400"
-                      }
-                    >
-                      {row.status}
-                    </span>
-                  </span>
-                </div>
-              ))}
-            </div>
+          <CardContent>
+            <TutorSessionsActivityChart />
           </CardContent>
           <CardFooter className="border-t bg-muted/20 py-3">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-              View all sessions
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
+              <Link to="/tutor/sessions">View all sessions</Link>
             </Button>
           </CardFooter>
         </Card>
