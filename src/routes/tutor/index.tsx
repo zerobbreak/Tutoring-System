@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { isTutorDashboardRole } from "../../lib/user-role";
 import { Button } from "../../components/ui/button";
 
 export const Route = createFileRoute("/tutor/")({
@@ -15,7 +16,8 @@ function TutorDashboard() {
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user || user.user_metadata.role !== "tutor") {
+      const role = user?.user_metadata?.role as string | undefined;
+      if (!user || !isTutorDashboardRole(role)) {
         navigate({ to: "/auth/login" });
         return;
       }

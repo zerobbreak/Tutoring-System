@@ -1,19 +1,22 @@
 import { createServerFn } from "@tanstack/react-start";
 import * as z from "zod";
 import { supabase } from "./supabase";
+import { SELF_REGISTER_ROLES, type SelfRegisterRole } from "./user-role";
 
-// Verification Codes (Moved to server-side only)
-const VERIFICATION_CODES = {
-  tutor: "T-4P7-R8",
-  admin: "A-1Z3-C5",
-  lecturer: "L-9X4-B2",
+// Verification codes (server-side only). Keys match `user_role` enum values.
+const VERIFICATION_CODES: Record<SelfRegisterRole, string> = {
+  TUTOR: "T-4P7-R8",
+  ADMIN: "A-1Z3-C5",
+  LECTURER: "L-9X4-B2",
 };
+
+const selfRegisterRoleSchema = z.enum(SELF_REGISTER_ROLES);
 
 const signUpInputSchema = z.object({
   email: z.email(),
   password: z.string().min(6),
   fullName: z.string().min(2),
-  role: z.string(),
+  role: selfRegisterRoleSchema,
   verificationCode: z.string().optional(),
 });
 
@@ -25,14 +28,9 @@ export const signUpServerFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { email, password, fullName, role, verificationCode } = data;
 
-    // 1. Validate Verification Code for sensitive roles
-    if (role === "lecturer" || role === "tutor" || role === "admin") {
-      if (
-        verificationCode !==
-        VERIFICATION_CODES[role as keyof typeof VERIFICATION_CODES]
-      ) {
-        throw new Error(`Invalid verification code for the ${role} role.`);
-      }
+    // 1. Validate verification code for elevated roles (all self-register roles)
+    if (verificationCode !== VERIFICATION_CODES[role]) {
+      throw new Error(`Invalid verification code for the ${role} role.`);
     }
 
     // 2. Perform Supabase Sign Up

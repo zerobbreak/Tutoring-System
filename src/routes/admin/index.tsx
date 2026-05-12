@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { isAdminDashboardRole } from "../../lib/user-role";
 import { Button } from "../../components/ui/button";
 import { cn } from "../../lib/utils";
 
@@ -15,8 +16,8 @@ function AdminDashboard() {
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      const role = user?.user_metadata?.role;
-      if (!user || (role !== "admin" && role !== "lecturer")) {
+      const role = user?.user_metadata?.role as string | undefined;
+      if (!user || !isAdminDashboardRole(role)) {
         navigate({ to: "/auth/login" });
         return;
       }

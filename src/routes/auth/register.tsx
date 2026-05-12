@@ -9,12 +9,13 @@ import { Label } from "../../components/ui/label";
 import { cn } from "../../lib/utils";
 import sidebarImage from "../../assets/auth-sidebar.png";
 import { signUpServerFn } from "../../lib/auth-server";
+import { SELF_REGISTER_ROLES, formatRoleLabel } from "../../lib/user-role";
 
 const registerSchema = z
   .object({
     fullName: z.string().min(2, "Full name must be at least 2 characters"),
     email: z.email("Invalid email address"),
-    role: z.enum(["student", "tutor", "lecturer", "admin"]),
+    role: z.enum(SELF_REGISTER_ROLES),
     verificationCode: z.string().optional(),
     password: z.string().min(6, "Password must be at least 6 characters"),
     confirmPassword: z
@@ -46,7 +47,7 @@ function Register() {
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      role: "student",
+      role: "TUTOR",
     },
   });
 
@@ -160,11 +161,9 @@ function Register() {
                 )}
                 {...register("role")}
               >
-                <option value="">Select your role</option>
-                <option value="student">Student</option>
-                <option value="tutor">Tutor</option>
-                <option value="lecturer">Lecturer</option>
-                <option value="admin">Admin</option>
+                <option value="TUTOR">{formatRoleLabel("TUTOR")}</option>
+                <option value="LECTURER">{formatRoleLabel("LECTURER")}</option>
+                <option value="ADMIN">{formatRoleLabel("ADMIN")}</option>
               </select>
               {errors.role && (
                 <p className="text-xs font-medium text-red-500">
@@ -173,13 +172,12 @@ function Register() {
               )}
             </div>
 
-            {(watchRole === "lecturer" ||
-              watchRole === "tutor" ||
-              watchRole === "admin") && (
+            {(watchRole === "LECTURER" ||
+              watchRole === "TUTOR" ||
+              watchRole === "ADMIN") && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
                 <Label htmlFor="verificationCode" className="text-[#0A1128]">
-                  {watchRole.charAt(0).toUpperCase() + watchRole.slice(1)}{" "}
-                  Access Code
+                  {formatRoleLabel(watchRole)} access code
                 </Label>
                 <Input
                   id="verificationCode"

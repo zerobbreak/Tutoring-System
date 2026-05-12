@@ -17,6 +17,7 @@ import {
   AvatarImage,
 } from "../../components/ui/avatar";
 import { updateProfileServerFn } from "../../lib/auth-server";
+import { formatRoleLabel } from "../../lib/user-role";
 import { Route as RootRoute } from "../__root";
 
 export const Route = createFileRoute("/settings/")({
@@ -162,7 +163,7 @@ function SettingsPage() {
                 <Label className="text-gray-500">Role</Label>
                 <div className="flex">
                   <span className="rounded-full bg-[var(--lagoon)]/10 px-3 py-1 text-xs font-bold uppercase text-[var(--lagoon-deep)]">
-                    {user.user_metadata?.role || "Student"}
+                    {formatRoleLabel(user.user_metadata?.role)}
                   </span>
                 </div>
               </div>

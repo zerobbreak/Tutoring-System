@@ -9,6 +9,10 @@ import { Label } from "../../components/ui/label";
 import { cn } from "../../lib/utils";
 import sidebarImage from "../../assets/auth-sidebar.png";
 import { signInServerFn } from "../../lib/auth-server";
+import {
+  isAdminDashboardRole,
+  isTutorDashboardRole,
+} from "../../lib/user-role";
 
 const loginSchema = z.object({
   email: z.email("Invalid email address"),
@@ -48,10 +52,10 @@ function Login() {
       });
 
       if (result.user) {
-        const role = result.user.user_metadata?.role;
-        if (role === "admin" || role === "lecturer") {
+        const role = result.user.user_metadata?.role as string | undefined;
+        if (isAdminDashboardRole(role)) {
           navigate({ to: "/admin" });
-        } else if (role === "tutor") {
+        } else if (isTutorDashboardRole(role)) {
           navigate({ to: "/tutor" });
         } else {
           navigate({ to: "/" });

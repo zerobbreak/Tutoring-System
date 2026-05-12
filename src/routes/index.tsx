@@ -2,6 +2,10 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect } from 'react'
 
 import { Route as RootRoute } from './__root'
+import {
+  isAdminDashboardRole,
+  isTutorDashboardRole,
+} from '../lib/user-role'
 
 export const Route = createFileRoute('/')({ component: Home })
 
@@ -13,10 +17,10 @@ function Home() {
     if (!sessionData?.user) {
       navigate({ to: "/auth/login" });
     } else {
-      const role = sessionData.user.user_metadata?.role;
-      if (role === "admin" || role === "lecturer") {
+      const role = sessionData.user.user_metadata?.role as string | undefined
+      if (isAdminDashboardRole(role)) {
         navigate({ to: "/admin" });
-      } else if (role === "tutor") {
+      } else if (isTutorDashboardRole(role)) {
         navigate({ to: "/tutor" });
       }
     }

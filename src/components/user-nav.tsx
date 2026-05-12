@@ -1,5 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import {
+  formatRoleLabel,
+  isAdminDashboardRole,
+  isTutorDashboardRole,
+} from "../lib/user-role";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 
@@ -30,7 +35,8 @@ export function UserNav({ user }: UserNavProps) {
     ? user.user_metadata.full_name.split(" ").map((n: string) => n[0]).join("").toUpperCase()
     : user.email?.[0].toUpperCase();
 
-  const role = user.user_metadata?.role || "Student";
+  const roleRaw = user.user_metadata?.role as string | undefined;
+  const roleLabel = formatRoleLabel(roleRaw);
 
   return (
     <div className="relative" ref={dropdownRef}>
@@ -56,12 +62,18 @@ export function UserNav({ user }: UserNavProps) {
             </p>
             <p className="text-xs text-gray-500 truncate">{user.email}</p>
             <span className="mt-1 inline-block rounded-full bg-[var(--lagoon)]/10 px-2 py-0.5 text-[10px] font-bold uppercase text-[var(--lagoon-deep)]">
-              {role}
+              {roleLabel}
             </span>
           </div>
           <div className="py-1">
             <a
-              href={role === "admin" || role === "lecturer" ? "/admin" : role === "tutor" ? "/tutor" : "/"}
+              href={
+                isAdminDashboardRole(roleRaw)
+                  ? "/admin"
+                  : isTutorDashboardRole(roleRaw)
+                    ? "/tutor"
+                    : "/"
+              }
               className="flex w-full items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
               onClick={() => setOpen(false)}
             >
