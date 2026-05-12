@@ -25,8 +25,6 @@ export const Route = createFileRoute("/settings/")({
 
 function SettingsPage() {
   const { sessionData } = RootRoute.useLoaderData();
-  const [user, setUser] = useState<any>(sessionData?.user || null);
-  const [loading, setLoading] = useState(!sessionData?.user);
   const [updating, setUpdating] = useState(false);
   const [fullName, setFullName] = useState(
     sessionData?.user?.user_metadata?.full_name || "",
@@ -42,6 +40,9 @@ function SettingsPage() {
       navigate({ to: "/auth/login" });
     }
   }, [sessionData, navigate]);
+
+  const user = sessionData?.user;
+  const loading = !user;
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,7 +64,7 @@ function SettingsPage() {
     }
   };
 
-  if (loading) {
+  if (loading || !user) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--lagoon)] border-t-transparent" />

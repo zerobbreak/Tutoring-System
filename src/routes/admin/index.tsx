@@ -9,7 +9,6 @@ export const Route = createFileRoute("/admin/")({
 });
 
 function AdminDashboard() {
-  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -21,7 +20,6 @@ function AdminDashboard() {
         navigate({ to: "/auth/login" });
         return;
       }
-      setUser(user);
       setLoading(false);
     };
     checkAuth();
@@ -117,17 +115,17 @@ function AdminDashboard() {
                       { name: "Maria Garcia", role: "Student", date: "15 mins ago", status: "Active" },
                       { name: "David Chen", role: "Tutor", date: "1 hour ago", status: "Pending" },
                       { name: "Alice Wong", role: "Lecturer", date: "3 hours ago", status: "Active" },
-                    ].map((user, i) => (
+                    ].map((row, i) => (
                       <tr key={i} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 font-medium text-[#0A1128]">{user.name}</td>
-                        <td className="px-6 py-4 text-gray-500">{user.role}</td>
-                        <td className="px-6 py-4 text-gray-500">{user.date}</td>
+                        <td className="px-6 py-4 font-medium text-[#0A1128]">{row.name}</td>
+                        <td className="px-6 py-4 text-gray-500">{row.role}</td>
+                        <td className="px-6 py-4 text-gray-500">{row.date}</td>
                         <td className="px-6 py-4">
                           <span className={cn(
                             "inline-block h-2 w-2 rounded-full mr-2",
-                            user.status === "Active" ? "bg-green-500" : "bg-yellow-500"
+                            row.status === "Active" ? "bg-green-500" : "bg-yellow-500"
                           )} />
-                          {user.status}
+                          {row.status}
                         </td>
                       </tr>
                     ))}

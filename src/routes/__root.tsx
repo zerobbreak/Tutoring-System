@@ -1,9 +1,8 @@
-import { HeadContent, Link, Outlet, Scripts, createRootRoute, useLocation } from '@tanstack/react-router'
+import { HeadContent, Link, Scripts, createRootRoute, useLocation } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Session } from '@supabase/supabase-js'
 import { UserNav } from '../components/user-nav'
 
 import appCss from '../styles.css?url'
@@ -12,8 +11,7 @@ import { getCurrentUserFn } from '../lib/auth-server'
 
 export const Route = createRootRoute({
   loader: async () => {
-    // Explicitly call with undefined to ensure the proxy executes correctly
-    const sessionData = await getCurrentUserFn(undefined)
+    const sessionData = await getCurrentUserFn()
     return { sessionData }
   },
   head: () => ({
@@ -63,10 +61,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe()
   }, [])
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-  }
 
   const location = useLocation()
   const isAuthPage = location.pathname.startsWith('/auth')
