@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import * as z from "zod";
-import { supabase } from "./supabase";
+import { createSupabaseServerClient } from "./supabase-server";
 import { getSupabaseAdmin } from "./supabase-admin";
 import { SELF_REGISTER_ROLES, type SelfRegisterRole } from "./user-role";
 
@@ -27,6 +27,7 @@ const signUpInputSchema = z.object({
 export const signUpServerFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => signUpInputSchema.parse(input))
   .handler(async ({ data }) => {
+    const supabase = createSupabaseServerClient();
     const { email, password, fullName, role, verificationCode } = data;
 
     // 1. Validate verification code for elevated roles (all self-register roles)
@@ -64,12 +65,6 @@ export const signUpServerFn = createServerFn({ method: "POST" })
         const { error } = await admin.from("users").insert(row);
         dbError = error;
       } else {
-        if (authData.session) {
-          await supabase.auth.setSession({
-            access_token: authData.session.access_token,
-            refresh_token: authData.session.refresh_token,
-          });
-        }
         const { error } = await supabase.from("users").insert(row);
         dbError = error;
       }
@@ -89,59 +84,30 @@ export const signUpServerFn = createServerFn({ method: "POST" })
     };
   });
 
-const signInInputSchema = z.object({
-  email: z.email(),
-  password: z.string().min(6),
-});
-
 /**
- * Server Function to handle user login
- */
-export const signInServerFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => signInInputSchema.parse(input))
-  .handler(async ({ data }) => {
-    const { email, password } = data;
-
-    const { data: authData, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) throw new Error(error.message);
-
-    const userPOJO = authData.user
-      ? JSON.parse(JSON.stringify(authData.user))
-      : null;
-
-    return {
-      success: true,
-      user: userPOJO,
-      session: authData.session
-        ? {
-            access_token: authData.session.access_token,
-            refresh_token: authData.session.refresh_token,
-            expires_at: authData.session.expires_at,
-            user: userPOJO,
-          }
-        : null,
-    };
-  });
-
-/**
- * Server Function to get current user session (SSR friendly)
+ * Server Function: verified user + session snapshot for SSR / loaders.
+ * Uses `getUser()` (JWT validated with Auth) then `getSession()` for token payload.
  */
 export const getCurrentUserFn = createServerFn({ method: "GET" }).handler(
   async () => {
+    const supabase = createSupabaseServerClient();
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) return null;
+
     const {
       data: { session },
-      error,
+      error: sessionError,
     } = await supabase.auth.getSession();
 
-    if (error || !session) return null;
+    if (sessionError || !session) return null;
 
     const userPOJO = JSON.parse(JSON.stringify(session.user));
 
-    // Return a POJO that mimics the Supabase Session structure but is safe for serialization
     return {
       user: userPOJO,
       session: {
@@ -151,7 +117,8 @@ export const getCurrentUserFn = createServerFn({ method: "GET" }).handler(
         user: userPOJO,
       },
     };
-  });
+  },
+);
 
 const updateProfileInputSchema = z.object({
   fullName: z.string().min(1),
@@ -163,28 +130,26 @@ const updateProfileInputSchema = z.object({
 export const updateProfileServerFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => updateProfileInputSchema.parse(input))
   .handler(async ({ data }) => {
+    const supabase = createSupabaseServerClient();
     const { fullName } = data;
 
-    // 1. Get current session
     const {
-      data: { session },
+      data: { user },
       error: authError,
-    } = await supabase.auth.getSession();
-    if (authError || !session) throw new Error("Unauthorized");
+    } = await supabase.auth.getUser();
+    if (authError || !user) throw new Error("Unauthorized");
 
-    // 2. Update Auth metadata
     const { error: updateError } = await supabase.auth.updateUser({
       data: { full_name: fullName },
     });
     if (updateError) throw new Error(updateError.message);
 
-    // 3. Sync public.users (service role avoids RLS blocks without a user-scoped JWT)
     const admin = getSupabaseAdmin();
     if (admin) {
       const { error: dbError } = await admin
         .from("users")
         .update({ full_name: fullName })
-        .eq("id", session.user.id);
+        .eq("id", user.id);
       if (dbError) {
         console.error("Server-side profile sync error:", dbError);
       }
@@ -192,7 +157,7 @@ export const updateProfileServerFn = createServerFn({ method: "POST" })
       const { error: dbError } = await supabase
         .from("users")
         .update({ full_name: fullName })
-        .eq("id", session.user.id);
+        .eq("id", user.id);
       if (dbError) {
         console.error("Server-side profile sync error:", dbError);
       }

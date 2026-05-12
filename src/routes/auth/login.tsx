@@ -8,7 +8,6 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { cn } from "../../lib/utils";
 import sidebarImage from "../../assets/auth-sidebar.png";
-import { signInServerFn } from "../../lib/auth-server";
 import { supabase } from "../../lib/supabase";
 import { toast } from "../../lib/toast";
 import { getPostAuthDashboardPath } from "../../lib/user-role";
@@ -47,39 +46,29 @@ function Login() {
     setLoading(true);
 
     try {
-      const result = await signInServerFn({
-        data: {
-          email: values.email,
-          password: values.password,
-        },
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: values.email,
+        password: values.password,
       });
 
-      if (!result.user) {
+      if (error) {
+        toast.error(error.message || "Invalid email or password.");
+        return;
+      }
+
+      if (!data.user) {
         toast.error("Sign in did not return a user. Try again.");
         return;
       }
 
-      // Server fn signs in on the server; persist session in this browser so
-      // getSession(), RLS, and navigated routes see the authenticated user.
-      if (
-        result.session?.access_token &&
-        result.session?.refresh_token
-      ) {
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: result.session.access_token,
-          refresh_token: result.session.refresh_token,
-        });
-        if (sessionError) {
-          throw new Error(sessionError.message);
-        }
-      } else {
+      if (!data.session) {
         toast.error(
-          "No active session returned (e.g. email not confirmed). Check your inbox or reset your password.",
+          "No active session (e.g. email not confirmed). Check your inbox or reset your password.",
         );
         return;
       }
 
-      const role = result.user.user_metadata?.role as string | undefined;
+      const role = data.user.user_metadata?.role as string | undefined;
       toast.success("Signed in successfully.");
       await navigate({ to: getPostAuthDashboardPath(role) });
     } catch (error: any) {

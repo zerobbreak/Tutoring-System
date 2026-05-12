@@ -9,24 +9,35 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TutorRouteRouteImport } from './routes/tutor/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TutorIndexRouteImport } from './routes/tutor/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
+import { Route as TutorSessionsRouteImport } from './routes/tutor/sessions'
+import { Route as TutorSchedulesRouteImport } from './routes/tutor/schedules'
+import { Route as TutorRegisterGenerationRouteImport } from './routes/tutor/register-generation'
+import { Route as TutorNotesRouteImport } from './routes/tutor/notes'
+import { Route as TutorMessagingRouteImport } from './routes/tutor/messaging'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthRecoverPasswordRouteImport } from './routes/auth/recover-password'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
 
+const TutorRouteRoute = TutorRouteRouteImport.update({
+  id: '/tutor',
+  path: '/tutor',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TutorIndexRoute = TutorIndexRouteImport.update({
-  id: '/tutor/',
-  path: '/tutor/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => TutorRouteRoute,
 } as any)
 const SettingsIndexRoute = SettingsIndexRouteImport.update({
   id: '/settings/',
@@ -37,6 +48,31 @@ const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/admin/',
   path: '/admin/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const TutorSessionsRoute = TutorSessionsRouteImport.update({
+  id: '/sessions',
+  path: '/sessions',
+  getParentRoute: () => TutorRouteRoute,
+} as any)
+const TutorSchedulesRoute = TutorSchedulesRouteImport.update({
+  id: '/schedules',
+  path: '/schedules',
+  getParentRoute: () => TutorRouteRoute,
+} as any)
+const TutorRegisterGenerationRoute = TutorRegisterGenerationRouteImport.update({
+  id: '/register-generation',
+  path: '/register-generation',
+  getParentRoute: () => TutorRouteRoute,
+} as any)
+const TutorNotesRoute = TutorNotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
+  getParentRoute: () => TutorRouteRoute,
+} as any)
+const TutorMessagingRoute = TutorMessagingRouteImport.update({
+  id: '/messaging',
+  path: '/messaging',
+  getParentRoute: () => TutorRouteRoute,
 } as any)
 const AuthRegisterRoute = AuthRegisterRouteImport.update({
   id: '/auth/register',
@@ -61,10 +97,16 @@ const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/tutor': typeof TutorRouteRouteWithChildren
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/recover-password': typeof AuthRecoverPasswordRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/tutor/messaging': typeof TutorMessagingRoute
+  '/tutor/notes': typeof TutorNotesRoute
+  '/tutor/register-generation': typeof TutorRegisterGenerationRoute
+  '/tutor/schedules': typeof TutorSchedulesRoute
+  '/tutor/sessions': typeof TutorSessionsRoute
   '/admin/': typeof AdminIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/tutor/': typeof TutorIndexRoute
@@ -75,6 +117,11 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/recover-password': typeof AuthRecoverPasswordRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/tutor/messaging': typeof TutorMessagingRoute
+  '/tutor/notes': typeof TutorNotesRoute
+  '/tutor/register-generation': typeof TutorRegisterGenerationRoute
+  '/tutor/schedules': typeof TutorSchedulesRoute
+  '/tutor/sessions': typeof TutorSessionsRoute
   '/admin': typeof AdminIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/tutor': typeof TutorIndexRoute
@@ -82,10 +129,16 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/tutor': typeof TutorRouteRouteWithChildren
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/recover-password': typeof AuthRecoverPasswordRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/tutor/messaging': typeof TutorMessagingRoute
+  '/tutor/notes': typeof TutorNotesRoute
+  '/tutor/register-generation': typeof TutorRegisterGenerationRoute
+  '/tutor/schedules': typeof TutorSchedulesRoute
+  '/tutor/sessions': typeof TutorSessionsRoute
   '/admin/': typeof AdminIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/tutor/': typeof TutorIndexRoute
@@ -94,10 +147,16 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/tutor'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/recover-password'
     | '/auth/register'
+    | '/tutor/messaging'
+    | '/tutor/notes'
+    | '/tutor/register-generation'
+    | '/tutor/schedules'
+    | '/tutor/sessions'
     | '/admin/'
     | '/settings/'
     | '/tutor/'
@@ -108,16 +167,27 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/recover-password'
     | '/auth/register'
+    | '/tutor/messaging'
+    | '/tutor/notes'
+    | '/tutor/register-generation'
+    | '/tutor/schedules'
+    | '/tutor/sessions'
     | '/admin'
     | '/settings'
     | '/tutor'
   id:
     | '__root__'
     | '/'
+    | '/tutor'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/recover-password'
     | '/auth/register'
+    | '/tutor/messaging'
+    | '/tutor/notes'
+    | '/tutor/register-generation'
+    | '/tutor/schedules'
+    | '/tutor/sessions'
     | '/admin/'
     | '/settings/'
     | '/tutor/'
@@ -125,17 +195,24 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  TutorRouteRoute: typeof TutorRouteRouteWithChildren
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRecoverPasswordRoute: typeof AuthRecoverPasswordRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
   AdminIndexRoute: typeof AdminIndexRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
-  TutorIndexRoute: typeof TutorIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tutor': {
+      id: '/tutor'
+      path: '/tutor'
+      fullPath: '/tutor'
+      preLoaderRoute: typeof TutorRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -145,10 +222,10 @@ declare module '@tanstack/react-router' {
     }
     '/tutor/': {
       id: '/tutor/'
-      path: '/tutor'
+      path: '/'
       fullPath: '/tutor/'
       preLoaderRoute: typeof TutorIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof TutorRouteRoute
     }
     '/settings/': {
       id: '/settings/'
@@ -163,6 +240,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/tutor/sessions': {
+      id: '/tutor/sessions'
+      path: '/sessions'
+      fullPath: '/tutor/sessions'
+      preLoaderRoute: typeof TutorSessionsRouteImport
+      parentRoute: typeof TutorRouteRoute
+    }
+    '/tutor/schedules': {
+      id: '/tutor/schedules'
+      path: '/schedules'
+      fullPath: '/tutor/schedules'
+      preLoaderRoute: typeof TutorSchedulesRouteImport
+      parentRoute: typeof TutorRouteRoute
+    }
+    '/tutor/register-generation': {
+      id: '/tutor/register-generation'
+      path: '/register-generation'
+      fullPath: '/tutor/register-generation'
+      preLoaderRoute: typeof TutorRegisterGenerationRouteImport
+      parentRoute: typeof TutorRouteRoute
+    }
+    '/tutor/notes': {
+      id: '/tutor/notes'
+      path: '/notes'
+      fullPath: '/tutor/notes'
+      preLoaderRoute: typeof TutorNotesRouteImport
+      parentRoute: typeof TutorRouteRoute
+    }
+    '/tutor/messaging': {
+      id: '/tutor/messaging'
+      path: '/messaging'
+      fullPath: '/tutor/messaging'
+      preLoaderRoute: typeof TutorMessagingRouteImport
+      parentRoute: typeof TutorRouteRoute
     }
     '/auth/register': {
       id: '/auth/register'
@@ -195,15 +307,37 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface TutorRouteRouteChildren {
+  TutorMessagingRoute: typeof TutorMessagingRoute
+  TutorNotesRoute: typeof TutorNotesRoute
+  TutorRegisterGenerationRoute: typeof TutorRegisterGenerationRoute
+  TutorSchedulesRoute: typeof TutorSchedulesRoute
+  TutorSessionsRoute: typeof TutorSessionsRoute
+  TutorIndexRoute: typeof TutorIndexRoute
+}
+
+const TutorRouteRouteChildren: TutorRouteRouteChildren = {
+  TutorMessagingRoute: TutorMessagingRoute,
+  TutorNotesRoute: TutorNotesRoute,
+  TutorRegisterGenerationRoute: TutorRegisterGenerationRoute,
+  TutorSchedulesRoute: TutorSchedulesRoute,
+  TutorSessionsRoute: TutorSessionsRoute,
+  TutorIndexRoute: TutorIndexRoute,
+}
+
+const TutorRouteRouteWithChildren = TutorRouteRoute._addFileChildren(
+  TutorRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  TutorRouteRoute: TutorRouteRouteWithChildren,
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthRecoverPasswordRoute: AuthRecoverPasswordRoute,
   AuthRegisterRoute: AuthRegisterRoute,
   AdminIndexRoute: AdminIndexRoute,
   SettingsIndexRoute: SettingsIndexRoute,
-  TutorIndexRoute: TutorIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

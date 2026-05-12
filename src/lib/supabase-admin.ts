@@ -1,5 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+import { getSupabaseUrl } from "./supabase-env";
+
 /**
  * Server-only Supabase client with the **service role** key.
  * Bypasses RLS — use only inside server functions / API routes.
@@ -12,13 +14,13 @@ let cached: SupabaseClient | null | undefined;
 export function getSupabaseAdmin(): SupabaseClient | null {
   if (cached !== undefined) return cached;
 
-  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  const url = getSupabaseUrl();
   const serviceKey =
     (typeof process !== "undefined" &&
       process.env.SUPABASE_SERVICE_ROLE_KEY) ||
     undefined;
 
-  if (!url || !serviceKey) {
+  if (!serviceKey || url === "https://placeholder.supabase.co") {
     cached = null;
     return null;
   }

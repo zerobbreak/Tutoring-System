@@ -1,41 +1,47 @@
-import { HeadContent, Link, Scripts, createRootRoute, useLocation } from '@tanstack/react-router'
-import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
-import { TanStackDevtools } from '@tanstack/react-devtools'
-import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import { UserNav } from '../components/user-nav'
-import { Toaster } from '../components/ui/sonner'
+import {
+  HeadContent,
+  Link,
+  Scripts,
+  createRootRoute,
+  useLocation,
+} from "@tanstack/react-router";
+import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
+import { TanStackDevtools } from "@tanstack/react-devtools";
+import { useEffect, useState } from "react";
+import { supabase } from "../lib/supabase";
+import { UserNav } from "../components/user-nav";
+import { Toaster } from "../components/ui/sonner";
 
-import appCss from '../styles.css?url'
+import appCss from "../styles.css?url";
 
-import { getCurrentUserFn } from '../lib/auth-server'
-import { getPostAuthDashboardPath } from '../lib/user-role'
+import { getCurrentUserFn } from "../lib/auth-server";
+import { getPostAuthDashboardPath } from "../lib/user-role";
 
 export const Route = createRootRoute({
   loader: async () => {
     try {
-      const sessionData = await getCurrentUserFn()
-      return { sessionData }
+      const sessionData = await getCurrentUserFn();
+      return { sessionData };
     } catch {
-      return { sessionData: null }
+      return { sessionData: null };
     }
   },
   head: () => ({
     meta: [
       {
-        charSet: 'utf-8',
+        charSet: "utf-8",
       },
       {
-        name: 'viewport',
-        content: 'width=device-width, initial-scale=1',
+        name: "viewport",
+        content: "width=device-width, initial-scale=1",
       },
       {
-        title: 'TanStack Start Starter',
+        title: "TanStack Start Starter",
       },
     ],
     links: [
       {
-        rel: 'stylesheet',
+        rel: "stylesheet",
         href: appCss,
       },
     ],
@@ -44,53 +50,61 @@ export const Route = createRootRoute({
   notFoundComponent: () => (
     <div className="flex flex-col items-center justify-center min-h-[60vh]">
       <h1 className="text-2xl font-bold">404 - Not Found</h1>
-      <p className="mt-2 text-gray-600">The page you are looking for does not exist.</p>
-      <Link to="/auth/login" className="mt-4 text-indigo-600 hover:underline">Go to sign in</Link>
+      <p className="mt-2 text-gray-600">
+        The page you are looking for does not exist.
+      </p>
+      <Link to="/auth/login" className="mt-4 text-indigo-600 hover:underline">
+        Go to sign in
+      </Link>
     </div>
   ),
-})
+});
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  const loaderData = Route.useLoaderData()
-  const sessionData = loaderData?.sessionData
-  const [session, setSession] = useState<any>(sessionData?.session ?? null)
+  const loaderData = Route.useLoaderData();
+  const sessionData = loaderData?.sessionData;
+  const [session, setSession] = useState<any>(sessionData?.session ?? null);
 
   useEffect(() => {
     if (sessionData?.session) {
-      setSession(sessionData.session)
+      setSession(sessionData.session);
     }
-  }, [sessionData])
+  }, [sessionData]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-    })
+      setSession(session);
+    });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-    })
+      setSession(session);
+    });
 
-    return () => subscription.unsubscribe()
-  }, [])
+    return () => subscription.unsubscribe();
+  }, []);
 
-  const location = useLocation()
-  const isAuthPage = location.pathname.startsWith('/auth')
+  const location = useLocation();
+  const isAuthPage = location.pathname.startsWith("/auth");
+  const isTutorShell =
+    location.pathname === "/tutor" || location.pathname.startsWith("/tutor/");
 
   const brandTo = session?.user
     ? getPostAuthDashboardPath(
         session.user.user_metadata?.role as string | undefined,
       )
-    : '/auth/login'
+    : "/auth/login";
 
   return (
     <html lang="en">
       <head>
         <HeadContent />
       </head>
-      <body className="min-h-screen bg-gray-50">
-        {!isAuthPage && (
+      <body
+        className={`min-h-screen bg-gray-50${isTutorShell ? " flex flex-col" : ""}`}
+      >
+        {!isAuthPage && !isTutorShell && (
           <nav className="border-b bg-white px-4 py-3 shadow-sm">
             <div className="mx-auto flex max-w-7xl items-center justify-between">
               <Link to={brandTo} className="text-xl font-bold text-indigo-600">
@@ -119,15 +133,19 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             </div>
           </nav>
         )}
-        <main>{children}</main>
+        <main
+          className={isTutorShell ? "flex min-h-0 flex-1 flex-col" : undefined}
+        >
+          {children}
+        </main>
         <Toaster richColors closeButton />
         <TanStackDevtools
           config={{
-            position: 'bottom-right',
+            position: "bottom-right",
           }}
           plugins={[
             {
-              name: 'Tanstack Router',
+              name: "Tanstack Router",
               render: <TanStackRouterDevtoolsPanel />,
             },
           ]}
@@ -135,5 +153,5 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <Scripts />
       </body>
     </html>
-  )
+  );
 }
