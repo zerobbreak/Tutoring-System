@@ -22,4 +22,8 @@ const key = supabaseAnonKey && supabaseAnonKey !== 'your-supabase-anon-key'
   ? supabaseAnonKey
   : 'placeholder-key'
 
-export const supabase = createClient(url, key)
+export const supabase = createClient(url, key, {
+  auth: {
+    detectSessionInUrl: true,
+  },
+})

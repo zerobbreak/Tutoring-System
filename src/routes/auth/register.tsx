@@ -9,6 +9,7 @@ import { Label } from "../../components/ui/label";
 import { cn } from "../../lib/utils";
 import sidebarImage from "../../assets/auth-sidebar.png";
 import { signUpServerFn } from "../../lib/auth-server";
+import { toast } from "../../lib/toast";
 import { SELF_REGISTER_ROLES, formatRoleLabel } from "../../lib/user-role";
 
 const registerSchema = z
@@ -35,8 +36,6 @@ export const Route = createFileRoute("/auth/register")({
 
 function Register() {
   const [loading, setLoading] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const {
@@ -55,8 +54,6 @@ function Register() {
 
   const onSubmit = async (values: RegisterFormValues) => {
     setLoading(true);
-    setAuthError(null);
-    setSuccessMessage(null);
 
     try {
       await signUpServerFn({
@@ -69,12 +66,14 @@ function Register() {
         },
       });
 
-      setSuccessMessage(
-        "Registration successful! Please check your email for confirmation.",
-      );
+      toast.success("Account created", {
+        description:
+          "Check your email to confirm your address. You will be redirected to sign in.",
+        duration: 5000,
+      });
       setTimeout(() => navigate({ to: "/auth/login" }), 4000);
     } catch (error: any) {
-      setAuthError(
+      toast.error(
         error.message || "An unexpected error occurred during registration.",
       );
     } finally {
@@ -117,17 +116,6 @@ function Register() {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {authError && (
-              <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700 animate-in fade-in slide-in-from-top-1">
-                {authError}
-              </div>
-            )}
-            {successMessage && (
-              <div className="rounded-lg bg-green-50 p-4 text-sm text-green-700 animate-in fade-in slide-in-from-top-1">
-                {successMessage}
-              </div>
-            )}
-
             <div className="space-y-2">
               <Label htmlFor="fullName" className="text-[#0A1128]">
                 Full Name

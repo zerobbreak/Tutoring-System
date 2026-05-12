@@ -17,6 +17,7 @@ import {
   AvatarImage,
 } from "../../components/ui/avatar";
 import { updateProfileServerFn } from "../../lib/auth-server";
+import { toast } from "../../lib/toast";
 import { formatRoleLabel } from "../../lib/user-role";
 import { Route as RootRoute } from "../__root";
 
@@ -30,10 +31,6 @@ function SettingsPage() {
   const [fullName, setFullName] = useState(
     sessionData?.user?.user_metadata?.full_name || "",
   );
-  const [message, setMessage] = useState<{
-    type: "success" | "error";
-    text: string;
-  } | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,18 +45,14 @@ function SettingsPage() {
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setUpdating(true);
-    setMessage(null);
 
     try {
       await updateProfileServerFn({
         data: { fullName },
       });
-      setMessage({ type: "success", text: "Profile updated successfully!" });
+      toast.success("Profile updated successfully.");
     } catch (error: any) {
-      setMessage({
-        type: "error",
-        text: error.message || "Failed to update profile.",
-      });
+      toast.error(error.message || "Failed to update profile.");
     } finally {
       setUpdating(false);
     }
@@ -128,13 +121,6 @@ function SettingsPage() {
                     placeholder="Enter your full name"
                   />
                 </div>
-                {message && (
-                  <p
-                    className={`text-sm ${message.type === "success" ? "text-green-600" : "text-red-600"}`}
-                  >
-                    {message.text}
-                  </p>
-                )}
                 <Button
                   type="submit"
                   disabled={updating}

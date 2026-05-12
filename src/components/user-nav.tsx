@@ -2,8 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import {
   formatRoleLabel,
-  isAdminDashboardRole,
-  isTutorDashboardRole,
+  getPostAuthDashboardPath,
 } from "../lib/user-role";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
@@ -67,13 +66,7 @@ export function UserNav({ user }: UserNavProps) {
           </div>
           <div className="py-1">
             <a
-              href={
-                isAdminDashboardRole(roleRaw)
-                  ? "/admin"
-                  : isTutorDashboardRole(roleRaw)
-                    ? "/tutor"
-                    : "/"
-              }
+              href={getPostAuthDashboardPath(roleRaw)}
               className="flex w-full items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
               onClick={() => setOpen(false)}
             >

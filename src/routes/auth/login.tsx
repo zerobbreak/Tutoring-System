@@ -9,10 +9,9 @@ import { Label } from "../../components/ui/label";
 import { cn } from "../../lib/utils";
 import sidebarImage from "../../assets/auth-sidebar.png";
 import { signInServerFn } from "../../lib/auth-server";
-import {
-  isAdminDashboardRole,
-  isTutorDashboardRole,
-} from "../../lib/user-role";
+import { supabase } from "../../lib/supabase";
+import { toast } from "../../lib/toast";
+import { getPostAuthDashboardPath } from "../../lib/user-role";
 
 const loginSchema = z.object({
   email: z.email("Invalid email address"),
@@ -21,13 +20,18 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+const loginSearchSchema = z.object({
+  recovered: z.literal("1").optional(),
+});
+
 export const Route = createFileRoute("/auth/login")({
+  validateSearch: loginSearchSchema,
   component: Login,
 });
 
 function Login() {
+  const { recovered } = Route.useSearch();
   const [loading, setLoading] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const {
@@ -41,7 +45,6 @@ function Login() {
 
   const onSubmit = async (values: LoginFormValues) => {
     setLoading(true);
-    setAuthError(null);
 
     try {
       const result = await signInServerFn({
@@ -51,18 +54,36 @@ function Login() {
         },
       });
 
-      if (result.user) {
-        const role = result.user.user_metadata?.role as string | undefined;
-        if (isAdminDashboardRole(role)) {
-          navigate({ to: "/admin" });
-        } else if (isTutorDashboardRole(role)) {
-          navigate({ to: "/tutor" });
-        } else {
-          navigate({ to: "/" });
-        }
+      if (!result.user) {
+        toast.error("Sign in did not return a user. Try again.");
+        return;
       }
+
+      // Server fn signs in on the server; persist session in this browser so
+      // getSession(), RLS, and navigated routes see the authenticated user.
+      if (
+        result.session?.access_token &&
+        result.session?.refresh_token
+      ) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: result.session.access_token,
+          refresh_token: result.session.refresh_token,
+        });
+        if (sessionError) {
+          throw new Error(sessionError.message);
+        }
+      } else {
+        toast.error(
+          "No active session returned (e.g. email not confirmed). Check your inbox or reset your password.",
+        );
+        return;
+      }
+
+      const role = result.user.user_metadata?.role as string | undefined;
+      toast.success("Signed in successfully.");
+      await navigate({ to: getPostAuthDashboardPath(role) });
     } catch (error: any) {
-      setAuthError(error.message || "Invalid email or password.");
+      toast.error(error.message || "Invalid email or password.");
     } finally {
       setLoading(false);
     }
@@ -77,7 +98,7 @@ function Login() {
           alt="Knowledge and Learning"
           className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-tr from-[#0A1128]/90 to-[#0A1128]/20" />
+        <div className="absolute inset-0 bg-linear-to-tr from-[#0A1128]/90 to-[#0A1128]/20" />
         <div className="absolute inset-0 flex flex-col justify-end p-16 text-white">
           <h1 className="text-6xl font-serif mb-6 leading-tight">
             Unlock the Power <br />
@@ -103,9 +124,9 @@ function Login() {
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            {authError && (
-              <div className="rounded-lg bg-red-50 p-4 text-sm text-red-700 animate-in fade-in slide-in-from-top-1">
-                {authError}
+            {recovered === "1" && (
+              <div className="rounded-lg border border-green-100 bg-green-50 p-4 text-sm text-green-800">
+                Your password was updated. Sign in with your new password.
               </div>
             )}
 
@@ -132,10 +153,15 @@ function Login() {
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password text-[#0A1128]">Password</Label>
-                <a href="#" className="text-xs text-[#FF6F61] hover:underline">
+                <Label htmlFor="password" className="text-[#0A1128]">
+                  Password
+                </Label>
+                <Link
+                  to="/auth/forgot-password"
+                  className="text-xs text-[#FF6F61] hover:underline"
+                >
                   Forgot password?
-                </a>
+                </Link>
               </div>
               <Input
                 id="password"

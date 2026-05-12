@@ -24,6 +24,15 @@ export function isTutorDashboardRole(role: string | undefined): boolean {
   return role === "TUTOR";
 }
 
+/** Default app entry for an authenticated user (no bare `/` home route). */
+export function getPostAuthDashboardPath(
+  role: string | undefined,
+): "/admin" | "/tutor" | "/settings" {
+  if (isAdminDashboardRole(role)) return "/admin";
+  if (isTutorDashboardRole(role)) return "/tutor";
+  return "/settings";
+}
+
 /** e.g. SUPER_ADMIN → Super Admin, TUTOR → Tutor */
 export function formatRoleLabel(role: string | undefined): string {
   if (!role) return "User";

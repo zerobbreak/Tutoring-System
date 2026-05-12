@@ -4,10 +4,12 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { UserNav } from '../components/user-nav'
+import { Toaster } from '../components/ui/sonner'
 
 import appCss from '../styles.css?url'
 
 import { getCurrentUserFn } from '../lib/auth-server'
+import { getPostAuthDashboardPath } from '../lib/user-role'
 
 export const Route = createRootRoute({
   loader: async () => {
@@ -43,7 +45,7 @@ export const Route = createRootRoute({
     <div className="flex flex-col items-center justify-center min-h-[60vh]">
       <h1 className="text-2xl font-bold">404 - Not Found</h1>
       <p className="mt-2 text-gray-600">The page you are looking for does not exist.</p>
-      <Link to="/" className="mt-4 text-indigo-600 hover:underline">Go back home</Link>
+      <Link to="/auth/login" className="mt-4 text-indigo-600 hover:underline">Go to sign in</Link>
     </div>
   ),
 })
@@ -76,6 +78,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const location = useLocation()
   const isAuthPage = location.pathname.startsWith('/auth')
 
+  const brandTo = session?.user
+    ? getPostAuthDashboardPath(
+        session.user.user_metadata?.role as string | undefined,
+      )
+    : '/auth/login'
+
   return (
     <html lang="en">
       <head>
@@ -85,7 +93,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         {!isAuthPage && (
           <nav className="border-b bg-white px-4 py-3 shadow-sm">
             <div className="mx-auto flex max-w-7xl items-center justify-between">
-              <Link to="/" className="text-xl font-bold text-indigo-600">
+              <Link to={brandTo} className="text-xl font-bold text-indigo-600">
                 Tutoring System
               </Link>
               <div className="flex items-center gap-4">
@@ -112,6 +120,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           </nav>
         )}
         <main>{children}</main>
+        <Toaster richColors closeButton />
         <TanStackDevtools
           config={{
             position: 'bottom-right',
