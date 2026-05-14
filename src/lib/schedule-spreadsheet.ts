@@ -14,6 +14,15 @@ export type ScheduleParsedEvent = {
   /** Optional spreadsheet column (Type, Kind, Category, …). */
   sessionType?: string;
   sourceSheet?: string;
+  /** When multiple files are merged in the tutor schedules UI, which file this row came from. */
+  importSourceFile?: string;
+  /** DB id of `tutor_schedule_imports` row when merged in the schedules UI (not stored in JSON). */
+  importSourceId?: string;
+  /**
+   * Per-row flag from the file that produced this event (used when merging imports so tutor
+   * filtering respects whether that sheet had a Type column).
+   */
+  sessionTypeFromSource?: boolean;
 };
 
 export type ScheduleParseRowIssue = {

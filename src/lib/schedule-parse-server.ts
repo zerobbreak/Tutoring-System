@@ -9,12 +9,43 @@ import {
   type ScheduleParseResult,
 } from "#/lib/schedule-spreadsheet";
 
-const uploadSchema = z.object({
+export const scheduleFileUploadSchema = z.object({
   fileBase64: z.string().min(1).max(20_000_000),
   fileName: z.string().min(1).max(512),
 });
 
 const MAX_BYTES = 12 * 1024 * 1024;
+
+/**
+ * Decode a base64 upload, enforce size/extension, and parse workbook/CSV.
+ * Does not check auth — call from server handlers after `getUser()`.
+ */
+export function decodeAndParseScheduleUpload(
+  fileBase64: string,
+  fileName: string,
+): ScheduleParseResult {
+  let buffer: Buffer;
+  try {
+    buffer = Buffer.from(fileBase64, "base64");
+  } catch {
+    throw new Error("Invalid file encoding");
+  }
+
+  if (buffer.length > MAX_BYTES) {
+    throw new Error("File too large (max 12 MB).");
+  }
+
+  const lower = fileName.toLowerCase();
+  if (
+    !lower.endsWith(".csv") &&
+    !lower.endsWith(".xlsx") &&
+    !lower.endsWith(".xls")
+  ) {
+    throw new Error("Only .csv, .xlsx, and .xls files are supported.");
+  }
+
+  return parseScheduleWorkbookBuffer(buffer, fileName);
+}
 
 export function parseScheduleWorkbookBuffer(
   buffer: Uint8Array,
@@ -52,7 +83,7 @@ export function parseScheduleWorkbookBuffer(
  * Expects row-oriented sheets with a detectable header (Start + End, or Date + Start + End).
  */
 export const parseScheduleUploadFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => uploadSchema.parse(input))
+  .inputValidator((input: unknown) => scheduleFileUploadSchema.parse(input))
   .handler(async ({ data }): Promise<ScheduleParseResult> => {
     const supabase = createSupabaseServerClient();
     const {
@@ -63,25 +94,5 @@ export const parseScheduleUploadFn = createServerFn({ method: "POST" })
       throw new Error("Unauthorized");
     }
 
-    let buffer: Buffer;
-    try {
-      buffer = Buffer.from(data.fileBase64, "base64");
-    } catch {
-      throw new Error("Invalid file encoding");
-    }
-
-    if (buffer.length > MAX_BYTES) {
-      throw new Error("File too large (max 12 MB).");
-    }
-
-    const lower = data.fileName.toLowerCase();
-    if (
-      !lower.endsWith(".csv") &&
-      !lower.endsWith(".xlsx") &&
-      !lower.endsWith(".xls")
-    ) {
-      throw new Error("Only .csv, .xlsx, and .xls files are supported.");
-    }
-
-    return parseScheduleWorkbookBuffer(buffer, data.fileName);
+    return decodeAndParseScheduleUpload(data.fileBase64, data.fileName);
   });

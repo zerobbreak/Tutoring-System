@@ -1,29 +1,38 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import type { ModifiersClassNames } from "react-day-picker";
 import {
-  CalendarDays,
+  Calendar as CalendarIcon,
   Download,
   FileSpreadsheet,
+  Info,
   Loader2,
+  NotebookPen,
+  Plus,
   Upload,
+  X,
 } from "lucide-react";
-import { format, startOfDay } from "date-fns";
+import { cn } from "#/lib/utils";
+import { format, startOfDay, startOfMonth } from "date-fns";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "#/components/ui/button";
 import { Calendar } from "#/components/ui/calendar";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "#/components/ui/card";
-import { Label } from "#/components/ui/label";
-import { parseScheduleUploadFn } from "#/lib/schedule-parse-server";
+  clearTutorScheduleImportsFn,
+  deleteTutorScheduleImportFn,
+  ensureSessionClaimForScheduleEventFn,
+  listTutorScheduleImportsFn,
+  saveTutorScheduleImportFn,
+} from "#/server-actions/tutor-schedule";
 import {
   isTutorialTimetableEvent,
   type ScheduleParseResult,
   type ScheduleParsedEvent,
 } from "#/lib/schedule-spreadsheet";
+import {
+  mergeScheduleSources,
+  type TutorScheduleImportSource,
+} from "#/lib/tutor-schedule-imports";
+import { supabase } from "#/lib/supabase";
 import { toast } from "#/lib/toast";
 
 export const Route = createFileRoute("/tutor/schedules")({
@@ -34,6 +43,8 @@ const SAMPLE_CSV = `Title,Start,End,Module code,Room,Type
 Meridian hour,2026-02-16T12:00:00,2026-02-16T12:50:00,,LR 07,Other
 INSY lecture,2026-02-16T08:00:00,2026-02-16T09:50:00,INSY6211,LR 10,Lecture
 PROG6221 CR 1_Tutor session,2026-02-17T10:00:00,2026-02-17T11:00:00,PROG6221,CR 1,Tutorial
+PROG6221 consult hour,2026-02-18T09:00:00,2026-02-18T10:00:00,PROG6221,CR 2,Tutorial
+INSY6211 tutorial slot,2026-02-19T13:00:00,2026-02-19T14:30:00,INSY6211,LR 05,Tutorial
 Programming lab,2026-02-17T14:00:00,2026-02-17T15:50:00,PROG6221,CR 1,Lab
 `;
 
@@ -66,17 +77,18 @@ function formatTimeRange(isoStart: string, isoEnd: string): string {
   return `${tf.format(a)}–${tf.format(b)}`;
 }
 
-function dayHeading(value: Date | string): string {
-  const d = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(d.getTime())) {
-    return typeof value === "string" ? value.slice(0, 10) : "";
-  }
+function dayKey(date: Date): string {
+  return format(startOfDay(date), "yyyy-MM-dd");
+}
+
+function dayHeadingLong(value: Date): string {
+  if (Number.isNaN(value.getTime())) return "";
   return new Intl.DateTimeFormat(undefined, {
-    weekday: "short",
-    month: "short",
+    weekday: "long",
+    month: "long",
     day: "numeric",
     year: "numeric",
-  }).format(d);
+  }).format(value);
 }
 
 function groupEventsByDay(
@@ -95,26 +107,74 @@ function groupEventsByDay(
   return map;
 }
 
+type ScheduleSource = TutorScheduleImportSource;
+
+function typeColumnFlagForEvent(
+  ev: ScheduleParsedEvent,
+  merged: ScheduleParseResult,
+): boolean {
+  return ev.sessionTypeFromSource ?? merged.sessionTypeColumnPresent;
+}
+
 function TutorSchedulesPage() {
+  const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
-  const [lastFileName, setLastFileName] = useState<string | null>(null);
-  const [result, setResult] = useState<ScheduleParseResult | null>(null);
+  const [loadingSaved, setLoadingSaved] = useState(true);
+  const [tutorId, setTutorId] = useState<string | null>(null);
+  const [sources, setSources] = useState<ScheduleSource[]>([]);
+  const [linkingRowKey, setLinkingRowKey] = useState<string | null>(null);
+  const result = useMemo(() => mergeScheduleSources(sources), [sources]);
   const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined);
-  /** When false, calendar and table show only tutor/tutorial-style rows. */
   const [showFullTimetable, setShowFullTimetable] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()));
 
   const displayEvents = useMemo(() => {
-    if (!result?.events.length) return [];
+    if (!result.events.length) return [];
     if (showFullTimetable) return result.events;
     return result.events.filter((ev) =>
-      isTutorialTimetableEvent(ev, result.sessionTypeColumnPresent),
+      isTutorialTimetableEvent(ev, typeColumnFlagForEvent(ev, result)),
     );
   }, [result, showFullTimetable]);
 
   useEffect(() => {
-    if (result) setShowFullTimetable(false);
-  }, [result]);
+    if (sources.length > 0) setShowFullTimetable(false);
+  }, [sources]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setLoadingSaved(true);
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (cancelled) return;
+      if (!user) {
+        setTutorId(null);
+        setSources([]);
+        setLoadingSaved(false);
+        return;
+      }
+      setTutorId(user.id);
+      let next: ScheduleSource[] = [];
+      try {
+        next = await listTutorScheduleImportsFn();
+      } catch (e) {
+        if (!cancelled) {
+          toast.error(
+            `Could not load saved schedules: ${e instanceof Error ? e.message : "Unknown error"}`,
+          );
+        }
+        next = [];
+      }
+      if (cancelled) return;
+      setSources(next);
+      setLoadingSaved(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const byDay = useMemo(
     () =>
@@ -129,6 +189,10 @@ function TutorSchedulesPage() {
     );
     return startOfDay(new Date(sorted[0]!.start));
   }, [displayEvents]);
+
+  useEffect(() => {
+    setCalendarMonth(startOfMonth(defaultMonth));
+  }, [defaultMonth]);
 
   useEffect(() => {
     if (!displayEvents.length) {
@@ -148,51 +212,166 @@ function TutorSchedulesPage() {
     ? (byDay.get(selectedDayKey) ?? [])
     : [];
 
+  const tutorOnlyEvents = useMemo(
+    () =>
+      result.events.filter((ev) =>
+        isTutorialTimetableEvent(ev, typeColumnFlagForEvent(ev, result)),
+      ),
+    [result],
+  );
+
+  const tutorByDayMap = useMemo(
+    () => (tutorOnlyEvents.length ? groupEventsByDay(tutorOnlyEvents) : new Map()),
+    [tutorOnlyEvents],
+  );
+
+  const fullByDayMap = useMemo(
+    () => (result.events.length ? groupEventsByDay(result.events) : new Map()),
+    [result],
+  );
+
+  const scheduleModifiers = useMemo(() => {
+    if (showFullTimetable) {
+      return {
+        hasActivity: (date: Date) => byDay.has(dayKey(date)),
+      };
+    }
+    return {
+      hasTutor: (date: Date) => tutorByDayMap.has(dayKey(date)),
+      hasOtherOnly: (date: Date) =>
+        fullByDayMap.has(dayKey(date)) && !tutorByDayMap.has(dayKey(date)),
+    };
+  }, [showFullTimetable, byDay, tutorByDayMap, fullByDayMap]);
+
+  const scheduleModifiersClassNames = useMemo(
+    () =>
+      (showFullTimetable
+        ? {
+            hasActivity:
+              "after:pointer-events-none after:absolute after:bottom-1 after:left-1/2 after:size-1.5 after:-translate-x-1/2 after:rounded-full after:bg-[var(--lagoon-deep)] after:content-['']",
+          }
+        : {
+            hasTutor:
+              "after:pointer-events-none after:absolute after:bottom-1 after:left-1/2 after:size-1.5 after:-translate-x-1/2 after:rounded-full after:bg-[var(--lagoon-deep)] after:content-['']",
+            hasOtherOnly:
+              "after:pointer-events-none after:absolute after:bottom-1 after:left-1/2 after:size-1.5 after:-translate-x-1/2 after:rounded-full after:bg-[var(--palm)] after:content-['']",
+          }) as ModifiersClassNames,
+    [showFullTimetable],
+  );
+
+  const goToday = () => {
+    const t = startOfDay(new Date());
+    setSelectedDay(t);
+    setCalendarMonth(startOfMonth(t));
+  };
+
+  const scheduleEventRowKey = (ev: ScheduleParsedEvent, idx: number) =>
+    `${ev.importSourceId ?? ""}-${ev.start}-${ev.title}-${idx}`;
+
+  const openSessionNotes = useCallback(
+    async (ev: ScheduleParsedEvent, idx: number) => {
+      if (!ev.importSourceId) {
+        toast.error("This row is not linked to a saved import.");
+        return;
+      }
+      if (!ev.moduleCode?.trim()) {
+        toast.error("Add a module code for this row to open session notes.");
+        return;
+      }
+      const key = scheduleEventRowKey(ev, idx);
+      setLinkingRowKey(key);
+      try {
+        const { claimId } = await ensureSessionClaimForScheduleEventFn({
+          data: {
+            importId: ev.importSourceId,
+            start: ev.start,
+            end: ev.end,
+            title: ev.title,
+            moduleCode: ev.moduleCode,
+            location: ev.location,
+            sessionType: ev.sessionType,
+          },
+        });
+        navigate({
+          to: "/tutor/notes",
+          search: { claim: claimId, focus: Date.now() },
+        });
+      } catch (e) {
+        toast.error(
+          e instanceof Error ? e.message : "Could not open session notes",
+        );
+      } finally {
+        setLinkingRowKey(null);
+      }
+    },
+    [navigate],
+  );
+
   const runParse = useCallback(async (file: File) => {
     setBusy(true);
-    setLastFileName(file.name);
     try {
+      let uid = tutorId;
+      if (!uid) {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        uid = user?.id ?? null;
+        if (uid) setTutorId(uid);
+      }
+      if (!uid) {
+        toast.error("Sign in to save schedule imports.");
+        return;
+      }
+
       const fileBase64 = await fileToBase64(file);
-      const data = await parseScheduleUploadFn({
+      const data = await saveTutorScheduleImportFn({
         data: { fileBase64, fileName: file.name },
       });
-      setResult(data);
-      if (data.events.length === 0) {
+
+      setSources((prev) => [
+        ...prev,
+        { id: data.id, fileName: data.fileName, result: data.result },
+      ]);
+
+      if (data.result.events.length === 0) {
         toast.message("No events parsed", {
           description:
             "Check the header row and column names, or try the sample CSV.",
         });
       } else {
-        const tutorRows = data.events.filter((ev) =>
-          isTutorialTimetableEvent(ev, data.sessionTypeColumnPresent),
+        const tutorRows = data.result.events.filter((ev) =>
+          isTutorialTimetableEvent(ev, data.result.sessionTypeColumnPresent),
         ).length;
-        if (tutorRows === 0) {
-          toast.message("Imported timetable", {
-            description:
-              "No tutor/tutorial rows detected by title or Type column. Use “Full timetable” to review every row.",
-          });
-        } else {
-          toast.success(
-            tutorRows === data.events.length
-              ? `Imported ${tutorRows} tutor/tutorial block${tutorRows === 1 ? "" : "s"}`
-              : `Imported ${tutorRows} tutor/tutorial block${tutorRows === 1 ? "" : "s"} (${data.events.length} rows total)`,
-            {
-              description:
-                data.rowIssues.length > 0
-                  ? `${data.rowIssues.length} row(s) skipped while parsing.`
-                  : "Lectures and other slots stay hidden until you show the full timetable.",
-            },
-          );
-        }
+        toast.success(
+          `Added ${tutorRows} tutor session${tutorRows === 1 ? "" : "s"} from “${file.name}” (saved). Use “Add spreadsheet” to merge another export.`,
+        );
       }
     } catch (e) {
-      setResult(null);
-      const msg = e instanceof Error ? e.message : "Upload failed";
-      toast.error(msg);
+      toast.error(e instanceof Error ? e.message : "Upload failed");
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [tutorId]);
+
+  const removeSource = useCallback(
+    async (sourceId: string) => {
+      if (!tutorId) {
+        setSources((prev) => prev.filter((s) => s.id !== sourceId));
+        return;
+      }
+      setBusy(true);
+      try {
+        await deleteTutorScheduleImportFn({ data: { id: sourceId } });
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Delete failed");
+        setBusy(false);
+        return;
+      }
+      setBusy(false);
+      setSources((prev) => prev.filter((s) => s.id !== sourceId));
+    },
+    [tutorId],
+  );
 
   const onPickFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -210,323 +389,377 @@ function TutorSchedulesPage() {
     URL.revokeObjectURL(url);
   };
 
-  return (
-    <div className="rise-in space-y-8">
-      <div className="space-y-2">
-        <h1 className="font-serif text-2xl font-semibold tracking-tight text-[var(--sea-ink)] dark:text-[var(--sea-ink)]">
-          Schedules
-        </h1>
-        <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-          Upload a row-based CSV or Excel file using the same layout as the sample. When your sheet
-          includes a <strong>Type</strong> column, those values decide tutor vs class slots; if the
-          Type cell is empty, the title is used as a fallback. Without a Type column, only title
-          patterns apply. Use <strong>Full timetable</strong> to see every row.
-        </p>
-      </div>
+  const resetUpload = useCallback(async () => {
+    if (!tutorId) {
+      setSources([]);
+      setSelectedDay(undefined);
+      setCalendarMonth(startOfMonth(new Date()));
+      return;
+    }
+    setBusy(true);
+    try {
+      await clearTutorScheduleImportsFn();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Clear failed");
+      setBusy(false);
+      return;
+    }
+    setBusy(false);
+    setSources([]);
+    setSelectedDay(undefined);
+    setCalendarMonth(startOfMonth(new Date()));
+  }, [tutorId]);
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,340px)_1fr]">
-        <Card className="border-[var(--line)] bg-[var(--surface)] shadow-none backdrop-blur-sm dark:bg-[var(--surface)]">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Upload className="size-4 text-[var(--lagoon-deep)]" />
-              Upload
-            </CardTitle>
-            <CardDescription>
-              Supported: <code className="text-xs">.csv</code>,{" "}
-              <code className="text-xs">.xlsx</code>, <code className="text-xs">.xls</code>.
-              Multi-sheet workbooks run each sheet; multiple blocks merge into one preview.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <input
-              ref={inputRef}
-              type="file"
-              accept=".csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"
-              className="sr-only"
-              onChange={onPickFile}
-            />
-            <div className="space-y-2">
-              <Label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                File
-              </Label>
+  const showResults = result.events.length > 0;
+
+  if (!showResults) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-6 md:p-12">
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".csv,.xlsx,.xls"
+          className="sr-only"
+          onChange={onPickFile}
+        />
+        <div className="w-full max-w-2xl text-center">
+          <div className="mb-8 flex justify-center">
+            <div className="relative">
+              <div className="absolute inset-0 animate-pulse rounded-full bg-(--lagoon)/20 blur-2xl" />
+              <div className="relative flex size-24 items-center justify-center rounded-3xl border-2 border-dashed border-(--lagoon) bg-white/50 shadow-inner backdrop-blur-sm">
+                {loadingSaved || busy ? (
+                  <Loader2 className="size-12 animate-spin text-(--lagoon-deep)" />
+                ) : (
+                  <FileSpreadsheet className="size-12 text-(--lagoon-deep)" />
+                )}
+              </div>
+            </div>
+          </div>
+          <h1 className="display-title mb-3 text-4xl font-bold tracking-tight text-(--sea-ink)">
+            Upload Your Schedule
+          </h1>
+          <p className="mx-auto mb-10 max-w-md text-lg text-(--sea-ink-soft)">
+            Import your tutorial timetable from a spreadsheet. You can add more files later — each
+            import merges into the same calendar so multiple modules or campuses stay in one view.
+            Successful imports are{" "}
+            <span className="font-medium text-(--sea-ink)">saved to your account</span> so they
+            reappear when you return.
+          </p>
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+            <Button
+              size="lg"
+              className="h-14 min-w-50 gap-3 rounded-2xl text-lg shadow-lg"
+              disabled={busy || loadingSaved}
+              onClick={() => inputRef.current?.click()}
+            >
+              <Upload className="size-5" />
+              {loadingSaved ? "Loading…" : busy ? "Parsing…" : "Select Spreadsheet"}
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="h-14 min-w-50 gap-3 rounded-2xl border-border/60 bg-white/50 backdrop-blur-sm"
+              disabled={busy || loadingSaved}
+              onClick={downloadSample}
+            >
+              <Download className="size-5" />
+              Sample CSV
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".csv,.xlsx,.xls"
+        className="sr-only"
+        onChange={onPickFile}
+      />
+
+      {/* Left: calendar */}
+      <div className="flex min-h-0 w-full flex-col overflow-hidden border-r border-transparent lg:min-w-0 lg:flex-1 lg:border-border/40">
+        <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+          <div className="flex w-full shrink-0 flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 px-0 text-sm font-medium text-foreground hover:bg-transparent hover:underline"
+                onClick={goToday}
+              >
+                Today
+              </Button>
               <Button
                 type="button"
                 variant="outline"
-                className="h-auto w-full justify-start gap-3 border-[var(--chip-line)] bg-[var(--chip-bg)] py-3 text-left shadow-none"
-                disabled={busy}
+                size="sm"
+                className="h-8 gap-1.5"
+                disabled={busy || loadingSaved}
                 onClick={() => inputRef.current?.click()}
               >
-                {busy ? (
-                  <Loader2 className="size-4 shrink-0 animate-spin text-[var(--lagoon-deep)]" />
-                ) : (
-                  <FileSpreadsheet className="size-4 shrink-0 text-[var(--lagoon-deep)]" />
-                )}
-                <span className="flex min-w-0 flex-col gap-0.5">
-                  <span className="font-medium text-foreground">
-                    {busy ? "Parsing…" : "Choose spreadsheet"}
-                  </span>
-                  {lastFileName ? (
-                    <span className="truncate text-xs text-muted-foreground">{lastFileName}</span>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">Max 12 MB</span>
-                  )}
-                </span>
+                <Plus className="size-3.5" />
+                Add spreadsheet
               </Button>
+              <button
+                type="button"
+                className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline disabled:pointer-events-none disabled:opacity-50"
+                disabled={busy || loadingSaved || sources.length === 0}
+                onClick={() => void resetUpload()}
+              >
+                Clear all imports
+              </button>
             </div>
-
-            <div className="rounded-lg border border-dashed border-[var(--line)] bg-[var(--foam)]/50 p-3 text-xs leading-relaxed text-muted-foreground dark:bg-[var(--foam)]/20">
-              <p className="font-medium text-foreground">Expected columns</p>
-              <ul className="mt-2 list-inside list-disc space-y-1">
-                <li>
-                  <strong>Start</strong> + <strong>End</strong> (full datetimes), optional{" "}
-                  <strong>Title</strong>, <strong>Module code</strong>, <strong>Room</strong>
-                </li>
-                <li>
-                  Or <strong>Date</strong> + <strong>Start</strong> + <strong>End</strong> when the
-                  times are only times (e.g. <code>08H00</code> or <code>08:00</code>)
-                </li>
-                <li>
-                  <strong>Type</strong> (or Kind / Category): recommended values{" "}
-                  <code>Tutorial</code>, <code>Lecture</code>, <code>Lab</code>, <code>Other</code>.
-                  If this column exists, it is <strong>authoritative</strong> for each non-empty
-                  cell (unknown values get a warning). Leave Type blank to infer from the title.
-                </li>
-              </ul>
-            </div>
-
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="w-full gap-2"
-              onClick={downloadSample}
-            >
-              <Download className="size-4" />
-              Download sample CSV
-            </Button>
-          </CardContent>
-        </Card>
-
-        <div className="space-y-6">
-          {result && result.matchedHeaders && Object.keys(result.matchedHeaders).length > 0 ? (
-            <div className="flex flex-wrap gap-2">
-              {Object.entries(result.matchedHeaders).map(([k, v]) => (
-                <span
-                  key={k}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-[var(--chip-line)] bg-[var(--chip-bg)] px-3 py-1 text-xs text-foreground"
-                >
-                  <span className="font-medium text-[var(--sea-ink-soft)]">{k}</span>
-                  <span className="text-muted-foreground">→ {v}</span>
-                </span>
-              ))}
-            </div>
-          ) : null}
-
-          {result && result.rowIssues.length > 0 ? (
-            <Card className="border-amber-200/80 bg-amber-50/90 text-amber-950 shadow-none dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-base">Parse warnings</CardTitle>
-                <CardDescription className="text-amber-900/80 dark:text-amber-100/80">
-                  Rows that were skipped or sheets without a matching header.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="max-h-40 space-y-1 overflow-y-auto text-xs">
-                  {result.rowIssues.map((issue, i) => (
-                    <li key={`${issue.rowNumber}-${i}`}>
-                      {issue.sheet ? `${issue.sheet} · ` : ""}Row {issue.rowNumber}:{" "}
-                      {issue.message}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {result && result.events.length > 0 ? (
-            <>
-              {!showFullTimetable &&
-              result.events.length > 0 &&
-              displayEvents.length === 0 ? (
-                <Card className="border-sky-200/80 bg-sky-50/90 text-sky-950 shadow-none dark:border-sky-900/40 dark:bg-sky-950/25 dark:text-sky-50">
-                  <CardContent className="flex flex-col gap-3 py-4 text-sm">
-                    <p>
-                      No rows matched the <strong>tutor/tutorial</strong> filter (title text or
-                      Type column). Your file still has{" "}
-                      <strong>{result.events.length}</strong> parsed row
-                      {result.events.length === 1 ? "" : "s"}.
-                    </p>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      className="w-fit"
-                      onClick={() => setShowFullTimetable(true)}
+            {sources.length > 0 && (
+              <div className="flex flex-col gap-1.5">
+                <div className="flex flex-wrap gap-2" aria-label="Imported files">
+                  {sources.map((s) => (
+                    <span
+                      key={s.id}
+                      className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs text-foreground"
                     >
-                      Show full timetable
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : null}
-
-              <Card className="border-[var(--line)] bg-[var(--surface)] shadow-none backdrop-blur-sm">
-                <CardHeader className="space-y-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                        <CalendarDays className="size-4 text-[var(--lagoon-deep)]" />
-                        Calendar (preview)
-                      </CardTitle>
-                      <CardDescription>
-                        {showFullTimetable
-                          ? "Showing every parsed row. Dots mark days that have at least one block."
-                          : result.sessionTypeColumnPresent
-                            ? "Tutor view: non-empty Type cells are authoritative; blank Type falls back to the title. Dots mark days with at least one tutor/tutorial row."
-                            : "Tutor view: no Type column — only title patterns select tutor/tutorial rows. Dots mark those days."}{" "}
-                        Nothing is saved yet.
-                      </CardDescription>
-                    </div>
-                    <div className="flex shrink-0 gap-2">
-                      <Button
+                      <span className="max-w-[14rem] truncate font-medium" title={s.fileName}>
+                        {s.fileName}
+                      </span>
+                      <span className="shrink-0 tabular-nums text-muted-foreground">
+                        ({s.result.events.length})
+                      </span>
+                      <button
                         type="button"
-                        size="sm"
-                        variant={!showFullTimetable ? "default" : "outline"}
-                        onClick={() => setShowFullTimetable(false)}
+                        className="ml-0.5 rounded-full p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                        aria-label={`Remove ${s.fileName}`}
+                        disabled={busy || loadingSaved}
+                        onClick={() => void removeSource(s.id)}
                       >
-                        Tutor / tutorial
-                      </Button>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant={showFullTimetable ? "default" : "outline"}
-                        onClick={() => setShowFullTimetable(true)}
-                      >
-                        Full timetable
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-8 lg:grid-cols-[auto_minmax(0,1fr)] lg:items-start">
-                    <div className="flex justify-center lg:justify-start">
-                      <Calendar
-                        key={`${lastFileName ?? "none"}-${displayEvents[0]?.start ?? ""}-${showFullTimetable}`}
-                        mode="single"
-                        selected={selectedDay}
-                        onSelect={(d) => {
-                          if (d) setSelectedDay(startOfDay(d));
-                        }}
-                        defaultMonth={defaultMonth}
-                        modifiers={{
-                          hasSchedule: (date) =>
-                            byDay.has(format(startOfDay(date), "yyyy-MM-dd")),
-                        }}
-                        modifiersClassNames={{
-                          hasSchedule:
-                            "relative after:absolute after:bottom-1 after:left-1/2 after:size-1.5 after:-translate-x-1/2 after:rounded-full after:bg-[var(--lagoon-deep)] after:content-['']",
-                        }}
-                        className="rounded-xl border border-[var(--line)] bg-card/60 [--cell-size:2.25rem] md:[--cell-size:2.5rem]"
-                      />
-                    </div>
-                    <div className="min-h-[280px] rounded-xl border border-[var(--line)] bg-card/80 p-4">
-                      {selectedDay ? (
-                        <>
-                          <p className="text-xs font-semibold uppercase tracking-wide text-[var(--kicker)]">
-                            {dayHeading(selectedDay)}
-                          </p>
-                          {selectedDayEvents.length === 0 ? (
-                            <p className="mt-4 text-sm text-muted-foreground">
-                              {showFullTimetable
-                                ? "No blocks on this day in the imported file."
-                                : "No tutor/tutorial blocks on this day. Switch to “Full timetable” if you expected a lecture or other slot here."}
-                            </p>
-                          ) : (
-                            <ul className="mt-4 flex flex-col gap-2">
-                              {selectedDayEvents.map((ev: ScheduleParsedEvent, idx: number) => (
-                                <li
-                                  key={`${ev.start}-${idx}`}
-                                  className="rounded-lg border border-[var(--chip-line)] bg-[var(--chip-bg)] p-3 text-sm shadow-sm"
-                                >
-                                  <p className="font-semibold text-foreground">{ev.title}</p>
-                                  <p className="mt-1 text-xs text-muted-foreground">
-                                    {formatTimeRange(ev.start, ev.end)}
-                                  </p>
-                                  {(ev.moduleCode ||
-                                    ev.location ||
-                                    ev.sessionType ||
-                                    ev.sourceSheet) && (
-                                    <p className="mt-1 text-xs text-[var(--sea-ink-soft)]">
-                                      {[ev.moduleCode, ev.location, ev.sessionType, ev.sourceSheet]
-                                        .filter(Boolean)
-                                        .join(" · ")}
-                                    </p>
-                                  )}
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          Select a day on the calendar to see its blocks.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                        <X className="size-3.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+                {!loadingSaved && tutorId ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    These imports are stored for your account and load automatically next time.
+                  </p>
+                ) : null}
+              </div>
+            )}
+          </div>
 
-              <Card className="border-[var(--line)] bg-[var(--surface)] shadow-none backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="text-base font-semibold">Parsed rows</CardTitle>
-                  <CardDescription>
-                    {showFullTimetable
-                      ? "All rows from the file."
-                      : "Tutor/tutorial rows only — same filter as the calendar."}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="overflow-x-auto">
-                  <table className="w-full min-w-[720px] border-collapse text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-border text-muted-foreground">
-                        <th className="py-2 pr-3 font-medium">Start</th>
-                        <th className="py-2 pr-3 font-medium">End</th>
-                        <th className="py-2 pr-3 font-medium">Title</th>
-                        <th className="py-2 pr-3 font-medium">Module</th>
-                        <th className="py-2 pr-3 font-medium">Room</th>
-                        <th className="py-2 pr-3 font-medium">Type</th>
-                        <th className="py-2 font-medium">Sheet</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayEvents.map((ev, i) => (
-                        <tr key={`${ev.start}-${i}`} className="border-b border-border/60">
-                          <td className="py-2 pr-3 font-mono text-[11px]">{ev.start}</td>
-                          <td className="py-2 pr-3 font-mono text-[11px]">{ev.end}</td>
-                          <td className="py-2 pr-3">{ev.title}</td>
-                          <td className="py-2 pr-3">{ev.moduleCode ?? "—"}</td>
-                          <td className="py-2 pr-3">{ev.location ?? "—"}</td>
-                          <td className="py-2 pr-3 text-muted-foreground">
-                            {ev.sessionType ?? "—"}
-                          </td>
-                          <td className="py-2 text-muted-foreground">{ev.sourceSheet ?? "—"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </CardContent>
-              </Card>
-            </>
-          ) : (
-            <Card className="border-dashed border-[var(--line)] bg-transparent shadow-none">
-              <CardContent className="flex flex-col items-center justify-center gap-2 py-16 text-center text-sm text-muted-foreground">
-                <CalendarDays className="size-10 opacity-40" />
-                <p>Upload a file to see a calendar-style preview and row table.</p>
-              </CardContent>
-            </Card>
-          )}
+          <div className="flex w-full min-w-0 flex-1 flex-col max-h-[65vh] xl:max-h-[700px]">
+            <div className="flex w-full flex-1 min-h-0">
+              <Calendar
+                key={`${sources.map((s) => s.id).join("|")}-${displayEvents[0]?.start ?? ""}-${showFullTimetable}`}
+                mode="single"
+                showOutsideDays={false}
+                navLayout="around"
+                month={calendarMonth}
+                onMonthChange={setCalendarMonth}
+                selected={selectedDay}
+                onSelect={(d) => d && setSelectedDay(startOfDay(d))}
+                modifiers={scheduleModifiers}
+                modifiersClassNames={scheduleModifiersClassNames}
+                className="h-full w-full bg-transparent p-0"
+                classNames={{
+                  root: "group/calendar flex h-full w-full flex-col gap-0 bg-transparent p-0 shadow-none [--cell-size:clamp(2.35rem,calc(0.45rem_+_5.5vmin),3.25rem)]",
+                  months: "flex h-full w-full flex-col",
+                  month:
+                    "grid h-full w-full flex-1 grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-[auto_1fr] gap-x-1 gap-y-2 md:gap-x-2 md:gap-y-2 [&>*:last-child]:col-span-3",
+                  month_caption: "flex min-w-0 shrink-0 items-center justify-center px-1 py-0.5",
+                  caption_label:
+                    "truncate text-center text-sm font-semibold tabular-nums text-foreground md:text-base",
+                  button_previous:
+                    "size-8 shrink-0 self-center rounded-lg opacity-70 transition-opacity hover:bg-muted hover:opacity-100 [&_svg]:size-4",
+                  button_next:
+                    "size-8 shrink-0 self-center rounded-lg opacity-70 transition-opacity hover:bg-muted hover:opacity-100 [&_svg]:size-4",
+                  month_grid: "w-full h-full table-fixed border-collapse border-spacing-0",
+                  weekdays: "table-row",
+                  weekday:
+                    "table-cell w-[14.28%] p-0 pb-1.5 text-center text-[0.7rem] font-medium normal-case tracking-normal text-muted-foreground sm:text-xs",
+                  week: "table-row",
+                  day: "relative table-cell w-[14.28%] p-0 py-0.5 text-center align-middle text-sm focus-within:relative focus-within:z-20",
+                  day_button:
+                    "mx-auto flex h-[var(--cell-size)] w-[var(--cell-size)] shrink-0 rounded-lg p-0 text-sm font-normal transition-colors hover:bg-muted/60 data-[selected-single=true]:shadow-none data-[selected-single=true]:!bg-[var(--lagoon-deep)] data-[selected-single=true]:!text-white data-[selected-single=true]:hover:!bg-[var(--lagoon-deep)] sm:text-base",
+                  selected: "[&_button]:!bg-[var(--lagoon-deep)] [&_button]:!text-white",
+                  today:
+                    "font-semibold text-[var(--lagoon-deep)] [&_button]:bg-muted/40 [&_button]:ring-0",
+                  outside: "text-muted-foreground/60",
+                  disabled: "text-muted-foreground opacity-40",
+                  range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+                  hidden: "invisible",
+                }}
+              />
+            </div>
+
+            {!showFullTimetable ? (
+              <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground md:text-xs">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-1.5 shrink-0 rounded-full bg-(--lagoon-deep)" aria-hidden />
+                  Tutor day
+                </span>
+                <span className="mx-2 text-muted-foreground/40">·</span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-1.5 shrink-0 rounded-full bg-(--palm)" aria-hidden />
+                  Other classes only
+                </span>
+              </p>
+            ) : (
+              <p className="mt-3 text-[11px] text-muted-foreground md:text-xs">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-1.5 shrink-0 rounded-full bg-(--lagoon-deep)" aria-hidden />
+                  Day with events
+                </span>
+              </p>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Day list — no chrome, spacing only */}
+      <aside className="flex min-h-0 w-full shrink-0 flex-col bg-background lg:w-[min(100%,28rem)] lg:pl-2">
+        <header className="shrink-0 px-4 pb-3 pt-4 md:px-6 md:pb-4 md:pt-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <h3 className="min-w-0 text-lg font-semibold leading-snug tracking-tight text-foreground md:text-xl">
+              {selectedDay ? dayHeadingLong(selectedDay) : "Pick a day"}
+            </h3>
+            <div
+              className="flex shrink-0 items-center gap-0.5 text-sm"
+              role="group"
+              aria-label="Schedule view"
+            >
+              <button
+                type="button"
+                className={cn(
+                  "rounded-md px-2 py-1 transition-colors",
+                  !showFullTimetable
+                    ? "font-medium text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+                onClick={() => setShowFullTimetable(false)}
+              >
+                Tutor
+              </button>
+              <span className="select-none text-muted-foreground/35" aria-hidden>
+                /
+              </span>
+              <button
+                type="button"
+                className={cn(
+                  "rounded-md px-2 py-1 transition-colors",
+                  showFullTimetable
+                    ? "font-medium text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+                onClick={() => setShowFullTimetable(true)}
+              >
+                Full
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-8 md:px-6">
+          {!selectedDay ? (
+            <div className="flex h-full min-h-48 flex-col items-center justify-center text-center text-muted-foreground">
+              <CalendarIcon className="mb-3 size-10 opacity-25" aria-hidden />
+              <p className="text-sm">Select a day to view sessions</p>
+            </div>
+          ) : selectedDayEvents.length === 0 ? (
+            <div className="flex h-full min-h-48 flex-col items-center justify-center text-center">
+              <p className="text-sm text-muted-foreground">
+                {showFullTimetable
+                  ? "No activity on this day."
+                  : "No tutor sessions on this day. Try Full view for the whole timetable."}
+              </p>
+            </div>
+          ) : (
+            <ul className="list-none space-y-8">
+              {selectedDayEvents.map((ev: ScheduleParsedEvent, idx: number) => {
+                const rowKey = scheduleEventRowKey(ev, idx);
+                const canNotes =
+                  !!ev.importSourceId?.trim() && !!ev.moduleCode?.trim();
+                return (
+                <li key={rowKey}>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="min-w-0 flex-1 text-base font-semibold leading-snug text-(--sea-ink) md:text-lg">
+                      {ev.title}
+                    </p>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 shrink-0 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        disabled={!canNotes || linkingRowKey === rowKey}
+                        title={
+                          canNotes
+                            ? "Open session notes for this slot"
+                            : !ev.moduleCode?.trim()
+                              ? "Module code required"
+                              : "Save import required"
+                        }
+                        onClick={() => void openSessionNotes(ev, idx)}
+                      >
+                        {linkingRowKey === rowKey ? (
+                          <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                        ) : (
+                          <NotebookPen className="size-3.5" aria-hidden />
+                        )}
+                        <span className="hidden sm:inline">Notes</span>
+                      </Button>
+                      <time className="shrink-0 text-xs tabular-nums text-muted-foreground md:text-sm">
+                        {formatTimeRange(ev.start, ev.end)}
+                      </time>
+                    </div>
+                  </div>
+                  {(ev.sessionType || ev.moduleCode || ev.location) && (
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                      {ev.sessionType ? (
+                        <span className="uppercase tracking-wide text-muted-foreground/80">
+                          {ev.sessionType}
+                        </span>
+                      ) : null}
+                      {ev.moduleCode ? <span>{ev.moduleCode}</span> : null}
+                      {ev.location ? <span>{ev.location}</span> : null}
+                    </div>
+                  )}
+                  {sources.length > 1 && ev.importSourceFile ? (
+                    <p className="mt-1.5 text-[11px] text-muted-foreground/90">
+                      From <span className="font-medium">{ev.importSourceFile}</span>
+                    </p>
+                  ) : null}
+                </li>
+              );
+              })}
+            </ul>
+          )}
+
+          {result.rowIssues.length > 0 && (
+            <div className="mt-10 rounded-lg bg-amber-50/80 p-4 dark:bg-amber-950/20">
+              <div className="mb-2 flex items-center gap-2 text-amber-900 dark:text-amber-200">
+                <Info className="size-4 shrink-0" />
+                <span className="text-xs font-medium uppercase tracking-wide">Import notes</span>
+              </div>
+              <ul className="space-y-1.5">
+                {result.rowIssues.slice(0, 5).map((issue, i) => (
+                  <li key={i} className="text-[11px] leading-relaxed text-amber-900/85 dark:text-amber-100/85">
+                    Row {issue.rowNumber}: {issue.message}
+                  </li>
+                ))}
+                {result.rowIssues.length > 5 && (
+                  <li className="text-[10px] text-amber-800/70 dark:text-amber-200/70">
+                    + {result.rowIssues.length - 5} more
+                  </li>
+                )}
+              </ul>
+            </div>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }

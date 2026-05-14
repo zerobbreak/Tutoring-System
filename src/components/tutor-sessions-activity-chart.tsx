@@ -1,3 +1,4 @@
+import { Loader2 } from "lucide-react"
 import { useMemo, useState } from "react"
 import {
   Area,
@@ -16,11 +17,14 @@ export type SessionDayPoint = {
   hoursWorked: number
 }
 
+/** Largest range toggle; parent should supply at least this many daily points when using `series`. */
+export const TUTOR_SESSION_CHART_MAX_DAYS = 90
+
 function formatDayLabel(d: Date) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
-/** Deterministic demo series; swap for API data when available. */
+/** Deterministic demo series when `series` is not provided. */
 export function generateSessionSeries(dayCount: number): SessionDayPoint[] {
   const result: SessionDayPoint[] = []
   const today = new Date()
@@ -82,9 +86,29 @@ function SessionsTooltip({
   )
 }
 
-export function TutorSessionsActivityChart() {
+export type TutorSessionsActivityChartProps = {
+  /**
+   * Daily points ascending by calendar day; include at least {@link TUTOR_SESSION_CHART_MAX_DAYS} trailing days
+   * (zeros for days with no claims) so range toggles stay accurate.
+   */
+  series?: SessionDayPoint[] | null
+  seriesLoading?: boolean
+}
+
+export function TutorSessionsActivityChart({
+  series: seriesProp,
+  seriesLoading = false,
+}: TutorSessionsActivityChartProps) {
   const [range, setRange] = useState<RangeKey>("30")
-  const data = useMemo(() => generateSessionSeries(RANGE_DAYS[range]), [range])
+
+  const data = useMemo(() => {
+    if (seriesLoading) return []
+    const dayCount = RANGE_DAYS[range]
+    if (seriesProp != null) {
+      return seriesProp.length <= dayCount ? seriesProp : seriesProp.slice(-dayCount)
+    }
+    return generateSessionSeries(dayCount)
+  }, [seriesProp, seriesLoading, range])
 
   return (
     <div className="space-y-4">
@@ -111,45 +135,51 @@ export function TutorSessionsActivityChart() {
         </div>
       </div>
 
-      <div className="h-[260px] w-full min-w-0">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="tutorSessionsArea" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--lagoon-deep)" stopOpacity={0.28} />
-                <stop offset="100%" stopColor="var(--lagoon-deep)" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-            <XAxis
-              dataKey="dateLabel"
-              tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
-              tickLine={false}
-              axisLine={false}
-              interval="preserveStartEnd"
-              minTickGap={24}
-            />
-            <YAxis hide domain={[0, "auto"]} />
-            <Tooltip
-              cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
-              content={({ active, payload }) => (
-                <SessionsTooltip
-                  active={active}
-                  payload={payload?.[0]?.payload as SessionDayPoint | undefined}
-                />
-              )}
-            />
-            <Area
-              type="monotone"
-              dataKey="sessions"
-              stroke="var(--lagoon-deep)"
-              strokeWidth={2}
-              fill="url(#tutorSessionsArea)"
-              dot={false}
-              activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--background)", fill: "var(--lagoon-deep)" }}
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+      <div className="relative h-[260px] w-full min-w-0">
+        {seriesLoading ? (
+          <div className="flex h-full items-center justify-center text-muted-foreground">
+            <Loader2 className="size-8 animate-spin" aria-label="Loading chart" />
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <defs>
+                <linearGradient id="tutorSessionsArea" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="var(--lagoon-deep)" stopOpacity={0.28} />
+                  <stop offset="100%" stopColor="var(--lagoon-deep)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
+              <XAxis
+                dataKey="dateLabel"
+                tick={{ fontSize: 11, fill: "var(--muted-foreground)" }}
+                tickLine={false}
+                axisLine={false}
+                interval="preserveStartEnd"
+                minTickGap={24}
+              />
+              <YAxis hide domain={[0, "auto"]} />
+              <Tooltip
+                cursor={{ stroke: "var(--border)", strokeWidth: 1 }}
+                content={({ active, payload }) => (
+                  <SessionsTooltip
+                    active={active}
+                    payload={payload?.[0]?.payload as SessionDayPoint | undefined}
+                  />
+                )}
+              />
+              <Area
+                type="monotone"
+                dataKey="sessions"
+                stroke="var(--lagoon-deep)"
+                strokeWidth={2}
+                fill="url(#tutorSessionsArea)"
+                dot={false}
+                activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--background)", fill: "var(--lagoon-deep)" }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
       </div>
     </div>
   )
