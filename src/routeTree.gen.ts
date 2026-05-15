@@ -25,6 +25,8 @@ import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthRecoverPasswordRouteImport } from './routes/auth/recover-password'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
+import { Route as TutorClaimsIndexRouteImport } from './routes/tutor/claims.index'
+import { Route as TutorClaimsClaimIdRouteImport } from './routes/tutor/claims.$claimId'
 
 const TutorRouteRoute = TutorRouteRouteImport.update({
   id: '/tutor',
@@ -106,6 +108,16 @@ const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
   path: '/auth/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TutorClaimsIndexRoute = TutorClaimsIndexRouteImport.update({
+  id: '/claims/',
+  path: '/claims/',
+  getParentRoute: () => TutorRouteRoute,
+} as any)
+const TutorClaimsClaimIdRoute = TutorClaimsClaimIdRouteImport.update({
+  id: '/claims/$claimId',
+  path: '/claims/$claimId',
+  getParentRoute: () => TutorRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -124,6 +136,8 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/tutor/': typeof TutorIndexRoute
+  '/tutor/claims/$claimId': typeof TutorClaimsClaimIdRoute
+  '/tutor/claims/': typeof TutorClaimsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -140,6 +154,8 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/tutor': typeof TutorIndexRoute
+  '/tutor/claims/$claimId': typeof TutorClaimsClaimIdRoute
+  '/tutor/claims': typeof TutorClaimsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -159,6 +175,8 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/tutor/': typeof TutorIndexRoute
+  '/tutor/claims/$claimId': typeof TutorClaimsClaimIdRoute
+  '/tutor/claims/': typeof TutorClaimsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -179,6 +197,8 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/settings/'
     | '/tutor/'
+    | '/tutor/claims/$claimId'
+    | '/tutor/claims/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -195,6 +215,8 @@ export interface FileRouteTypes {
     | '/admin'
     | '/settings'
     | '/tutor'
+    | '/tutor/claims/$claimId'
+    | '/tutor/claims'
   id:
     | '__root__'
     | '/'
@@ -213,6 +235,8 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/settings/'
     | '/tutor/'
+    | '/tutor/claims/$claimId'
+    | '/tutor/claims/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -341,6 +365,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tutor/claims/': {
+      id: '/tutor/claims/'
+      path: '/claims'
+      fullPath: '/tutor/claims/'
+      preLoaderRoute: typeof TutorClaimsIndexRouteImport
+      parentRoute: typeof TutorRouteRoute
+    }
+    '/tutor/claims/$claimId': {
+      id: '/tutor/claims/$claimId'
+      path: '/claims/$claimId'
+      fullPath: '/tutor/claims/$claimId'
+      preLoaderRoute: typeof TutorClaimsClaimIdRouteImport
+      parentRoute: typeof TutorRouteRoute
+    }
   }
 }
 
@@ -363,6 +401,8 @@ interface TutorRouteRouteChildren {
   TutorSchedulesRoute: typeof TutorSchedulesRoute
   TutorSessionsRoute: typeof TutorSessionsRoute
   TutorIndexRoute: typeof TutorIndexRoute
+  TutorClaimsClaimIdRoute: typeof TutorClaimsClaimIdRoute
+  TutorClaimsIndexRoute: typeof TutorClaimsIndexRoute
 }
 
 const TutorRouteRouteChildren: TutorRouteRouteChildren = {
@@ -372,6 +412,8 @@ const TutorRouteRouteChildren: TutorRouteRouteChildren = {
   TutorSchedulesRoute: TutorSchedulesRoute,
   TutorSessionsRoute: TutorSessionsRoute,
   TutorIndexRoute: TutorIndexRoute,
+  TutorClaimsClaimIdRoute: TutorClaimsClaimIdRoute,
+  TutorClaimsIndexRoute: TutorClaimsIndexRoute,
 }
 
 const TutorRouteRouteWithChildren = TutorRouteRoute._addFileChildren(

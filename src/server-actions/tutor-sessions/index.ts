@@ -90,6 +90,34 @@ export type TutorSessionClaimDTO = {
   evidenceCount: number;
 };
 
+export type VerificationActionDTO = {
+  id: string;
+  claim_id: string;
+  actor_id: string;
+  actor: {
+    id: string;
+    full_name: string;
+    email: string;
+  } | null;
+  action_type: string;
+  from_status: ClaimStatus | null;
+  to_status: ClaimStatus | null;
+  comment: string | null;
+  acted_at: string;
+};
+
+export type ClaimEvidenceDTO = {
+  id: string;
+  file_name: string;
+  file_url: string;
+  uploaded_at: string;
+};
+
+export type ClaimDetailsDTO = TutorSessionClaimDTO & {
+  evidence: ClaimEvidenceDTO[];
+  history: VerificationActionDTO[];
+};
+
 type LecturerRow = { id: string; full_name: string; email: string };
 
 type RawModule = {
@@ -700,4 +728,121 @@ export const checkInStudentFn = createServerFn({ method: "POST" })
       .eq("id", data.sessionId);
 
     return { success: true, studentName: student.full_name };
+  });
+
+/** Get detailed information for a single claim, including history and evidence. */
+export const getClaimDetailsFn = createServerFn({
+  method: "GET",
+})
+  .inputValidator((input: unknown) =>
+    z.object({ claimId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data }): Promise<ClaimDetailsDTO> => {
+    const supabase = createSupabaseServerClient();
+    const tutorId = await requireUserId(supabase);
+
+    const { data: claimRow, error: cErr } = await supabase
+      .from("session_claims")
+      .select(
+        `
+        id,
+        module_id,
+        session_date,
+        start_time,
+        end_time,
+        hours,
+        venue,
+        status,
+        notes,
+        topics_covered,
+        coverage_validated_at,
+        submitted_at,
+        session_kind,
+        attendance_present_count,
+        attendance_expected_count,
+        qr_token,
+        qr_expires_at,
+        module:modules (
+          id,
+          code,
+          name,
+          lecturer_id,
+          lecturer:users!modules_lecturer_id_fkey ( id, full_name, email )
+        )
+      `,
+      )
+      .eq("id", data.claimId)
+      .eq("tutor_id", tutorId)
+      .maybeSingle();
+
+    if (cErr) throw new Error(cErr.message);
+    if (!claimRow) throw new Error("Claim not found.");
+
+    const { data: evRows, error: evErr } = await supabase
+      .from("attendance_evidence")
+      .select("id, file_url, original_filename, uploaded_at")
+      .eq("claim_id", data.claimId)
+      .order("uploaded_at", { ascending: false });
+
+    if (evErr) throw new Error(evErr.message);
+
+    const evidence: ClaimEvidenceDTO[] = [];
+    for (const r of evRows ?? []) {
+      let file_url = r.file_url as string;
+      if (file_url.startsWith(`${BUCKET}/`)) {
+        const path = file_url.slice(BUCKET.length + 1);
+        const { data: signed } = await supabase.storage
+          .from(BUCKET)
+          .createSignedUrl(path, 3600);
+        if (signed?.signedUrl) file_url = signed.signedUrl;
+      }
+      evidence.push({
+        id: r.id as string,
+        file_name: r.original_filename as string,
+        file_url,
+        uploaded_at: (r.uploaded_at as string) || new Date().toISOString(),
+      });
+    }
+
+    const { data: historyRows, error: hErr } = await supabase
+      .from("verification_actions")
+      .select(
+        `
+        id,
+        claim_id,
+        actor_id,
+        action_type,
+        from_status,
+        to_status,
+        comment,
+        acted_at,
+        actor:users ( id, full_name, email )
+      `,
+      )
+      .eq("claim_id", data.claimId)
+      .order("acted_at", { ascending: false });
+
+    if (hErr) throw new Error(hErr.message);
+
+    const history: VerificationActionDTO[] = (historyRows ?? []).map(
+      (r: any) => ({
+        id: r.id,
+        claim_id: r.claim_id,
+        actor_id: r.actor_id,
+        action_type: r.action_type,
+        from_status: r.from_status,
+        to_status: r.to_status,
+        comment: r.comment,
+        acted_at: r.acted_at,
+        actor: Array.isArray(r.actor) ? r.actor[0] : r.actor,
+      }),
+    );
+
+    const mapped = mapClaimRow(claimRow as any, evidence.length);
+
+    return {
+      ...mapped,
+      evidence,
+      history,
+    };
   });

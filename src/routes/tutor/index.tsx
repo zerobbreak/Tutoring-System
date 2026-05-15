@@ -517,7 +517,7 @@ function TutorDashboard() {
                 <CardDescription>Draft or awaiting verification</CardDescription>
               </div>
               <Button variant="ghost" size="sm" className="shrink-0 text-muted-foreground hover:text-foreground" asChild>
-                <Link to="/tutor/notes">Notes</Link>
+                <Link to="/tutor/claims">View All</Link>
               </Button>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
@@ -532,7 +532,7 @@ function TutorDashboard() {
                 <ul className="space-y-2">
                   {pendingPreviewClaims.map((c) => (
                     <li key={c.id} className="flex flex-col gap-0.5 border-b border-border/60 pb-2 last:border-0 last:pb-0">
-                      <Link to="/tutor/notes" className="font-medium text-foreground hover:underline">
+                      <Link to="/tutor/claims/$claimId" params={{ claimId: c.id }} className="font-medium text-foreground hover:underline">
                         {c.module?.code ?? "Session"} · {c.session_date}
                       </Link>
                       <span className="text-xs capitalize text-muted-foreground">{formatClaimStatus(c.status)}</span>
