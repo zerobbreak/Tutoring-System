@@ -13,8 +13,9 @@ const listConversationsSchema = z.object({
   type: z.enum(CONVERSATION_TYPES).optional(),
 });
 
-export const listConversationsFn = createServerFn({ method: "GET" })
+export const listConversationsFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => listConversationsSchema.parse(input ?? {}))
+  // @ts-expect-error TanStack ServerFn handler inference
   .handler(async ({ data }) => {
     const type = data.type;
     const supabase = createSupabaseServerClient();

@@ -29,6 +29,7 @@ const CLAIM_REPORT_SELECT = `
   updated_at,
   attendance_present_count,
   attendance_expected_count,
+  source_scheduled_session_id,
   module:modules ( code, name ),
   tutor:users!session_claims_tutor_id_fkey ( id, full_name, email )
 `;
@@ -46,6 +47,7 @@ type RawClaim = {
   updated_at: string;
   attendance_present_count: number | null;
   attendance_expected_count: number | null;
+  source_scheduled_session_id: string | null;
   module:
     | { code: string; name: string }
     | { code: string; name: string }[]

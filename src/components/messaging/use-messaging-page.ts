@@ -25,7 +25,7 @@ export function useMessagingPage({ initialConversationId }: UseMessagingPageOpti
   const selectedConversation = conversations.find((c) => c.id === selectedConvId);
 
   const refreshConversations = React.useCallback(async (): Promise<ConversationDTO[]> => {
-    const convs: ConversationDTO[] = await listConversationsFn({ data: {} });
+    const convs = (await listConversationsFn({ data: {} })) as ConversationDTO[];
     setConversations(convs);
     return convs;
   }, []);
@@ -65,9 +65,9 @@ export function useMessagingPage({ initialConversationId }: UseMessagingPageOpti
     async function fetchMessages() {
       setIsMessagesLoading(true);
       try {
-        const msgs: MessageDTO[] = await getConversationMessagesFn({
+        const msgs = (await getConversationMessagesFn({
           data: { conversationId: selectedConvId },
-        });
+        })) as MessageDTO[];
         setMessages(msgs);
         await markConversationAsReadFn({
           data: { conversationId: selectedConvId },

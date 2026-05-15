@@ -42,8 +42,9 @@ function mapAttachments(rows: unknown[]): MessageAttachmentDTO[] {
   }));
 }
 
-export const getConversationMessagesFn = createServerFn({ method: "GET" })
+export const getConversationMessagesFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => getMessagesSchema.parse(input ?? {}))
+  // @ts-expect-error TanStack ServerFn handler inference
   .handler(async ({ data: input }) => {
     const { conversationId, limit, offset } = input;
     const supabase = createSupabaseServerClient();
