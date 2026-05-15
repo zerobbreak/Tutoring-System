@@ -23,13 +23,13 @@ import {
   SelectValue,
 } from "#/components/ui/select";
 import { Separator } from "#/components/ui/separator";
-import { supabase } from "#/lib/supabase";
+import { fileToBase64 } from "#/lib/file-base64";
 import { toast } from "#/lib/toast";
 import { formatRoleLabel } from "#/lib/user-role";
 import type { SettingsProfileDTO } from "#/server-actions/settings";
 import {
   updateAccountProfileFn,
-  updateAvatarUrlFn,
+  uploadAvatarFn,
   updateInstitutionFn,
 } from "#/server-actions/settings";
 
@@ -127,18 +127,15 @@ export function AccountSettings({
 
     setUploadingAvatar(true);
     try {
-      const ext = file.name.split(".").pop() ?? "jpg";
-      const path = `${profile.id}/avatar.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(path, file, { upsert: true, contentType: file.type });
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
-      const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
-
-      await updateAvatarUrlFn({ data: { avatarUrl } });
-      onProfileChange({ ...profile, avatar_url: avatarUrl });
+      const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
+      const result = await uploadAvatarFn({
+        data: {
+          fileBase64: await fileToBase64(file),
+          contentType: file.type || "image/jpeg",
+          extension: ext,
+        },
+      });
+      onProfileChange({ ...profile, avatar_url: result.avatarUrl });
       toast.success("Avatar updated.");
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : "Failed to upload avatar.");

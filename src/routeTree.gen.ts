@@ -10,17 +10,29 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TutorRouteRouteImport } from './routes/tutor/route'
+import { Route as LecturerRouteRouteImport } from './routes/lecturer/route'
 import { Route as AdminRouteRouteImport } from './routes/admin/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TutorIndexRouteImport } from './routes/tutor/index'
 import { Route as SettingsIndexRouteImport } from './routes/settings/index'
+import { Route as LecturerIndexRouteImport } from './routes/lecturer/index'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as TutorSessionsRouteImport } from './routes/tutor/sessions'
 import { Route as TutorSchedulesRouteImport } from './routes/tutor/schedules'
 import { Route as TutorRegisterGenerationRouteImport } from './routes/tutor/register-generation'
 import { Route as TutorNotesRouteImport } from './routes/tutor/notes'
 import { Route as TutorMessagingRouteImport } from './routes/tutor/messaging'
+import { Route as TutorHelpRouteImport } from './routes/tutor/help'
 import { Route as StudentCheckInRouteImport } from './routes/student/check-in'
+import { Route as LecturerVerificationQueueRouteImport } from './routes/lecturer/verification-queue'
+import { Route as LecturerTutorsRouteImport } from './routes/lecturer/tutors'
+import { Route as LecturerSettingsRouteImport } from './routes/lecturer/settings'
+import { Route as LecturerSessionsRouteImport } from './routes/lecturer/sessions'
+import { Route as LecturerScheduleRouteImport } from './routes/lecturer/schedule'
+import { Route as LecturerReportsRouteImport } from './routes/lecturer/reports'
+import { Route as LecturerMessagesRouteImport } from './routes/lecturer/messages'
+import { Route as LecturerAttendanceRouteImport } from './routes/lecturer/attendance'
+import { Route as LecturerAnalyticsRouteImport } from './routes/lecturer/analytics'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthRecoverPasswordRouteImport } from './routes/auth/recover-password'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
@@ -31,6 +43,11 @@ import { Route as TutorClaimsClaimIdRouteImport } from './routes/tutor/claims.$c
 const TutorRouteRoute = TutorRouteRouteImport.update({
   id: '/tutor',
   path: '/tutor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LecturerRouteRoute = LecturerRouteRouteImport.update({
+  id: '/lecturer',
+  path: '/lecturer',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRouteRoute = AdminRouteRouteImport.update({
@@ -52,6 +69,11 @@ const SettingsIndexRoute = SettingsIndexRouteImport.update({
   id: '/settings/',
   path: '/settings/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const LecturerIndexRoute = LecturerIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LecturerRouteRoute,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
@@ -83,10 +105,61 @@ const TutorMessagingRoute = TutorMessagingRouteImport.update({
   path: '/messaging',
   getParentRoute: () => TutorRouteRoute,
 } as any)
+const TutorHelpRoute = TutorHelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => TutorRouteRoute,
+} as any)
 const StudentCheckInRoute = StudentCheckInRouteImport.update({
   id: '/student/check-in',
   path: '/student/check-in',
   getParentRoute: () => rootRouteImport,
+} as any)
+const LecturerVerificationQueueRoute =
+  LecturerVerificationQueueRouteImport.update({
+    id: '/verification-queue',
+    path: '/verification-queue',
+    getParentRoute: () => LecturerRouteRoute,
+  } as any)
+const LecturerTutorsRoute = LecturerTutorsRouteImport.update({
+  id: '/tutors',
+  path: '/tutors',
+  getParentRoute: () => LecturerRouteRoute,
+} as any)
+const LecturerSettingsRoute = LecturerSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => LecturerRouteRoute,
+} as any)
+const LecturerSessionsRoute = LecturerSessionsRouteImport.update({
+  id: '/sessions',
+  path: '/sessions',
+  getParentRoute: () => LecturerRouteRoute,
+} as any)
+const LecturerScheduleRoute = LecturerScheduleRouteImport.update({
+  id: '/schedule',
+  path: '/schedule',
+  getParentRoute: () => LecturerRouteRoute,
+} as any)
+const LecturerReportsRoute = LecturerReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => LecturerRouteRoute,
+} as any)
+const LecturerMessagesRoute = LecturerMessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
+  getParentRoute: () => LecturerRouteRoute,
+} as any)
+const LecturerAttendanceRoute = LecturerAttendanceRouteImport.update({
+  id: '/attendance',
+  path: '/attendance',
+  getParentRoute: () => LecturerRouteRoute,
+} as any)
+const LecturerAnalyticsRoute = LecturerAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => LecturerRouteRoute,
 } as any)
 const AuthRegisterRoute = AuthRegisterRouteImport.update({
   id: '/auth/register',
@@ -122,18 +195,30 @@ const TutorClaimsClaimIdRoute = TutorClaimsClaimIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
+  '/lecturer': typeof LecturerRouteRouteWithChildren
   '/tutor': typeof TutorRouteRouteWithChildren
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/recover-password': typeof AuthRecoverPasswordRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/lecturer/analytics': typeof LecturerAnalyticsRoute
+  '/lecturer/attendance': typeof LecturerAttendanceRoute
+  '/lecturer/messages': typeof LecturerMessagesRoute
+  '/lecturer/reports': typeof LecturerReportsRoute
+  '/lecturer/schedule': typeof LecturerScheduleRoute
+  '/lecturer/sessions': typeof LecturerSessionsRoute
+  '/lecturer/settings': typeof LecturerSettingsRoute
+  '/lecturer/tutors': typeof LecturerTutorsRoute
+  '/lecturer/verification-queue': typeof LecturerVerificationQueueRoute
   '/student/check-in': typeof StudentCheckInRoute
+  '/tutor/help': typeof TutorHelpRoute
   '/tutor/messaging': typeof TutorMessagingRoute
   '/tutor/notes': typeof TutorNotesRoute
   '/tutor/register-generation': typeof TutorRegisterGenerationRoute
   '/tutor/schedules': typeof TutorSchedulesRoute
   '/tutor/sessions': typeof TutorSessionsRoute
   '/admin/': typeof AdminIndexRoute
+  '/lecturer/': typeof LecturerIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/tutor/': typeof TutorIndexRoute
   '/tutor/claims/$claimId': typeof TutorClaimsClaimIdRoute
@@ -145,13 +230,24 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/recover-password': typeof AuthRecoverPasswordRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/lecturer/analytics': typeof LecturerAnalyticsRoute
+  '/lecturer/attendance': typeof LecturerAttendanceRoute
+  '/lecturer/messages': typeof LecturerMessagesRoute
+  '/lecturer/reports': typeof LecturerReportsRoute
+  '/lecturer/schedule': typeof LecturerScheduleRoute
+  '/lecturer/sessions': typeof LecturerSessionsRoute
+  '/lecturer/settings': typeof LecturerSettingsRoute
+  '/lecturer/tutors': typeof LecturerTutorsRoute
+  '/lecturer/verification-queue': typeof LecturerVerificationQueueRoute
   '/student/check-in': typeof StudentCheckInRoute
+  '/tutor/help': typeof TutorHelpRoute
   '/tutor/messaging': typeof TutorMessagingRoute
   '/tutor/notes': typeof TutorNotesRoute
   '/tutor/register-generation': typeof TutorRegisterGenerationRoute
   '/tutor/schedules': typeof TutorSchedulesRoute
   '/tutor/sessions': typeof TutorSessionsRoute
   '/admin': typeof AdminIndexRoute
+  '/lecturer': typeof LecturerIndexRoute
   '/settings': typeof SettingsIndexRoute
   '/tutor': typeof TutorIndexRoute
   '/tutor/claims/$claimId': typeof TutorClaimsClaimIdRoute
@@ -161,18 +257,30 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteRouteWithChildren
+  '/lecturer': typeof LecturerRouteRouteWithChildren
   '/tutor': typeof TutorRouteRouteWithChildren
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/recover-password': typeof AuthRecoverPasswordRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/lecturer/analytics': typeof LecturerAnalyticsRoute
+  '/lecturer/attendance': typeof LecturerAttendanceRoute
+  '/lecturer/messages': typeof LecturerMessagesRoute
+  '/lecturer/reports': typeof LecturerReportsRoute
+  '/lecturer/schedule': typeof LecturerScheduleRoute
+  '/lecturer/sessions': typeof LecturerSessionsRoute
+  '/lecturer/settings': typeof LecturerSettingsRoute
+  '/lecturer/tutors': typeof LecturerTutorsRoute
+  '/lecturer/verification-queue': typeof LecturerVerificationQueueRoute
   '/student/check-in': typeof StudentCheckInRoute
+  '/tutor/help': typeof TutorHelpRoute
   '/tutor/messaging': typeof TutorMessagingRoute
   '/tutor/notes': typeof TutorNotesRoute
   '/tutor/register-generation': typeof TutorRegisterGenerationRoute
   '/tutor/schedules': typeof TutorSchedulesRoute
   '/tutor/sessions': typeof TutorSessionsRoute
   '/admin/': typeof AdminIndexRoute
+  '/lecturer/': typeof LecturerIndexRoute
   '/settings/': typeof SettingsIndexRoute
   '/tutor/': typeof TutorIndexRoute
   '/tutor/claims/$claimId': typeof TutorClaimsClaimIdRoute
@@ -183,18 +291,30 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/lecturer'
     | '/tutor'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/recover-password'
     | '/auth/register'
+    | '/lecturer/analytics'
+    | '/lecturer/attendance'
+    | '/lecturer/messages'
+    | '/lecturer/reports'
+    | '/lecturer/schedule'
+    | '/lecturer/sessions'
+    | '/lecturer/settings'
+    | '/lecturer/tutors'
+    | '/lecturer/verification-queue'
     | '/student/check-in'
+    | '/tutor/help'
     | '/tutor/messaging'
     | '/tutor/notes'
     | '/tutor/register-generation'
     | '/tutor/schedules'
     | '/tutor/sessions'
     | '/admin/'
+    | '/lecturer/'
     | '/settings/'
     | '/tutor/'
     | '/tutor/claims/$claimId'
@@ -206,13 +326,24 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/recover-password'
     | '/auth/register'
+    | '/lecturer/analytics'
+    | '/lecturer/attendance'
+    | '/lecturer/messages'
+    | '/lecturer/reports'
+    | '/lecturer/schedule'
+    | '/lecturer/sessions'
+    | '/lecturer/settings'
+    | '/lecturer/tutors'
+    | '/lecturer/verification-queue'
     | '/student/check-in'
+    | '/tutor/help'
     | '/tutor/messaging'
     | '/tutor/notes'
     | '/tutor/register-generation'
     | '/tutor/schedules'
     | '/tutor/sessions'
     | '/admin'
+    | '/lecturer'
     | '/settings'
     | '/tutor'
     | '/tutor/claims/$claimId'
@@ -221,18 +352,30 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/lecturer'
     | '/tutor'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/recover-password'
     | '/auth/register'
+    | '/lecturer/analytics'
+    | '/lecturer/attendance'
+    | '/lecturer/messages'
+    | '/lecturer/reports'
+    | '/lecturer/schedule'
+    | '/lecturer/sessions'
+    | '/lecturer/settings'
+    | '/lecturer/tutors'
+    | '/lecturer/verification-queue'
     | '/student/check-in'
+    | '/tutor/help'
     | '/tutor/messaging'
     | '/tutor/notes'
     | '/tutor/register-generation'
     | '/tutor/schedules'
     | '/tutor/sessions'
     | '/admin/'
+    | '/lecturer/'
     | '/settings/'
     | '/tutor/'
     | '/tutor/claims/$claimId'
@@ -242,6 +385,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
+  LecturerRouteRoute: typeof LecturerRouteRouteWithChildren
   TutorRouteRoute: typeof TutorRouteRouteWithChildren
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
@@ -258,6 +402,13 @@ declare module '@tanstack/react-router' {
       path: '/tutor'
       fullPath: '/tutor'
       preLoaderRoute: typeof TutorRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lecturer': {
+      id: '/lecturer'
+      path: '/lecturer'
+      fullPath: '/lecturer'
+      preLoaderRoute: typeof LecturerRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -287,6 +438,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/settings/'
       preLoaderRoute: typeof SettingsIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/lecturer/': {
+      id: '/lecturer/'
+      path: '/'
+      fullPath: '/lecturer/'
+      preLoaderRoute: typeof LecturerIndexRouteImport
+      parentRoute: typeof LecturerRouteRoute
     }
     '/admin/': {
       id: '/admin/'
@@ -330,12 +488,82 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TutorMessagingRouteImport
       parentRoute: typeof TutorRouteRoute
     }
+    '/tutor/help': {
+      id: '/tutor/help'
+      path: '/help'
+      fullPath: '/tutor/help'
+      preLoaderRoute: typeof TutorHelpRouteImport
+      parentRoute: typeof TutorRouteRoute
+    }
     '/student/check-in': {
       id: '/student/check-in'
       path: '/student/check-in'
       fullPath: '/student/check-in'
       preLoaderRoute: typeof StudentCheckInRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/lecturer/verification-queue': {
+      id: '/lecturer/verification-queue'
+      path: '/verification-queue'
+      fullPath: '/lecturer/verification-queue'
+      preLoaderRoute: typeof LecturerVerificationQueueRouteImport
+      parentRoute: typeof LecturerRouteRoute
+    }
+    '/lecturer/tutors': {
+      id: '/lecturer/tutors'
+      path: '/tutors'
+      fullPath: '/lecturer/tutors'
+      preLoaderRoute: typeof LecturerTutorsRouteImport
+      parentRoute: typeof LecturerRouteRoute
+    }
+    '/lecturer/settings': {
+      id: '/lecturer/settings'
+      path: '/settings'
+      fullPath: '/lecturer/settings'
+      preLoaderRoute: typeof LecturerSettingsRouteImport
+      parentRoute: typeof LecturerRouteRoute
+    }
+    '/lecturer/sessions': {
+      id: '/lecturer/sessions'
+      path: '/sessions'
+      fullPath: '/lecturer/sessions'
+      preLoaderRoute: typeof LecturerSessionsRouteImport
+      parentRoute: typeof LecturerRouteRoute
+    }
+    '/lecturer/schedule': {
+      id: '/lecturer/schedule'
+      path: '/schedule'
+      fullPath: '/lecturer/schedule'
+      preLoaderRoute: typeof LecturerScheduleRouteImport
+      parentRoute: typeof LecturerRouteRoute
+    }
+    '/lecturer/reports': {
+      id: '/lecturer/reports'
+      path: '/reports'
+      fullPath: '/lecturer/reports'
+      preLoaderRoute: typeof LecturerReportsRouteImport
+      parentRoute: typeof LecturerRouteRoute
+    }
+    '/lecturer/messages': {
+      id: '/lecturer/messages'
+      path: '/messages'
+      fullPath: '/lecturer/messages'
+      preLoaderRoute: typeof LecturerMessagesRouteImport
+      parentRoute: typeof LecturerRouteRoute
+    }
+    '/lecturer/attendance': {
+      id: '/lecturer/attendance'
+      path: '/attendance'
+      fullPath: '/lecturer/attendance'
+      preLoaderRoute: typeof LecturerAttendanceRouteImport
+      parentRoute: typeof LecturerRouteRoute
+    }
+    '/lecturer/analytics': {
+      id: '/lecturer/analytics'
+      path: '/analytics'
+      fullPath: '/lecturer/analytics'
+      preLoaderRoute: typeof LecturerAnalyticsRouteImport
+      parentRoute: typeof LecturerRouteRoute
     }
     '/auth/register': {
       id: '/auth/register'
@@ -394,7 +622,38 @@ const AdminRouteRouteWithChildren = AdminRouteRoute._addFileChildren(
   AdminRouteRouteChildren,
 )
 
+interface LecturerRouteRouteChildren {
+  LecturerAnalyticsRoute: typeof LecturerAnalyticsRoute
+  LecturerAttendanceRoute: typeof LecturerAttendanceRoute
+  LecturerMessagesRoute: typeof LecturerMessagesRoute
+  LecturerReportsRoute: typeof LecturerReportsRoute
+  LecturerScheduleRoute: typeof LecturerScheduleRoute
+  LecturerSessionsRoute: typeof LecturerSessionsRoute
+  LecturerSettingsRoute: typeof LecturerSettingsRoute
+  LecturerTutorsRoute: typeof LecturerTutorsRoute
+  LecturerVerificationQueueRoute: typeof LecturerVerificationQueueRoute
+  LecturerIndexRoute: typeof LecturerIndexRoute
+}
+
+const LecturerRouteRouteChildren: LecturerRouteRouteChildren = {
+  LecturerAnalyticsRoute: LecturerAnalyticsRoute,
+  LecturerAttendanceRoute: LecturerAttendanceRoute,
+  LecturerMessagesRoute: LecturerMessagesRoute,
+  LecturerReportsRoute: LecturerReportsRoute,
+  LecturerScheduleRoute: LecturerScheduleRoute,
+  LecturerSessionsRoute: LecturerSessionsRoute,
+  LecturerSettingsRoute: LecturerSettingsRoute,
+  LecturerTutorsRoute: LecturerTutorsRoute,
+  LecturerVerificationQueueRoute: LecturerVerificationQueueRoute,
+  LecturerIndexRoute: LecturerIndexRoute,
+}
+
+const LecturerRouteRouteWithChildren = LecturerRouteRoute._addFileChildren(
+  LecturerRouteRouteChildren,
+)
+
 interface TutorRouteRouteChildren {
+  TutorHelpRoute: typeof TutorHelpRoute
   TutorMessagingRoute: typeof TutorMessagingRoute
   TutorNotesRoute: typeof TutorNotesRoute
   TutorRegisterGenerationRoute: typeof TutorRegisterGenerationRoute
@@ -406,6 +665,7 @@ interface TutorRouteRouteChildren {
 }
 
 const TutorRouteRouteChildren: TutorRouteRouteChildren = {
+  TutorHelpRoute: TutorHelpRoute,
   TutorMessagingRoute: TutorMessagingRoute,
   TutorNotesRoute: TutorNotesRoute,
   TutorRegisterGenerationRoute: TutorRegisterGenerationRoute,
@@ -423,6 +683,7 @@ const TutorRouteRouteWithChildren = TutorRouteRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRouteRoute: AdminRouteRouteWithChildren,
+  LecturerRouteRoute: LecturerRouteRouteWithChildren,
   TutorRouteRoute: TutorRouteRouteWithChildren,
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,

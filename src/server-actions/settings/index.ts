@@ -252,6 +252,45 @@ export const updateAvatarUrlFn = createServerFn({ method: "POST" })
     return { success: true };
   });
 
+const uploadAvatarSchema = z.object({
+  fileBase64: z.string().min(1),
+  contentType: z.string().min(1),
+  extension: z.string().min(1).max(8),
+});
+
+export const uploadAvatarFn = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => uploadAvatarSchema.parse(input))
+  .handler(async ({ data }) => {
+    const supabase = createSupabaseServerClient();
+    const userId = await requireUserId(supabase);
+
+    const buf = Buffer.from(data.fileBase64, "base64");
+    if (buf.byteLength > 2 * 1024 * 1024) {
+      throw new Error("Image must be under 2 MB.");
+    }
+
+    const ext = data.extension.replace(/[^\w]/g, "") || "jpg";
+    const path = `${userId}/avatar.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(path, buf, {
+        upsert: true,
+        contentType: data.contentType,
+      });
+    if (uploadError) throw new Error(uploadError.message);
+
+    const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+    const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+    const { error: authError } = await supabase.auth.updateUser({
+      data: { avatar_url: avatarUrl },
+    });
+    if (authError) throw new Error(authError.message);
+
+    return { success: true, avatarUrl };
+  });
+
 export const updateUserPreferencesFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => preferencesSchema.parse(input))
   .handler(async ({ data }) => {

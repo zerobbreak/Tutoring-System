@@ -91,7 +91,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     location.pathname === "/tutor" || location.pathname.startsWith("/tutor/");
   const isAdminShell =
     location.pathname === "/admin" || location.pathname.startsWith("/admin/");
-  const isDashboardShell = isTutorShell || isAdminShell;
+  const isLecturerShell =
+    location.pathname === "/lecturer" ||
+    location.pathname.startsWith("/lecturer/");
+  const isDashboardShell = isTutorShell || isAdminShell || isLecturerShell;
 
   const brandTo = session?.user
     ? getPostAuthDashboardPath(

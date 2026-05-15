@@ -59,7 +59,14 @@ function pageTitleFromPath(
   pathname: string,
   homePath: string,
   navGroups: readonly AppShellNavGroup[],
+  helpPath?: string,
 ) {
+  if (
+    helpPath &&
+    (pathname === helpPath || pathname.startsWith(`${helpPath}/`))
+  ) {
+    return "Get Help";
+  }
   const hit = flattenNav(navGroups).find((n) =>
     navItemActive(pathname, n.to, homePath),
   );
@@ -101,6 +108,8 @@ export function AppShell({
   fallbackDisplayName,
   children,
   headerTrailing,
+  helpPath,
+  settingsPath = "/settings",
 }: {
   homePath: string;
   brandMark: ReactNode;
@@ -112,9 +121,13 @@ export function AppShell({
   children: ReactNode;
   /** Omit for default “Quick create”; pass `null` to hide the header action slot. */
   headerTrailing?: ReactNode | null;
+  /** When set, sidebar “Get Help” links here and the breadcrumb shows “Get Help”. */
+  helpPath?: string;
+  /** Sidebar settings link target (default `/settings`). */
+  settingsPath?: string;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const title = pageTitleFromPath(pathname, homePath, navGroups);
+  const title = pageTitleFromPath(pathname, homePath, navGroups, helpPath);
 
   const initials = user.user_metadata?.full_name
     ? user.user_metadata.full_name
@@ -182,24 +195,32 @@ export function AppShell({
                 <SidebarMenuButton
                   asChild
                   isActive={
-                    pathname === "/settings" ||
-                    pathname.startsWith("/settings/")
+                    pathname === settingsPath ||
+                    pathname.startsWith(`${settingsPath}/`)
                   }
                 >
-                  <Link to="/settings">
+                  <Link to={settingsPath}>
                     <Settings />
                     <span>Settings</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <a href="#help">
-                    <LifeBuoy />
-                    <span>Get Help</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {helpPath ? (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={
+                      pathname === helpPath ||
+                      pathname.startsWith(`${helpPath}/`)
+                    }
+                  >
+                    <Link to={helpPath}>
+                      <LifeBuoy />
+                      <span>Get Help</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ) : null}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -242,7 +263,7 @@ export function AppShell({
                   sideOffset={4}
                 >
                   <DropdownMenuItem asChild>
-                    <Link to="/settings">Settings</Link>
+                    <Link to={settingsPath}>Settings</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
