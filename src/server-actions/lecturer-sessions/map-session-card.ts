@@ -29,8 +29,8 @@ type RawClaimRow = {
     | { id: string; code: string; name: string }[]
     | null;
   tutor:
-    | { full_name: string; email: string }
-    | { full_name: string; email: string }[]
+    | { id: string; full_name: string; email: string }
+    | { id: string; full_name: string; email: string }[]
     | null;
 };
 

@@ -36,7 +36,14 @@ export function ScheduleEventCard({
           <p className="truncate font-medium text-foreground">{label}</p>
           <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
             <User className="size-3.5 shrink-0" />
-            <span className="truncate">{event.tutorName}</span>
+            <Link
+              to="/lecturer/tutors"
+              search={{ tutor: event.tutorId }}
+              onClick={(e) => e.stopPropagation()}
+              className="truncate hover:underline"
+            >
+              {event.tutorName}
+            </Link>
           </p>
           <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
             <Clock className="size-3.5 shrink-0" />

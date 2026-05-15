@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import * as z from "zod";
+import { ensurePublicUserProfile } from "#/lib/ensure-public-user";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { getSupabaseAdmin } from "#/lib/supabase-admin";
 
@@ -107,6 +108,8 @@ export const getSettingsProfileFn = createServerFn({ method: "GET" }).handler(
     } = await supabase.auth.getUser();
     if (!user) throw new Error("Unauthorized");
 
+    await ensurePublicUserProfile(supabase);
+
     const admin = getSupabaseAdmin();
     const db = admin ?? supabase;
 
@@ -197,13 +200,7 @@ export const updateAccountProfileFn = createServerFn({ method: "POST" })
     });
     if (authError) throw new Error(authError.message);
 
-    const admin = getSupabaseAdmin();
-    const db = admin ?? supabase;
-    const { error: dbError } = await db
-      .from("users")
-      .update({ full_name: fullName })
-      .eq("id", userId);
-    if (dbError) throw new Error(dbError.message);
+    await ensurePublicUserProfile(supabase, { full_name: fullName });
 
     return { success: true };
   });
@@ -214,26 +211,16 @@ export const updateInstitutionFn = createServerFn({ method: "POST" })
     const supabase = createSupabaseServerClient();
     const userId = await requireUserId(supabase);
 
-    const admin = getSupabaseAdmin();
-    const db = admin ?? supabase;
-
-    const { data: existing, error: readError } = await db
-      .from("users")
-      .select("institution_id")
-      .eq("id", userId)
-      .maybeSingle();
-    if (readError) throw new Error(readError.message);
-    if (existing?.institution_id) {
+    const profile = await ensurePublicUserProfile(supabase);
+    if (profile.institution_id) {
       throw new Error(
         "Institution is already assigned. Contact an administrator to change it.",
       );
     }
 
-    const { error } = await db
-      .from("users")
-      .update({ institution_id: data.institutionId })
-      .eq("id", userId);
-    if (error) throw new Error(error.message);
+    await ensurePublicUserProfile(supabase, {
+      institution_id: data.institutionId,
+    });
 
     return { success: true };
   });
@@ -320,6 +307,8 @@ export const syncMfaEnabledFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const userId = await requireUserId(supabase);
+
+    await ensurePublicUserProfile(supabase);
 
     const admin = getSupabaseAdmin();
     const db = admin ?? supabase;

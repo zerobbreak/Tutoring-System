@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { format, parseISO } from "date-fns";
 import {
   Table,
@@ -39,7 +40,17 @@ export function PendingVerificationTable({
         {claims.map((claim) => (
           <TableRow key={claim.id}>
             <TableCell className="font-medium">
-              {claim.tutor?.full_name ?? "—"}
+              {claim.tutor?.id ? (
+                <Link
+                  to="/lecturer/tutors"
+                  search={{ tutor: claim.tutor.id }}
+                  className="hover:underline"
+                >
+                  {claim.tutor.full_name}
+                </Link>
+              ) : (
+                (claim.tutor?.full_name ?? "—")
+              )}
             </TableCell>
             <TableCell>{claim.module?.code ?? "—"}</TableCell>
             <TableCell>{claim.hours}</TableCell>

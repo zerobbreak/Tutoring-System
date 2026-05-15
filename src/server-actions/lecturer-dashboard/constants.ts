@@ -16,7 +16,7 @@ export const PENDING_CLAIMS_SELECT = `
   attendance_present_count,
   attendance_expected_count,
   module:modules ( code, name ),
-  tutor:users!session_claims_tutor_id_fkey ( full_name, email )
+  tutor:users!session_claims_tutor_id_fkey ( id, full_name, email )
 `;
 
 export const RECENT_CLAIMS_SELECT = `

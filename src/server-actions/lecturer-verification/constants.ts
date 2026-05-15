@@ -15,7 +15,7 @@ export const VERIFICATION_CLAIM_SELECT = `
   attendance_expected_count,
   source_schedule_import_id,
   module:modules ( id, code, name ),
-  tutor:users!session_claims_tutor_id_fkey ( full_name, email )
+  tutor:users!session_claims_tutor_id_fkey ( id, full_name, email )
 `;
 
 export const RECENTLY_VERIFIED_LIMIT = 15;

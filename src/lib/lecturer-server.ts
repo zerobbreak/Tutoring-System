@@ -1,3 +1,4 @@
+import { ensurePublicUserProfile } from "#/lib/ensure-public-user";
 import type { createSupabaseServerClient } from "#/lib/supabase-server";
 
 export async function requireLecturerId(
@@ -13,5 +14,8 @@ export async function requireLecturerId(
   if (role !== "LECTURER") {
     throw new Error("Lecturer access required.");
   }
+
+  await ensurePublicUserProfile(supabase, { role: "LECTURER" });
+
   return user.id;
 }

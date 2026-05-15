@@ -22,7 +22,7 @@ export type LecturerSessionCardDTO = {
   completion_verified: boolean;
   linked_from_schedule: boolean;
   module: { id: string; code: string; name: string } | null;
-  tutor: { full_name: string; email: string } | null;
+  tutor: { id: string; full_name: string; email: string } | null;
 };
 
 export type LecturerSessionsPageDataDTO = {
@@ -86,7 +86,7 @@ export type LecturerSessionDetailDTO = {
   qr_expires_at: string | null;
   qr_check_in_url: string | null;
   module: { id: string; code: string; name: string } | null;
-  tutor: { full_name: string; email: string } | null;
+  tutor: { id: string; full_name: string; email: string } | null;
   evidence: {
     id: string;
     file_name: string;
