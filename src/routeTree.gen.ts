@@ -20,6 +20,7 @@ import { Route as TutorSchedulesRouteImport } from './routes/tutor/schedules'
 import { Route as TutorRegisterGenerationRouteImport } from './routes/tutor/register-generation'
 import { Route as TutorNotesRouteImport } from './routes/tutor/notes'
 import { Route as TutorMessagingRouteImport } from './routes/tutor/messaging'
+import { Route as StudentCheckInRouteImport } from './routes/student/check-in'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthRecoverPasswordRouteImport } from './routes/auth/recover-password'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
@@ -80,6 +81,11 @@ const TutorMessagingRoute = TutorMessagingRouteImport.update({
   path: '/messaging',
   getParentRoute: () => TutorRouteRoute,
 } as any)
+const StudentCheckInRoute = StudentCheckInRouteImport.update({
+  id: '/student/check-in',
+  path: '/student/check-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRegisterRoute = AuthRegisterRouteImport.update({
   id: '/auth/register',
   path: '/auth/register',
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/auth/recover-password': typeof AuthRecoverPasswordRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/student/check-in': typeof StudentCheckInRoute
   '/tutor/messaging': typeof TutorMessagingRoute
   '/tutor/notes': typeof TutorNotesRoute
   '/tutor/register-generation': typeof TutorRegisterGenerationRoute
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/recover-password': typeof AuthRecoverPasswordRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/student/check-in': typeof StudentCheckInRoute
   '/tutor/messaging': typeof TutorMessagingRoute
   '/tutor/notes': typeof TutorNotesRoute
   '/tutor/register-generation': typeof TutorRegisterGenerationRoute
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/auth/recover-password': typeof AuthRecoverPasswordRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/student/check-in': typeof StudentCheckInRoute
   '/tutor/messaging': typeof TutorMessagingRoute
   '/tutor/notes': typeof TutorNotesRoute
   '/tutor/register-generation': typeof TutorRegisterGenerationRoute
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/recover-password'
     | '/auth/register'
+    | '/student/check-in'
     | '/tutor/messaging'
     | '/tutor/notes'
     | '/tutor/register-generation'
@@ -176,6 +186,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/recover-password'
     | '/auth/register'
+    | '/student/check-in'
     | '/tutor/messaging'
     | '/tutor/notes'
     | '/tutor/register-generation'
@@ -193,6 +204,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/recover-password'
     | '/auth/register'
+    | '/student/check-in'
     | '/tutor/messaging'
     | '/tutor/notes'
     | '/tutor/register-generation'
@@ -211,6 +223,7 @@ export interface RootRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRecoverPasswordRoute: typeof AuthRecoverPasswordRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
+  StudentCheckInRoute: typeof StudentCheckInRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
 
@@ -293,6 +306,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TutorMessagingRouteImport
       parentRoute: typeof TutorRouteRoute
     }
+    '/student/check-in': {
+      id: '/student/check-in'
+      path: '/student/check-in'
+      fullPath: '/student/check-in'
+      preLoaderRoute: typeof StudentCheckInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/register': {
       id: '/auth/register'
       path: '/auth/register'
@@ -366,6 +386,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
   AuthRecoverPasswordRoute: AuthRecoverPasswordRoute,
   AuthRegisterRoute: AuthRegisterRoute,
+  StudentCheckInRoute: StudentCheckInRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }
 export const routeTree = rootRouteImport

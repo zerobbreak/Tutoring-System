@@ -127,7 +127,9 @@ function TutorSchedulesPage() {
   const result = useMemo(() => mergeScheduleSources(sources), [sources]);
   const [selectedDay, setSelectedDay] = useState<Date | undefined>(undefined);
   const [showFullTimetable, setShowFullTimetable] = useState(false);
-  const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(new Date()));
+  const [calendarMonth, setCalendarMonth] = useState(() =>
+    startOfMonth(new Date()),
+  );
 
   const displayEvents = useMemo(() => {
     if (!result.events.length) return [];
@@ -177,8 +179,7 @@ function TutorSchedulesPage() {
   }, []);
 
   const byDay = useMemo(
-    () =>
-      displayEvents.length ? groupEventsByDay(displayEvents) : new Map(),
+    () => (displayEvents.length ? groupEventsByDay(displayEvents) : new Map()),
     [displayEvents],
   );
 
@@ -205,9 +206,7 @@ function TutorSchedulesPage() {
     setSelectedDay(startOfDay(new Date(sorted[0]!.start)));
   }, [displayEvents]);
 
-  const selectedDayKey = selectedDay
-    ? format(selectedDay, "yyyy-MM-dd")
-    : "";
+  const selectedDayKey = selectedDay ? format(selectedDay, "yyyy-MM-dd") : "";
   const selectedDayEvents = selectedDayKey
     ? (byDay.get(selectedDayKey) ?? [])
     : [];
@@ -221,7 +220,8 @@ function TutorSchedulesPage() {
   );
 
   const tutorByDayMap = useMemo(
-    () => (tutorOnlyEvents.length ? groupEventsByDay(tutorOnlyEvents) : new Map()),
+    () =>
+      tutorOnlyEvents.length ? groupEventsByDay(tutorOnlyEvents) : new Map(),
     [tutorOnlyEvents],
   );
 
@@ -307,51 +307,54 @@ function TutorSchedulesPage() {
     [navigate],
   );
 
-  const runParse = useCallback(async (file: File) => {
-    setBusy(true);
-    try {
-      let uid = tutorId;
-      if (!uid) {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        uid = user?.id ?? null;
-        if (uid) setTutorId(uid);
-      }
-      if (!uid) {
-        toast.error("Sign in to save schedule imports.");
-        return;
-      }
+  const runParse = useCallback(
+    async (file: File) => {
+      setBusy(true);
+      try {
+        let uid = tutorId;
+        if (!uid) {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          uid = user?.id ?? null;
+          if (uid) setTutorId(uid);
+        }
+        if (!uid) {
+          toast.error("Sign in to save schedule imports.");
+          return;
+        }
 
-      const fileBase64 = await fileToBase64(file);
-      const data = await saveTutorScheduleImportFn({
-        data: { fileBase64, fileName: file.name },
-      });
-
-      setSources((prev) => [
-        ...prev,
-        { id: data.id, fileName: data.fileName, result: data.result },
-      ]);
-
-      if (data.result.events.length === 0) {
-        toast.message("No events parsed", {
-          description:
-            "Check the header row and column names, or try the sample CSV.",
+        const fileBase64 = await fileToBase64(file);
+        const data = await saveTutorScheduleImportFn({
+          data: { fileBase64, fileName: file.name },
         });
-      } else {
-        const tutorRows = data.result.events.filter((ev) =>
-          isTutorialTimetableEvent(ev, data.result.sessionTypeColumnPresent),
-        ).length;
-        toast.success(
-          `Added ${tutorRows} tutor session${tutorRows === 1 ? "" : "s"} from “${file.name}” (saved). Use “Add spreadsheet” to merge another export.`,
-        );
+
+        setSources((prev) => [
+          ...prev,
+          { id: data.id, fileName: data.fileName, result: data.result },
+        ]);
+
+        if (data.result.events.length === 0) {
+          toast.message("No events parsed", {
+            description:
+              "Check the header row and column names, or try the sample CSV.",
+          });
+        } else {
+          const tutorRows = data.result.events.filter((ev) =>
+            isTutorialTimetableEvent(ev, data.result.sessionTypeColumnPresent),
+          ).length;
+          toast.success(
+            `Added ${tutorRows} tutor session${tutorRows === 1 ? "" : "s"} from “${file.name}” (saved). Use “Add spreadsheet” to merge another export.`,
+          );
+        }
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "Upload failed");
+      } finally {
+        setBusy(false);
       }
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Upload failed");
-    } finally {
-      setBusy(false);
-    }
-  }, [tutorId]);
+    },
+    [tutorId],
+  );
 
   const removeSource = useCallback(
     async (sourceId: string) => {
@@ -439,11 +442,13 @@ function TutorSchedulesPage() {
             Upload Your Schedule
           </h1>
           <p className="mx-auto mb-10 max-w-md text-lg text-(--sea-ink-soft)">
-            Import your tutorial timetable from a spreadsheet. You can add more files later — each
-            import merges into the same calendar so multiple modules or campuses stay in one view.
-            Successful imports are{" "}
-            <span className="font-medium text-(--sea-ink)">saved to your account</span> so they
-            reappear when you return.
+            Import your tutorial timetable from a spreadsheet. You can add more
+            files later — each import merges into the same calendar so multiple
+            modules or campuses stay in one view. Successful imports are{" "}
+            <span className="font-medium text-(--sea-ink)">
+              saved to your account
+            </span>{" "}
+            so they reappear when you return.
           </p>
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Button
@@ -453,7 +458,11 @@ function TutorSchedulesPage() {
               onClick={() => inputRef.current?.click()}
             >
               <Upload className="size-5" />
-              {loadingSaved ? "Loading…" : busy ? "Parsing…" : "Select Spreadsheet"}
+              {loadingSaved
+                ? "Loading…"
+                : busy
+                  ? "Parsing…"
+                  : "Select Spreadsheet"}
             </Button>
             <Button
               variant="outline"
@@ -517,13 +526,19 @@ function TutorSchedulesPage() {
             </div>
             {sources.length > 0 && (
               <div className="flex flex-col gap-1.5">
-                <div className="flex flex-wrap gap-2" aria-label="Imported files">
+                <div
+                  className="flex flex-wrap gap-2"
+                  aria-label="Imported files"
+                >
                   {sources.map((s) => (
                     <span
                       key={s.id}
                       className="inline-flex max-w-full items-center gap-1 rounded-full border border-border bg-muted/40 px-2.5 py-1 text-xs text-foreground"
                     >
-                      <span className="max-w-[14rem] truncate font-medium" title={s.fileName}>
+                      <span
+                        className="max-w-56 truncate font-medium"
+                        title={s.fileName}
+                      >
                         {s.fileName}
                       </span>
                       <span className="shrink-0 tabular-nums text-muted-foreground">
@@ -543,7 +558,8 @@ function TutorSchedulesPage() {
                 </div>
                 {!loadingSaved && tutorId ? (
                   <p className="text-[11px] text-muted-foreground">
-                    These imports are stored for your account and load automatically next time.
+                    These imports are stored for your account and load
+                    automatically next time.
                   </p>
                 ) : null}
               </div>
@@ -569,14 +585,16 @@ function TutorSchedulesPage() {
                   months: "flex h-full w-full flex-col",
                   month:
                     "grid h-full w-full flex-1 grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-[auto_1fr] gap-x-1 gap-y-2 md:gap-x-2 md:gap-y-2 [&>*:last-child]:col-span-3",
-                  month_caption: "flex min-w-0 shrink-0 items-center justify-center px-1 py-0.5",
+                  month_caption:
+                    "flex min-w-0 shrink-0 items-center justify-center px-1 py-0.5",
                   caption_label:
                     "truncate text-center text-sm font-semibold tabular-nums text-foreground md:text-base",
                   button_previous:
                     "size-8 shrink-0 self-center rounded-lg opacity-70 transition-opacity hover:bg-muted hover:opacity-100 [&_svg]:size-4",
                   button_next:
                     "size-8 shrink-0 self-center rounded-lg opacity-70 transition-opacity hover:bg-muted hover:opacity-100 [&_svg]:size-4",
-                  month_grid: "w-full h-full table-fixed border-collapse border-spacing-0",
+                  month_grid:
+                    "w-full h-full table-fixed border-collapse border-spacing-0",
                   weekdays: "table-row",
                   weekday:
                     "table-cell w-[14.28%] p-0 pb-1.5 text-center text-[0.7rem] font-medium normal-case tracking-normal text-muted-foreground sm:text-xs",
@@ -584,12 +602,14 @@ function TutorSchedulesPage() {
                   day: "relative table-cell w-[14.28%] p-0 py-0.5 text-center align-middle text-sm focus-within:relative focus-within:z-20",
                   day_button:
                     "mx-auto flex h-[var(--cell-size)] w-[var(--cell-size)] shrink-0 rounded-lg p-0 text-sm font-normal transition-colors hover:bg-muted/60 data-[selected-single=true]:shadow-none data-[selected-single=true]:!bg-[var(--lagoon-deep)] data-[selected-single=true]:!text-white data-[selected-single=true]:hover:!bg-[var(--lagoon-deep)] sm:text-base",
-                  selected: "[&_button]:!bg-[var(--lagoon-deep)] [&_button]:!text-white",
+                  selected:
+                    "[&_button]:!bg-[var(--lagoon-deep)] [&_button]:!text-white",
                   today:
                     "font-semibold text-[var(--lagoon-deep)] [&_button]:bg-muted/40 [&_button]:ring-0",
                   outside: "text-muted-foreground/60",
                   disabled: "text-muted-foreground opacity-40",
-                  range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+                  range_middle:
+                    "aria-selected:bg-accent aria-selected:text-accent-foreground",
                   hidden: "invisible",
                 }}
               />
@@ -598,19 +618,28 @@ function TutorSchedulesPage() {
             {!showFullTimetable ? (
               <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground md:text-xs">
                 <span className="inline-flex items-center gap-1.5">
-                  <span className="size-1.5 shrink-0 rounded-full bg-(--lagoon-deep)" aria-hidden />
+                  <span
+                    className="size-1.5 shrink-0 rounded-full bg-(--lagoon-deep)"
+                    aria-hidden
+                  />
                   Tutor day
                 </span>
                 <span className="mx-2 text-muted-foreground/40">·</span>
                 <span className="inline-flex items-center gap-1.5">
-                  <span className="size-1.5 shrink-0 rounded-full bg-(--palm)" aria-hidden />
+                  <span
+                    className="size-1.5 shrink-0 rounded-full bg-(--palm)"
+                    aria-hidden
+                  />
                   Other classes only
                 </span>
               </p>
             ) : (
               <p className="mt-3 text-[11px] text-muted-foreground md:text-xs">
                 <span className="inline-flex items-center gap-1.5">
-                  <span className="size-1.5 shrink-0 rounded-full bg-(--lagoon-deep)" aria-hidden />
+                  <span
+                    className="size-1.5 shrink-0 rounded-full bg-(--lagoon-deep)"
+                    aria-hidden
+                  />
                   Day with events
                 </span>
               </p>
@@ -643,7 +672,10 @@ function TutorSchedulesPage() {
               >
                 Tutor
               </button>
-              <span className="select-none text-muted-foreground/35" aria-hidden>
+              <span
+                className="select-none text-muted-foreground/35"
+                aria-hidden
+              >
                 /
               </span>
               <button
@@ -683,57 +715,63 @@ function TutorSchedulesPage() {
                 const canNotes =
                   !!ev.importSourceId?.trim() && !!ev.moduleCode?.trim();
                 return (
-                <li key={rowKey}>
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="min-w-0 flex-1 text-base font-semibold leading-snug text-(--sea-ink) md:text-lg">
-                      {ev.title}
-                    </p>
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 shrink-0 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-                        disabled={!canNotes || linkingRowKey === rowKey}
-                        title={
-                          canNotes
-                            ? "Open session notes for this slot"
-                            : !ev.moduleCode?.trim()
-                              ? "Module code required"
-                              : "Save import required"
-                        }
-                        onClick={() => void openSessionNotes(ev, idx)}
-                      >
-                        {linkingRowKey === rowKey ? (
-                          <Loader2 className="size-3.5 animate-spin" aria-hidden />
-                        ) : (
-                          <NotebookPen className="size-3.5" aria-hidden />
-                        )}
-                        <span className="hidden sm:inline">Notes</span>
-                      </Button>
-                      <time className="shrink-0 text-xs tabular-nums text-muted-foreground md:text-sm">
-                        {formatTimeRange(ev.start, ev.end)}
-                      </time>
+                  <li key={rowKey}>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="min-w-0 flex-1 text-base font-semibold leading-snug text-(--sea-ink) md:text-lg">
+                        {ev.title}
+                      </p>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 shrink-0 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                          disabled={!canNotes || linkingRowKey === rowKey}
+                          title={
+                            canNotes
+                              ? "Open session notes for this slot"
+                              : !ev.moduleCode?.trim()
+                                ? "Module code required"
+                                : "Save import required"
+                          }
+                          onClick={() => void openSessionNotes(ev, idx)}
+                        >
+                          {linkingRowKey === rowKey ? (
+                            <Loader2
+                              className="size-3.5 animate-spin"
+                              aria-hidden
+                            />
+                          ) : (
+                            <NotebookPen className="size-3.5" aria-hidden />
+                          )}
+                          <span className="hidden sm:inline">Notes</span>
+                        </Button>
+                        <time className="shrink-0 text-xs tabular-nums text-muted-foreground md:text-sm">
+                          {formatTimeRange(ev.start, ev.end)}
+                        </time>
+                      </div>
                     </div>
-                  </div>
-                  {(ev.sessionType || ev.moduleCode || ev.location) && (
-                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                      {ev.sessionType ? (
-                        <span className="uppercase tracking-wide text-muted-foreground/80">
-                          {ev.sessionType}
+                    {(ev.sessionType || ev.moduleCode || ev.location) && (
+                      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                        {ev.sessionType ? (
+                          <span className="uppercase tracking-wide text-muted-foreground/80">
+                            {ev.sessionType}
+                          </span>
+                        ) : null}
+                        {ev.moduleCode ? <span>{ev.moduleCode}</span> : null}
+                        {ev.location ? <span>{ev.location}</span> : null}
+                      </div>
+                    )}
+                    {sources.length > 1 && ev.importSourceFile ? (
+                      <p className="mt-1.5 text-[11px] text-muted-foreground/90">
+                        From{" "}
+                        <span className="font-medium">
+                          {ev.importSourceFile}
                         </span>
-                      ) : null}
-                      {ev.moduleCode ? <span>{ev.moduleCode}</span> : null}
-                      {ev.location ? <span>{ev.location}</span> : null}
-                    </div>
-                  )}
-                  {sources.length > 1 && ev.importSourceFile ? (
-                    <p className="mt-1.5 text-[11px] text-muted-foreground/90">
-                      From <span className="font-medium">{ev.importSourceFile}</span>
-                    </p>
-                  ) : null}
-                </li>
-              );
+                      </p>
+                    ) : null}
+                  </li>
+                );
               })}
             </ul>
           )}
@@ -742,11 +780,16 @@ function TutorSchedulesPage() {
             <div className="mt-10 rounded-lg bg-amber-50/80 p-4 dark:bg-amber-950/20">
               <div className="mb-2 flex items-center gap-2 text-amber-900 dark:text-amber-200">
                 <Info className="size-4 shrink-0" />
-                <span className="text-xs font-medium uppercase tracking-wide">Import notes</span>
+                <span className="text-xs font-medium uppercase tracking-wide">
+                  Import notes
+                </span>
               </div>
               <ul className="space-y-1.5">
                 {result.rowIssues.slice(0, 5).map((issue, i) => (
-                  <li key={i} className="text-[11px] leading-relaxed text-amber-900/85 dark:text-amber-100/85">
+                  <li
+                    key={i}
+                    className="text-[11px] leading-relaxed text-amber-900/85 dark:text-amber-100/85"
+                  >
                     Row {issue.rowNumber}: {issue.message}
                   </li>
                 ))}
