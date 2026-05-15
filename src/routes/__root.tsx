@@ -89,6 +89,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const isAuthPage = location.pathname.startsWith("/auth");
   const isTutorShell =
     location.pathname === "/tutor" || location.pathname.startsWith("/tutor/");
+  const isAdminShell =
+    location.pathname === "/admin" || location.pathname.startsWith("/admin/");
+  const isDashboardShell = isTutorShell || isAdminShell;
 
   const brandTo = session?.user
     ? getPostAuthDashboardPath(
@@ -102,9 +105,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body
-        className={`bg-gray-50 ${isTutorShell ? "flex h-screen flex-col overflow-hidden" : "min-h-screen"}`}
+        className={`bg-gray-50 ${isDashboardShell ? "flex h-screen flex-col overflow-hidden" : "min-h-screen"}`}
       >
-        {!isAuthPage && !isTutorShell && (
+        {!isAuthPage && !isDashboardShell && (
           <nav className="border-b bg-white px-4 py-3 shadow-sm">
             <div className="mx-auto flex max-w-7xl items-center justify-between">
               <Link to={brandTo} className="text-xl font-bold text-indigo-600">
@@ -134,7 +137,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           </nav>
         )}
         <main
-          className={isTutorShell ? "flex min-h-0 flex-1 flex-col" : undefined}
+          className={
+            isDashboardShell ? "flex min-h-0 flex-1 flex-col" : undefined
+          }
         >
           {children}
         </main>
