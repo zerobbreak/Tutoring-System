@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
-import { parse } from "date-fns";
+import { isAfter, parse, parseISO } from "date-fns";
 import * as z from "zod";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
+import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import {
   schedulingDateForColumn,
   type ClaimStatus,
@@ -61,8 +62,8 @@ export type TutorSessionClaimDTO = {
   id: string;
   module_id: string;
   session_date: string;
-  start_time: string;
-  end_time: string;
+  start_time: string | null;
+  end_time: string | null;
   hours: number;
   venue: string | null;
   status: ClaimStatus;
@@ -73,6 +74,8 @@ export type TutorSessionClaimDTO = {
   session_kind: string | null;
   attendance_present_count: number | null;
   attendance_expected_count: number | null;
+  qr_token: string | null;
+  qr_expires_at: string | null;
   module: {
     id: string;
     code: string;
@@ -85,6 +88,34 @@ export type TutorSessionClaimDTO = {
     } | null;
   } | null;
   evidenceCount: number;
+};
+
+export type VerificationActionDTO = {
+  id: string;
+  claim_id: string;
+  actor_id: string;
+  actor: {
+    id: string;
+    full_name: string;
+    email: string;
+  } | null;
+  action_type: string;
+  from_status: ClaimStatus | null;
+  to_status: ClaimStatus | null;
+  comment: string | null;
+  acted_at: string;
+};
+
+export type ClaimEvidenceDTO = {
+  id: string;
+  file_name: string;
+  file_url: string;
+  uploaded_at: string;
+};
+
+export type ClaimDetailsDTO = TutorSessionClaimDTO & {
+  evidence: ClaimEvidenceDTO[];
+  history: VerificationActionDTO[];
 };
 
 type LecturerRow = { id: string; full_name: string; email: string };
@@ -139,6 +170,8 @@ function mapClaimRow(r: RawClaim, evidenceCount: number): TutorSessionClaimDTO {
     session_kind: r.session_kind,
     attendance_present_count: r.attendance_present_count,
     attendance_expected_count: r.attendance_expected_count,
+    qr_token: r.qr_token,
+    qr_expires_at: r.qr_expires_at,
     module: moduleOut,
     evidenceCount,
   };
@@ -170,6 +203,8 @@ export const listTutorSessionClaimsFn = createServerFn({
         session_kind,
         attendance_present_count,
         attendance_expected_count,
+        qr_token,
+        qr_expires_at,
         module:modules (
           id,
           code,
@@ -511,3 +546,303 @@ export const listTutorModuleAssignmentsFn = createServerFn({
   }
   return out;
 });
+
+const generateQRSchema = z.object({
+  claimId: z.string().uuid(),
+  expiresInMinutes: z.number().int().min(1).max(1440).default(30),
+});
+
+/** Generate/refresh a secure QR token for a session. */
+export const generateSessionTokenFn = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => generateQRSchema.parse(input))
+  .handler(async ({ data }) => {
+    const supabase = createSupabaseServerClient();
+    const tutorId = await requireUserId(supabase);
+
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + data.expiresInMinutes);
+
+    const qr_token = crypto.randomUUID();
+
+    const { error } = await supabase
+      .from("session_claims")
+      .update({
+        qr_token,
+        qr_expires_at: expiresAt.toISOString(),
+      })
+      .eq("id", data.claimId)
+      .eq("tutor_id", tutorId);
+
+    if (error) throw new Error(error.message);
+    return { qr_token, qr_expires_at: expiresAt.toISOString() };
+  });
+
+export type AttendanceRecordDTO = {
+  id: string;
+  student_id: string;
+  status: "PRESENT" | "LATE" | "ABSENT" | "EXCUSED";
+  check_in_time: string | null;
+  is_verified: boolean;
+  notes: string | null;
+  student: {
+    full_name: string;
+    email: string | null;
+    student_reference: string | null;
+  };
+};
+
+/** Get the detailed attendance roster for a session. */
+export const getAttendanceDataFn = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ claimId: z.string().uuid() }).parse(input))
+  .handler(async ({ data }): Promise<AttendanceRecordDTO[]> => {
+    const supabase = createSupabaseServerClient();
+    const tutorId = await requireUserId(supabase);
+
+    // Verify ownership
+    const { data: claim, error: cErr } = await supabase
+      .from("session_claims")
+      .select("id")
+      .eq("id", data.claimId)
+      .eq("tutor_id", tutorId)
+      .maybeSingle();
+
+    if (cErr) throw new Error(cErr.message);
+    if (!claim) throw new Error("Session not found.");
+
+    const { data: rows, error } = await supabase
+      .from("session_attendance")
+      .select(`
+        id,
+        student_id,
+        status,
+        check_in_time,
+        is_verified,
+        notes,
+        student:students (
+          full_name,
+          email,
+          student_reference
+        )
+      `)
+      .eq("session_id", data.claimId)
+      .order("check_in_time", { ascending: false });
+
+    if (error) throw new Error(error.message);
+
+    return (rows ?? []).map((r: any) => ({
+      ...r,
+      student: Array.isArray(r.student) ? r.student[0] : r.student,
+    }));
+  });
+
+/** Get aggregate attendance trends. */
+export const getHistoricalAttendanceFn = createServerFn({ method: "GET" })
+  .handler(async () => {
+    const supabase = createSupabaseServerClient();
+    const tutorId = await requireUserId(supabase);
+
+    // Simple aggregate query for the last 10 sessions
+    const { data, error } = await supabase
+      .from("session_claims")
+      .select(`
+        id,
+        session_date,
+        attendance_present_count,
+        attendance_expected_count
+      `)
+      .eq("tutor_id", tutorId)
+      .not("attendance_present_count", "is", null)
+      .order("session_date", { ascending: true })
+      .limit(10);
+
+    if (error) throw new Error(error.message);
+
+    return data.map(d => ({
+      date: d.session_date,
+      present: d.attendance_present_count || 0,
+      expected: d.attendance_expected_count || 0,
+    }));
+  });
+
+/** Student check-in via QR token. */
+export const checkInStudentFn = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => 
+    z.object({
+      token: z.string().uuid(),
+      sessionId: z.string().uuid(),
+      studentReference: z.string().min(1),
+    }).parse(input)
+  )
+  .handler(async ({ data }) => {
+    const supabase = createSupabaseServerClient();
+
+    // 1. Verify session and token
+    const { data: claim, error: cErr } = await supabase
+      .from("session_claims")
+      .select("id, qr_token, qr_expires_at, attendance_present_count")
+      .eq("id", data.sessionId)
+      .single();
+
+    if (cErr || !claim) throw new Error("Session not found.");
+    if (claim.qr_token !== data.token) throw new Error("Invalid QR token.");
+    if (claim.qr_expires_at && isAfter(new Date(), parseISO(claim.qr_expires_at))) {
+      throw new Error("QR token has expired.");
+    }
+
+    // 2. Find student by reference
+    const { data: student, error: sErr } = await supabase
+      .from("students")
+      .select("id, full_name")
+      .eq("student_reference", data.studentReference)
+      .maybeSingle();
+
+    if (sErr || !student) throw new Error("Student not found. Please verify your student reference number.");
+
+    // 3. Create attendance record
+    const admin = getSupabaseAdmin();
+    const db = admin || supabase; // Fallback to server client if admin not configured
+
+    const { error: aErr } = await db
+      .from("session_attendance")
+      .upsert({
+        session_id: data.sessionId,
+        student_id: student.id,
+        status: "PRESENT",
+        check_in_time: new Date().toISOString(),
+      }, { onConflict: "session_id, student_id" });
+
+    if (aErr) {
+      if (aErr.code === "23505") throw new Error("You have already checked in for this session.");
+      throw new Error(aErr.message);
+    }
+
+    // 4. Update aggregate count
+    const { data: countData } = await db
+      .from("session_attendance")
+      .select("id", { count: "exact" })
+      .eq("session_id", data.sessionId);
+
+    await db
+      .from("session_claims")
+      .update({ attendance_present_count: countData?.length || 0 })
+      .eq("id", data.sessionId);
+
+    return { success: true, studentName: student.full_name };
+  });
+
+/** Get detailed information for a single claim, including history and evidence. */
+export const getClaimDetailsFn = createServerFn({
+  method: "GET",
+})
+  .inputValidator((input: unknown) =>
+    z.object({ claimId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data }): Promise<ClaimDetailsDTO> => {
+    const supabase = createSupabaseServerClient();
+    const tutorId = await requireUserId(supabase);
+
+    const { data: claimRow, error: cErr } = await supabase
+      .from("session_claims")
+      .select(
+        `
+        id,
+        module_id,
+        session_date,
+        start_time,
+        end_time,
+        hours,
+        venue,
+        status,
+        notes,
+        topics_covered,
+        coverage_validated_at,
+        submitted_at,
+        session_kind,
+        attendance_present_count,
+        attendance_expected_count,
+        qr_token,
+        qr_expires_at,
+        module:modules (
+          id,
+          code,
+          name,
+          lecturer_id,
+          lecturer:users!modules_lecturer_id_fkey ( id, full_name, email )
+        )
+      `,
+      )
+      .eq("id", data.claimId)
+      .eq("tutor_id", tutorId)
+      .maybeSingle();
+
+    if (cErr) throw new Error(cErr.message);
+    if (!claimRow) throw new Error("Claim not found.");
+
+    const { data: evRows, error: evErr } = await supabase
+      .from("attendance_evidence")
+      .select("id, file_url, original_filename, uploaded_at")
+      .eq("claim_id", data.claimId)
+      .order("uploaded_at", { ascending: false });
+
+    if (evErr) throw new Error(evErr.message);
+
+    const evidence: ClaimEvidenceDTO[] = [];
+    for (const r of evRows ?? []) {
+      let file_url = r.file_url as string;
+      if (file_url.startsWith(`${BUCKET}/`)) {
+        const path = file_url.slice(BUCKET.length + 1);
+        const { data: signed } = await supabase.storage
+          .from(BUCKET)
+          .createSignedUrl(path, 3600);
+        if (signed?.signedUrl) file_url = signed.signedUrl;
+      }
+      evidence.push({
+        id: r.id as string,
+        file_name: r.original_filename as string,
+        file_url,
+        uploaded_at: (r.uploaded_at as string) || new Date().toISOString(),
+      });
+    }
+
+    const { data: historyRows, error: hErr } = await supabase
+      .from("verification_actions")
+      .select(
+        `
+        id,
+        claim_id,
+        actor_id,
+        action_type,
+        from_status,
+        to_status,
+        comment,
+        acted_at,
+        actor:users ( id, full_name, email )
+      `,
+      )
+      .eq("claim_id", data.claimId)
+      .order("acted_at", { ascending: false });
+
+    if (hErr) throw new Error(hErr.message);
+
+    const history: VerificationActionDTO[] = (historyRows ?? []).map(
+      (r: any) => ({
+        id: r.id,
+        claim_id: r.claim_id,
+        actor_id: r.actor_id,
+        action_type: r.action_type,
+        from_status: r.from_status,
+        to_status: r.to_status,
+        comment: r.comment,
+        acted_at: r.acted_at,
+        actor: Array.isArray(r.actor) ? r.actor[0] : r.actor,
+      }),
+    );
+
+    const mapped = mapClaimRow(claimRow as any, evidence.length);
+
+    return {
+      ...mapped,
+      evidence,
+      history,
+    };
+  });

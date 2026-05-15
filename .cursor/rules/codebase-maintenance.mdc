@@ -1,0 +1,32 @@
+---
+description: Keep the codebase clean, consistent, and well maintained
+alwaysApply: true
+---
+
+# Codebase maintenance
+
+Every change should leave the project easier to work in, not harder.
+
+## Scope and focus
+
+- Change only what the task requires; no drive-by refactors or unrelated file edits.
+- Match existing naming, folder layout, imports (`#/…` aliases), and component patterns.
+- One concern per module — extract helpers or hooks when a file grows unwieldy.
+
+## Quality bar
+
+- Remove unused imports, dead code, and commented-out blocks you introduced.
+- Prefer clear names and small functions over clever one-liners.
+- Reuse existing utilities and UI primitives (`src/components/ui/`) before adding new ones.
+- Keep types accurate; avoid `any` unless the surrounding code already does and you are unblocking a fix.
+
+## Consistency
+
+- Follow the same error-handling and loading patterns as neighboring routes/components.
+- Colocate feature code (e.g. `src/components/messaging/`, `src/server-actions/messaging/`).
+- Do not add markdown docs or README sections unless the user asks.
+
+## Before finishing
+
+- Mentally lint the touched files: formatting, imports, and obvious type issues.
+- If a migration or server function was added, ensure the client and server stay in sync.

@@ -1,37 +1,39 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { ArrowLeft, Bell, Shield, User } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { AccountSettings } from "#/components/settings/account-settings";
+import { NotificationsSettings } from "#/components/settings/notifications-settings";
+import { SecuritySettings } from "#/components/settings/security-settings";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
+import { getPostAuthDashboardPath } from "#/lib/user-role";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "../../components/ui/card";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "../../components/ui/avatar";
-import { updateProfileServerFn } from "../../lib/auth-server";
-import { toast } from "../../lib/toast";
-import { formatRoleLabel } from "../../lib/user-role";
+  getSettingsProfileFn,
+  type SettingsProfileDTO,
+} from "#/server-actions/settings";
 import { Route as RootRoute } from "../__root";
 
 export const Route = createFileRoute("/settings/")({
+  loader: async () => {
+    try {
+      return { profile: await getSettingsProfileFn() };
+    } catch {
+      return { profile: null };
+    }
+  },
   component: SettingsPage,
 });
 
 function SettingsPage() {
   const { sessionData } = RootRoute.useLoaderData();
-  const [updating, setUpdating] = useState(false);
-  const [fullName, setFullName] = useState(
-    sessionData?.user?.user_metadata?.full_name || "",
-  );
+  const { profile: loaderProfile } = Route.useLoaderData();
   const navigate = useNavigate();
+  const [profile, setProfile] = useState<SettingsProfileDTO | null>(
+    loaderProfile,
+  );
+  const [loading, setLoading] = useState(!loaderProfile);
+
+  const role = sessionData?.user?.user_metadata?.role as string | undefined;
+  const dashboardPath = getPostAuthDashboardPath(role);
 
   useEffect(() => {
     if (!sessionData?.user) {
@@ -39,136 +41,85 @@ function SettingsPage() {
     }
   }, [sessionData, navigate]);
 
-  const user = sessionData?.user;
-  const loading = !user;
-
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setUpdating(true);
-
+  const refreshProfile = useCallback(async () => {
     try {
-      await updateProfileServerFn({
-        data: { fullName },
-      });
-      toast.success("Profile updated successfully.");
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update profile.");
-    } finally {
-      setUpdating(false);
+      const next = await getSettingsProfileFn();
+      setProfile(next);
+    } catch {
+      /* keep current */
     }
-  };
+  }, []);
 
-  if (loading || !user) {
+  useEffect(() => {
+    if (!loaderProfile && sessionData?.user) {
+      void refreshProfile().finally(() => setLoading(false));
+    }
+  }, [loaderProfile, sessionData?.user, refreshProfile]);
+
+  if (!sessionData?.user || loading || !profile) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex min-h-[60vh] items-center justify-center bg-[#FDFDFF]">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--lagoon)] border-t-transparent" />
       </div>
     );
   }
 
-  const initials = fullName
-    ? fullName
-        .split(" ")
-        .map((n: string) => n[0])
-        .join("")
-        .toUpperCase()
-    : user.email?.[0].toUpperCase();
-
   return (
-    <div className="min-h-screen bg-[#FDFDFF] p-8 lg:p-12">
-      <div className="mx-auto max-w-3xl">
-        <header className="mb-12">
-          <h1 className="font-serif text-4xl font-bold text-[#0A1128]">
+    <div className="min-h-screen bg-[#FDFDFF]">
+      <div className="mx-auto max-w-4xl px-6 py-10 lg:px-10 lg:py-12">
+        <Link
+          to={dashboardPath}
+          className="mb-6 inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-[var(--lagoon-deep)]"
+        >
+          <ArrowLeft className="size-4" />
+          Back to dashboard
+        </Link>
+
+        <header className="mb-8">
+          <h1 className="font-serif text-4xl font-bold tracking-tight text-[#0A1128]">
             Settings
           </h1>
-          <p className="mt-2 text-gray-500">
-            Manage your account preferences and profile information.
+          <p className="mt-2 max-w-xl text-muted-foreground">
+            Personal configuration and account management — profile, security,
+            and notifications.
           </p>
         </header>
 
-        <div className="space-y-8">
-          {/* Profile Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile</CardTitle>
-              <CardDescription>
-                Update your personal information visible to others.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center gap-6">
-                <Avatar className="h-20 w-20">
-                  {user.user_metadata?.avatar_url ? (
-                    <AvatarImage src={user.user_metadata.avatar_url} />
-                  ) : (
-                    <AvatarFallback className="text-2xl">
-                      {initials}
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-                <Button variant="outline" className="text-sm">
-                  Change Avatar
-                </Button>
-              </div>
+        <Tabs defaultValue="account" className="gap-6">
+          <TabsList className="h-auto w-full flex-wrap justify-start gap-1 bg-muted/60 p-1">
+            <TabsTrigger value="account" className="gap-1.5 px-4">
+              <User className="size-4" />
+              Account
+            </TabsTrigger>
+            <TabsTrigger value="security" className="gap-1.5 px-4">
+              <Shield className="size-4" />
+              Security
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="gap-1.5 px-4">
+              <Bell className="size-4" />
+              Notifications
+            </TabsTrigger>
+          </TabsList>
 
-              <form onSubmit={handleUpdateProfile} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Full Name</Label>
-                  <Input
-                    id="fullName"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Enter your full name"
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  disabled={updating}
-                  className="bg-[var(--lagoon)] hover:bg-[var(--lagoon-deep)] text-white"
-                >
-                  {updating ? "Saving..." : "Save Changes"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+          <TabsContent value="account">
+            <AccountSettings profile={profile} onProfileChange={setProfile} />
+          </TabsContent>
 
-          {/* Account Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Account Information</CardTitle>
-              <CardDescription>
-                Your account details and role within the system.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-2">
-                <Label className="text-gray-500">Email Address</Label>
-                <p className="text-[#0A1128] font-medium">{user.email}</p>
-              </div>
-              <div className="grid gap-2">
-                <Label className="text-gray-500">Role</Label>
-                <div className="flex">
-                  <span className="rounded-full bg-[var(--lagoon)]/10 px-3 py-1 text-xs font-bold uppercase text-[var(--lagoon-deep)]">
-                    {formatRoleLabel(user.user_metadata?.role)}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <TabsContent value="security">
+            <SecuritySettings
+              profile={profile}
+              onProfileChange={setProfile}
+              onRefresh={refreshProfile}
+            />
+          </TabsContent>
 
-          {/* Danger Zone */}
-          <Card className="border-red-100 bg-red-50/30">
-            <CardHeader>
-              <CardTitle className="text-red-700">Danger Zone</CardTitle>
-              <CardDescription>
-                Permanently delete your account and all associated data.
-              </CardDescription>
-            </CardHeader>
-            <CardFooter>
-              <Button variant="destructive">Delete Account</Button>
-            </CardFooter>
-          </Card>
-        </div>
+          <TabsContent value="notifications">
+            <NotificationsSettings
+              profile={profile}
+              onProfileChange={setProfile}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

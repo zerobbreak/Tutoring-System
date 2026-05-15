@@ -13,11 +13,11 @@ export const SELF_REGISTER_ROLES = ["TUTOR", "LECTURER", "ADMIN"] as const;
 export type SelfRegisterRole = (typeof SELF_REGISTER_ROLES)[number];
 
 export function isAdminDashboardRole(role: string | undefined): boolean {
-  return (
-    role === "ADMIN" ||
-    role === "LECTURER" ||
-    role === "SUPER_ADMIN"
-  );
+  return role === "ADMIN" || role === "SUPER_ADMIN";
+}
+
+export function isLecturerDashboardRole(role: string | undefined): boolean {
+  return role === "LECTURER";
 }
 
 export function isTutorDashboardRole(role: string | undefined): boolean {
@@ -27,8 +27,9 @@ export function isTutorDashboardRole(role: string | undefined): boolean {
 /** Default app entry for an authenticated user (no bare `/` home route). */
 export function getPostAuthDashboardPath(
   role: string | undefined,
-): "/admin" | "/tutor" | "/settings" {
+): "/admin" | "/lecturer" | "/tutor" | "/settings" {
   if (isAdminDashboardRole(role)) return "/admin";
+  if (isLecturerDashboardRole(role)) return "/lecturer";
   if (isTutorDashboardRole(role)) return "/tutor";
   return "/settings";
 }

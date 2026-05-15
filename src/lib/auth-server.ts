@@ -49,30 +49,37 @@ export const signUpServerFn = createServerFn({ method: "POST" })
 
     if (error) throw new Error(error.message);
 
-    // 3. Populate public.users (RLS-safe: prefer service role on server; else user JWT)
+    // 3. Sync public.users (trigger on auth.users may have already inserted the row)
     if (authData.user) {
       const row = {
         id: authData.user.id,
         email,
         full_name: fullName,
         role,
+        institution_id: null as string | null,
       };
 
       const admin = getSupabaseAdmin();
-      let dbError: { message: string } | null = null;
-
       if (admin) {
-        const { error } = await admin.from("users").insert(row);
-        dbError = error;
+        const { error: dbError } = await admin.from("users").upsert(row, {
+          onConflict: "id",
+        });
+        if (dbError) {
+          throw new Error(`Profile could not be saved: ${dbError.message}`);
+        }
       } else {
-        const { error } = await supabase.from("users").insert(row);
-        dbError = error;
-      }
-
-      if (dbError) {
-        throw new Error(
-          `Profile could not be saved: ${dbError.message}. Set SUPABASE_SERVICE_ROLE_KEY in your server environment for signup, or add an RLS policy allowing inserts into public.users for the new user.`,
-        );
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        if (session) {
+          const { error: dbError } = await supabase.from("users").upsert(row, {
+            onConflict: "id",
+          });
+          if (dbError) {
+            throw new Error(`Profile could not be saved: ${dbError.message}`);
+          }
+        }
+        // No session yet (e.g. email confirmation pending): auth trigger creates public.users
       }
     }
 

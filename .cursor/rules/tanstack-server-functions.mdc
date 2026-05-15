@@ -1,0 +1,42 @@
+---
+description: TanStack Start server functions — follow official docs and project patterns
+globs: src/server-actions/**/*,src/lib/**/*server*.ts
+alwaysApply: false
+---
+
+# TanStack Server Functions
+
+Before implementing or changing server functions, **review the current TanStack Start docs** (do not rely on memory alone):
+
+- [TanStack Start](https://tanstack.com/start/latest)
+- [Server Functions](https://tanstack.com/start/latest/docs/framework/react/server-functions)
+
+## Project conventions
+
+Use `createServerFn` from `@tanstack/react-start`:
+
+```ts
+export const myFn = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => mySchema.parse(input))
+  .handler(async ({ data }) => {
+  // ...
+});
+```
+
+- **Validation**: Zod schemas + `.inputValidator()` for POST/inputs; export DTO types from the same module when shared with the client.
+- **Auth**: Use `createSupabaseServerClient()` and a small `requireUserId()` helper; throw clear errors (`Unauthorized`, validation messages).
+- **Location**: Domain logic in `src/server-actions/<domain>/`; shared auth/utilities in `src/lib/*-server.ts`.
+- **Methods**: `GET` for reads, `POST` for mutations — match existing files in that folder.
+- **Errors**: Throw `Error` with user-safe messages; avoid leaking internal details.
+
+## When adding a feature
+
+1. Check docs for the API you need (validators, middleware, calling from loaders/components).
+2. Mirror patterns in `src/lib/auth-server.ts` or the closest `src/server-actions/*` module.
+3. Prefer server functions over ad-hoc API routes unless the route already uses `server.handlers`.
+
+## Avoid
+
+- Client-only imports (browser APIs, React hooks) inside server modules.
+- Duplicating server functions that differ only by name — extend or parameterize instead.
+- Skipping input validation on mutations.
