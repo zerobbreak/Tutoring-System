@@ -74,6 +74,6 @@ export function AttendanceKpiCards({
           </CardContent>
         </Card>
       ))}
-    </motion>
+    </div>
   );
 }

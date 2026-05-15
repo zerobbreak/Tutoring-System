@@ -22,6 +22,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "#/components/ui/sheet";
+import { WorkflowMessageButton } from "#/components/messaging/workflow-message-button";
 import {
   claimBadgeLabel,
   claimBadgeVariant,
@@ -111,6 +112,12 @@ export function LecturerSessionDetailSheet({
               <Badge variant={claimBadgeVariant(session.status)}>
                 {claimBadgeLabel(session.status)}
               </Badge>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <WorkflowMessageButton kind="session" claimId={session.id} />
+              <WorkflowMessageButton kind="attendance" claimId={session.id} />
+              <WorkflowMessageButton kind="claim" claimId={session.id} />
             </div>
 
             <dl className="grid grid-cols-2 gap-3 text-sm">
