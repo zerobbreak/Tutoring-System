@@ -26,6 +26,7 @@ import {
   SidebarProvider,
 } from "#/components/ui/sidebar";
 import { supabase } from "#/lib/supabase";
+import { ThemeToggle } from "./theme-toggle";
 
 export type AppShellNavItem = {
   readonly to: string;
@@ -271,17 +272,20 @@ export function AppShell({
               {title}
             </span>
           </nav>
-          {headerTrailing !== undefined ? (
-            headerTrailing
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden sm:inline-flex"
-            >
-              Quick create
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            {headerTrailing !== undefined ? (
+              headerTrailing
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="hidden sm:inline-flex"
+              >
+                Quick create
+              </Button>
+            )}
+          </div>
         </header>
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {children}

@@ -499,9 +499,9 @@ function DraggableSessionCard({
 function TutorSessionsWorkspacePage() {
   const navigate = Route.useNavigate();
   const search = Route.useSearch();
+  const [isDeletingSession, setIsDeletingSession] = useState<string | null>(null);
   const reduceMotion = useReducedMotion();
 
-  const [themeDark, setThemeDark] = useState(false);
   const [claims, setClaims] = useState<TutorSessionClaimDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [now, setNow] = useState(() => new Date());
@@ -558,19 +558,6 @@ function TutorSessionsWorkspacePage() {
     return () => window.clearInterval(t);
   }, []);
 
-  useEffect(() => {
-    const stored = window.localStorage.getItem("tutor-theme");
-    const prefersDark = stored === "dark";
-    setThemeDark(prefersDark);
-    document.documentElement.classList.toggle("dark", prefersDark);
-  }, []);
-
-  const toggleTheme = () => {
-    const next = !themeDark;
-    setThemeDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    window.localStorage.setItem("tutor-theme", next ? "dark" : "light");
-  };
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -768,27 +755,6 @@ function TutorSessionsWorkspacePage() {
                   </p>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center gap-2 self-start">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={toggleTheme}
-                    className="gap-2"
-                  >
-                    {themeDark ? (
-                      <Sun className="size-4" />
-                    ) : (
-                      <Moon className="size-4" />
-                    )}
-                    Theme
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Toggle light / dark surfaces</TooltipContent>
-              </Tooltip>
             </div>
           </header>
 
