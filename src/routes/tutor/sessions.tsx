@@ -740,7 +740,8 @@ function TutorSessionsWorkspacePage() {
         collisionDetection={closestCorners}
         onDragEnd={onDragEnd}
       >
-        <div className="rise-in flex min-h-0 flex-1 flex-col gap-6 p-4 md:p-6">
+        <ScrollArea className="h-screen w-full">
+          <div className="flex min-h-full flex-col gap-6 p-4 md:p-8">
           <header className="flex flex-col gap-4 border-b border-border/60 pb-6 md:flex-row md:items-start md:justify-between">
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-3">
@@ -943,10 +944,11 @@ function TutorSessionsWorkspacePage() {
                   ))}
                 </div>
               ) : (
-                <div className="grid min-h-[min(70vh,720px)] gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <ScrollArea className="w-full" orientation="horizontal">
+                  <div className="flex min-h-[min(70vh,720px)] gap-4 pb-4">
                   {(Object.keys(COLUMN_META) as SessionKanbanColumnId[]).map(
                     (colId) => (
-                      <DroppableColumn key={colId} id={colId} className="min-h-[320px]">
+                      <DroppableColumn key={colId} id={colId} className="min-h-[320px] min-w-[300px] flex-1">
                         <div className="sticky top-0 z-10 border-b border-border/60 bg-card/95 px-3 py-2 backdrop-blur-sm">
                           <div className="flex items-center justify-between gap-2">
                             <div>
@@ -1022,9 +1024,9 @@ function TutorSessionsWorkspacePage() {
                           </div>
                         </ScrollArea>
                       </DroppableColumn>
-                    ),
-                  )}
-                </div>
+                    ))}
+                  </div>
+                </ScrollArea>
               )}
             </TabsContent>
 
@@ -1110,7 +1112,7 @@ function TutorSessionsWorkspacePage() {
               if (!o) closeDetailSearch();
             }}
           >
-            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+            <DialogContent className="max-h-[90vh] sm:max-w-lg">
               <DialogHeader>
                 <DialogTitle>Session workspace</DialogTitle>
                 <DialogDescription>
@@ -1119,7 +1121,8 @@ function TutorSessionsWorkspacePage() {
                     : "Session"}
                 </DialogDescription>
               </DialogHeader>
-              {detailClaim ? (
+              <ScrollArea className="max-h-[60vh] pr-4">
+                {detailClaim ? (
                 <div className="space-y-3 text-sm">
                   <div className="grid grid-cols-2 gap-2 text-muted-foreground">
                     <span>Date</span>
@@ -1171,6 +1174,7 @@ function TutorSessionsWorkspacePage() {
                   ) : null}
                 </div>
               ) : null}
+              </ScrollArea>
               <DialogFooter className="gap-2 sm:justify-between">
                 <Button variant="outline" asChild>
                   <Link
@@ -1285,7 +1289,8 @@ function TutorSessionsWorkspacePage() {
                     : "Files linked to this session claim."}
                 </DialogDescription>
               </DialogHeader>
-              <div className="max-h-64 space-y-2 overflow-y-auto text-sm">
+              <ScrollArea className="max-h-64 pr-4">
+                <div className="space-y-2 text-sm">
                 {attendanceRows?.length ? (
                   attendanceRows.map((r) => (
                     <div
@@ -1305,7 +1310,8 @@ function TutorSessionsWorkspacePage() {
                 ) : (
                   <p className="text-muted-foreground">No files uploaded yet.</p>
                 )}
-              </div>
+                </div>
+              </ScrollArea>
             </DialogContent>
           </Dialog>
 
@@ -1447,7 +1453,8 @@ function TutorSessionsWorkspacePage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-        </div>
+          </div>
+        </ScrollArea>
       </DndContext>
     </TooltipProvider>
   );
