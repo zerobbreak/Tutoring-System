@@ -1,10 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { LecturerPlaceholderPage } from "#/components/lecturer/lecturer-placeholder-page";
+import * as z from "zod";
+import { LecturerSessionsView } from "#/components/lecturer/sessions/lecturer-sessions-view";
 
-export const Route = createFileRoute("/lecturer/sessions")({
-  component: SessionsPage,
+const sessionsSearchSchema = z.object({
+  claim: z.string().uuid().optional(),
 });
 
-function SessionsPage() {
-  return <LecturerPlaceholderPage title="Sessions" />;
+export const Route = createFileRoute("/lecturer/sessions")({
+  validateSearch: sessionsSearchSchema,
+  component: LecturerSessionsPage,
+});
+
+function LecturerSessionsPage() {
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  return <LecturerSessionsView search={search} navigate={navigate} />;
 }

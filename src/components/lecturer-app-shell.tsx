@@ -6,7 +6,6 @@ import {
   FileText,
   LayoutDashboard,
   MessageSquare,
-  Settings,
   UserCheck,
   Users,
   Video,
@@ -51,12 +50,6 @@ const LECTURER_NAV_GROUPS: readonly AppShellNavGroup[] = [
       { to: "/lecturer/reports", label: "Reports", icon: FileText },
     ],
   },
-  {
-    label: "Account",
-    items: [
-      { to: "/lecturer/settings", label: "Settings", icon: Settings },
-    ],
-  },
 ] as const;
 
 export function LecturerAppShell({
@@ -69,7 +62,6 @@ export function LecturerAppShell({
   return (
     <AppShell
       homePath="/lecturer"
-      settingsPath="/lecturer/settings"
       brandMark={<span className="text-xs font-bold">EL</span>}
       brandTitle="Lecturer Hub"
       brandSubtitle="Emeris Learning"

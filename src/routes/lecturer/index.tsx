@@ -3,8 +3,11 @@ import { useEffect, useState } from "react";
 import { LecturerDashboardView } from "#/components/lecturer/dashboard/lecturer-dashboard-view";
 import {
   getLecturerDashboardDataFn,
+  type LecturerActivityItemDTO,
+  type LecturerAttendanceAlertDTO,
   type LecturerClaimDTO,
   type LecturerModuleDTO,
+  type LecturerPendingClaimDTO,
 } from "#/server-actions/lecturer-dashboard";
 
 const rootRouteApi = getRouteApi("__root__");
@@ -24,8 +27,16 @@ function LecturerDashboard() {
   const [sessionsThisWeek, setSessionsThisWeek] = useState(0);
   const [hoursThisWeek, setHoursThisWeek] = useState(0);
   const [modules, setModules] = useState<LecturerModuleDTO[]>([]);
-  const [pendingClaims, setPendingClaims] = useState<LecturerClaimDTO[]>([]);
+  const [pendingClaims, setPendingClaims] = useState<LecturerPendingClaimDTO[]>(
+    [],
+  );
   const [recentClaims, setRecentClaims] = useState<LecturerClaimDTO[]>([]);
+  const [attendanceAlerts, setAttendanceAlerts] = useState<
+    LecturerAttendanceAlertDTO[]
+  >([]);
+  const [activityFeed, setActivityFeed] = useState<LecturerActivityItemDTO[]>(
+    [],
+  );
   const [weekStart, setWeekStart] = useState("");
   const [weekEnd, setWeekEnd] = useState("");
 
@@ -50,6 +61,8 @@ function LecturerDashboard() {
         setModules(data.modules);
         setPendingClaims(data.pendingClaims);
         setRecentClaims(data.recentClaims);
+        setAttendanceAlerts(data.attendanceAlerts);
+        setActivityFeed(data.activityFeed);
         setWeekStart(data.weekStart);
         setWeekEnd(data.weekEnd);
       } catch (e) {
@@ -88,6 +101,8 @@ function LecturerDashboard() {
       modules={modules}
       pendingClaims={pendingClaims}
       recentClaims={recentClaims}
+      attendanceAlerts={attendanceAlerts}
+      activityFeed={activityFeed}
       weekStart={weekStart}
       weekEnd={weekEnd}
     />

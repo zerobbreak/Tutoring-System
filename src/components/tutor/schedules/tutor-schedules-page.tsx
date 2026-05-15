@@ -41,6 +41,7 @@ import {
 } from "#/lib/schedule-display";
 import { supabase } from "#/lib/supabase";
 import { toast } from "#/lib/toast";
+import { TutorAssignedSchedulePanel } from "#/components/tutor/schedules/tutor-assigned-schedule-panel";
 
 const SAMPLE_CSV = `Title,Start,End,Module code,Room,Type
 Meridian hour,2026-02-16T12:00:00,2026-02-16T12:50:00,,LR 07,Other
@@ -430,6 +431,7 @@ export function TutorSchedulesPage() {
       {/* Left: calendar */}
       <div className="flex min-h-0 w-full flex-col overflow-hidden border-r border-transparent lg:min-w-0 lg:flex-1 lg:border-border/40">
         <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+          <TutorAssignedSchedulePanel />
           <div className="flex w-full shrink-0 flex-col gap-3">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
               <Button

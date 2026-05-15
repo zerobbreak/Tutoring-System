@@ -26,7 +26,6 @@ import { Route as TutorHelpRouteImport } from './routes/tutor/help'
 import { Route as StudentCheckInRouteImport } from './routes/student/check-in'
 import { Route as LecturerVerificationQueueRouteImport } from './routes/lecturer/verification-queue'
 import { Route as LecturerTutorsRouteImport } from './routes/lecturer/tutors'
-import { Route as LecturerSettingsRouteImport } from './routes/lecturer/settings'
 import { Route as LecturerSessionsRouteImport } from './routes/lecturer/sessions'
 import { Route as LecturerScheduleRouteImport } from './routes/lecturer/schedule'
 import { Route as LecturerReportsRouteImport } from './routes/lecturer/reports'
@@ -126,11 +125,6 @@ const LecturerTutorsRoute = LecturerTutorsRouteImport.update({
   path: '/tutors',
   getParentRoute: () => LecturerRouteRoute,
 } as any)
-const LecturerSettingsRoute = LecturerSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => LecturerRouteRoute,
-} as any)
 const LecturerSessionsRoute = LecturerSessionsRouteImport.update({
   id: '/sessions',
   path: '/sessions',
@@ -207,7 +201,6 @@ export interface FileRoutesByFullPath {
   '/lecturer/reports': typeof LecturerReportsRoute
   '/lecturer/schedule': typeof LecturerScheduleRoute
   '/lecturer/sessions': typeof LecturerSessionsRoute
-  '/lecturer/settings': typeof LecturerSettingsRoute
   '/lecturer/tutors': typeof LecturerTutorsRoute
   '/lecturer/verification-queue': typeof LecturerVerificationQueueRoute
   '/student/check-in': typeof StudentCheckInRoute
@@ -236,7 +229,6 @@ export interface FileRoutesByTo {
   '/lecturer/reports': typeof LecturerReportsRoute
   '/lecturer/schedule': typeof LecturerScheduleRoute
   '/lecturer/sessions': typeof LecturerSessionsRoute
-  '/lecturer/settings': typeof LecturerSettingsRoute
   '/lecturer/tutors': typeof LecturerTutorsRoute
   '/lecturer/verification-queue': typeof LecturerVerificationQueueRoute
   '/student/check-in': typeof StudentCheckInRoute
@@ -269,7 +261,6 @@ export interface FileRoutesById {
   '/lecturer/reports': typeof LecturerReportsRoute
   '/lecturer/schedule': typeof LecturerScheduleRoute
   '/lecturer/sessions': typeof LecturerSessionsRoute
-  '/lecturer/settings': typeof LecturerSettingsRoute
   '/lecturer/tutors': typeof LecturerTutorsRoute
   '/lecturer/verification-queue': typeof LecturerVerificationQueueRoute
   '/student/check-in': typeof StudentCheckInRoute
@@ -303,7 +294,6 @@ export interface FileRouteTypes {
     | '/lecturer/reports'
     | '/lecturer/schedule'
     | '/lecturer/sessions'
-    | '/lecturer/settings'
     | '/lecturer/tutors'
     | '/lecturer/verification-queue'
     | '/student/check-in'
@@ -332,7 +322,6 @@ export interface FileRouteTypes {
     | '/lecturer/reports'
     | '/lecturer/schedule'
     | '/lecturer/sessions'
-    | '/lecturer/settings'
     | '/lecturer/tutors'
     | '/lecturer/verification-queue'
     | '/student/check-in'
@@ -364,7 +353,6 @@ export interface FileRouteTypes {
     | '/lecturer/reports'
     | '/lecturer/schedule'
     | '/lecturer/sessions'
-    | '/lecturer/settings'
     | '/lecturer/tutors'
     | '/lecturer/verification-queue'
     | '/student/check-in'
@@ -516,13 +504,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LecturerTutorsRouteImport
       parentRoute: typeof LecturerRouteRoute
     }
-    '/lecturer/settings': {
-      id: '/lecturer/settings'
-      path: '/settings'
-      fullPath: '/lecturer/settings'
-      preLoaderRoute: typeof LecturerSettingsRouteImport
-      parentRoute: typeof LecturerRouteRoute
-    }
     '/lecturer/sessions': {
       id: '/lecturer/sessions'
       path: '/sessions'
@@ -629,7 +610,6 @@ interface LecturerRouteRouteChildren {
   LecturerReportsRoute: typeof LecturerReportsRoute
   LecturerScheduleRoute: typeof LecturerScheduleRoute
   LecturerSessionsRoute: typeof LecturerSessionsRoute
-  LecturerSettingsRoute: typeof LecturerSettingsRoute
   LecturerTutorsRoute: typeof LecturerTutorsRoute
   LecturerVerificationQueueRoute: typeof LecturerVerificationQueueRoute
   LecturerIndexRoute: typeof LecturerIndexRoute
@@ -642,7 +622,6 @@ const LecturerRouteRouteChildren: LecturerRouteRouteChildren = {
   LecturerReportsRoute: LecturerReportsRoute,
   LecturerScheduleRoute: LecturerScheduleRoute,
   LecturerSessionsRoute: LecturerSessionsRoute,
-  LecturerSettingsRoute: LecturerSettingsRoute,
   LecturerTutorsRoute: LecturerTutorsRoute,
   LecturerVerificationQueueRoute: LecturerVerificationQueueRoute,
   LecturerIndexRoute: LecturerIndexRoute,
