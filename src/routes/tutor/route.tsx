@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
 import { IncomingMessagesListener } from "#/components/messaging/incoming-messages-listener"
 import { TutorAppShell } from "#/components/tutor-app-shell"
-import { supabase } from "#/lib/supabase"
+import { gateAuthenticatedSession } from "#/lib/mfa-auth"
 import { isTutorDashboardRole } from "#/lib/user-role"
 import { fetchUserApprovalAllowed } from "#/lib/user-approval-gate"
 
@@ -20,11 +20,18 @@ function TutorLayout() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const {
-        data: { user: u },
-      } = await supabase.auth.getUser()
-      const role = u?.user_metadata?.role as string | undefined
-      if (!u || !isTutorDashboardRole(role)) {
+      const gate = await gateAuthenticatedSession()
+      if (gate.status === "unauthenticated") {
+        navigate({ to: "/auth/login" })
+        return
+      }
+      if (gate.status === "mfa_required") {
+        navigate({ to: "/auth/mfa" })
+        return
+      }
+      const u = gate.user
+      const role = u.user_metadata?.role as string | undefined
+      if (!isTutorDashboardRole(role)) {
         navigate({ to: "/auth/login" })
         return
       }

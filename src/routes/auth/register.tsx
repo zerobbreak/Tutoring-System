@@ -135,6 +135,7 @@ function Register() {
               <Input
                 id="email"
                 type="email"
+                autoComplete="email"
                 placeholder="name@example.com"
                 className={cn(
                   "border-gray-200 focus:border-[#0A1128] focus:ring-[#0A1128]",
@@ -182,6 +183,7 @@ function Register() {
               <Input
                 id="password"
                 type="password"
+                autoComplete="new-password"
                 placeholder="••••••••"
                 className={cn(
                   "border-gray-200 focus:border-[#0A1128] focus:ring-[#0A1128]",
@@ -203,6 +205,7 @@ function Register() {
               <Input
                 id="confirmPassword"
                 type="password"
+                autoComplete="new-password"
                 placeholder="••••••••"
                 className={cn(
                   "border-gray-200 focus:border-[#0A1128] focus:ring-[#0A1128]",

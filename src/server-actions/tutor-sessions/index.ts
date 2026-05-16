@@ -689,10 +689,11 @@ const studentRosterInputSchema = z.object({
   email: z
     .string()
     .trim()
-    .email("Enter a valid email address.")
     .max(255)
-    .optional()
-    .or(z.literal("")),
+    .refine((value) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), {
+      message: "Enter a valid email address.",
+    })
+    .optional(),
 });
 
 /** Student self check-in via QR token (registers roster entry when new). */

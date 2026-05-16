@@ -7,10 +7,23 @@ import {
 } from "#/lib/session-kanban-column";
 
 describe("sessionKanbanColumn", () => {
-  it("prioritises claimsPending for DRAFT even when session is in the future", () => {
+  it("places DRAFT sessions on the calendar by date", () => {
     const now = new Date(2026, 4, 10, 15, 0, 0);
     expect(
       sessionKanbanColumn(now, "2026-05-20", "10:00:00", "11:00:00", "DRAFT"),
+    ).toBe("upcoming");
+  });
+
+  it("prioritises claimsPending for submitted workflow statuses", () => {
+    const now = new Date(2026, 4, 10, 15, 0, 0);
+    expect(
+      sessionKanbanColumn(
+        now,
+        "2026-05-20",
+        "10:00:00",
+        "11:00:00",
+        "PENDING_VERIFICATION",
+      ),
     ).toBe("claimsPending");
   });
 

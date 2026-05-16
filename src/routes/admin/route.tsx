@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { IncomingMessagesListener } from "#/components/messaging/incoming-messages-listener";
 import { AdminAppShell } from "#/components/admin-app-shell";
-import { supabase } from "#/lib/supabase";
+import { gateAuthenticatedSession } from "#/lib/mfa-auth";
 import { isAdminDashboardRole } from "#/lib/user-role";
 import { fetchUserApprovalAllowed } from "#/lib/user-approval-gate";
 import type { AppShellUser } from "#/components/app-shell";
@@ -18,11 +18,18 @@ function AdminLayout() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const {
-        data: { user: u },
-      } = await supabase.auth.getUser();
-      const role = u?.user_metadata?.role as string | undefined;
-      if (!u || !isAdminDashboardRole(role)) {
+      const gate = await gateAuthenticatedSession();
+      if (gate.status === "unauthenticated") {
+        navigate({ to: "/auth/login" });
+        return;
+      }
+      if (gate.status === "mfa_required") {
+        navigate({ to: "/auth/mfa" });
+        return;
+      }
+      const u = gate.user;
+      const role = u.user_metadata?.role as string | undefined;
+      if (!isAdminDashboardRole(role)) {
         navigate({ to: "/auth/login" });
         return;
       }

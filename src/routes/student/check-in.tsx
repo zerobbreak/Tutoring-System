@@ -69,12 +69,12 @@ function StudentCheckInPage() {
 
   if (success) {
     return (
-      <motion className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
+      <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
         <Card className="rise-in w-full max-w-md border-emerald-500/20 bg-emerald-500/[0.02]">
           <CardHeader className="text-center">
-            <motion className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
+            <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600">
               <CheckCircle2 className="size-10" />
-            </motion>
+            </div>
             <CardTitle className="font-display text-2xl">Check-in complete</CardTitle>
             <CardDescription className="text-lg">
               Welcome,{" "}
@@ -91,17 +91,17 @@ function StudentCheckInPage() {
             </Button>
           </CardFooter>
         </Card>
-      </motion>
+      </div>
     );
   }
 
   return (
-    <motion className="flex min-h-screen items-center justify-center bg-muted/30 p-4 font-sans">
+    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4 font-sans">
       <Card className="rise-in w-full max-w-md shadow-xl">
         <CardHeader className="space-y-1 text-center">
-          <motion className="mx-auto mb-2 flex size-12 items-center justify-center rounded-xl bg-lagoon-deep/10 text-lagoon-deep">
+          <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-xl bg-lagoon-deep/10 text-lagoon-deep">
             <QrCode className="size-6" />
-          </motion>
+          </div>
           <CardTitle className="font-display text-2xl font-bold">
             Session check-in
           </CardTitle>
@@ -113,13 +113,13 @@ function StudentCheckInPage() {
         <form onSubmit={handleCheckIn}>
           <CardContent className="space-y-4">
             {error ? (
-              <motion className="flex items-center gap-3 rounded-lg border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-600">
+              <div className="flex items-center gap-3 rounded-lg border border-rose-500/20 bg-rose-500/10 p-3 text-sm text-rose-600">
                 <XCircle className="size-4 shrink-0" />
                 <p>{error}</p>
-              </motion>
+              </div>
             ) : null}
 
-            <motion className="space-y-2">
+            <div className="space-y-2">
               <Label htmlFor="fullName">Full name</Label>
               <Input
                 id="fullName"
@@ -131,9 +131,9 @@ function StudentCheckInPage() {
                 autoComplete="name"
                 className="h-11"
               />
-            </motion>
+            </div>
 
-            <motion className="space-y-2">
+            <div className="space-y-2">
               <Label htmlFor="studentReference">Student number</Label>
               <Input
                 id="studentReference"
@@ -147,9 +147,9 @@ function StudentCheckInPage() {
               <p className="text-[11px] text-muted-foreground">
                 Your official student ID at this campus.
               </p>
-            </motion>
+            </div>
 
-            <motion className="space-y-2">
+            <div className="space-y-2">
               <Label htmlFor="email">
                 Email <span className="font-normal text-muted-foreground">(optional)</span>
               </Label>
@@ -163,16 +163,16 @@ function StudentCheckInPage() {
                 autoComplete="email"
                 className="h-11"
               />
-            </motion>
+            </div>
 
-            <motion className="rounded-lg border border-border/50 bg-muted/50 p-3">
-              <motion className="mb-1 flex items-center justify-between text-xs">
+            <div className="rounded-lg border border-border/50 bg-muted/50 p-3">
+              <div className="mb-1 flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Session</span>
                 <span className="font-mono text-[10px] opacity-60">
                   {sessionId ? `${sessionId.slice(0, 8)}…` : "—"}
                 </span>
-              </motion>
-              <motion className="flex items-center justify-between text-xs">
+              </div>
+              <div className="flex items-center justify-between text-xs">
                 <span className="text-muted-foreground">Verification</span>
                 <Badge
                   variant="outline"
@@ -180,8 +180,8 @@ function StudentCheckInPage() {
                 >
                   Secure QR token
                 </Badge>
-              </motion>
-            </motion>
+              </div>
+            </div>
           </CardContent>
           <CardFooter>
             <Button
@@ -200,11 +200,11 @@ function StudentCheckInPage() {
         </form>
       </Card>
 
-      <motion className="fixed bottom-8 w-full text-center">
+      <div className="fixed bottom-8 w-full text-center">
         <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground opacity-50">
           Tutoring system attendance
         </p>
-      </motion>
-    </motion>
+      </div>
+    </div>
   );
 }

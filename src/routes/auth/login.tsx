@@ -10,6 +10,7 @@ import { cn } from "../../lib/utils";
 import sidebarImage from "../../assets/auth-sidebar.png";
 import { supabase } from "../../lib/supabase";
 import { toast } from "../../lib/toast";
+import { needsMfaVerification } from "../../lib/mfa-auth";
 import { getPostAuthDashboardPath } from "../../lib/user-role";
 
 const loginSchema = z.object({
@@ -66,6 +67,13 @@ function Login() {
         toast.error(
           "No active session (e.g. email not confirmed). Check your inbox or reset your password.",
         );
+        return;
+      }
+
+      if (await needsMfaVerification()) {
+        toast.success("Enter your authenticator code to continue.");
+        await router.invalidate();
+        await navigate({ to: "/auth/mfa" });
         return;
       }
 
@@ -128,6 +136,7 @@ function Login() {
               <Input
                 id="email"
                 type="email"
+                autoComplete="email"
                 placeholder="name@example.com"
                 className={cn(
                   "border-gray-200 focus:border-[#0A1128] focus:ring-[#0A1128]",
@@ -157,6 +166,7 @@ function Login() {
               <Input
                 id="password"
                 type="password"
+                autoComplete="current-password"
                 placeholder="••••••••"
                 className={cn(
                   "border-gray-200 focus:border-[#0A1128] focus:ring-[#0A1128]",

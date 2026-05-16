@@ -34,6 +34,7 @@ import { Route as LecturerAttendanceRouteImport } from './routes/lecturer/attend
 import { Route as LecturerAnalyticsRouteImport } from './routes/lecturer/analytics'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthRecoverPasswordRouteImport } from './routes/auth/recover-password'
+import { Route as AuthMfaRouteImport } from './routes/auth/mfa'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
@@ -176,6 +177,11 @@ const AuthRecoverPasswordRoute = AuthRecoverPasswordRouteImport.update({
   path: '/auth/recover-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthMfaRoute = AuthMfaRouteImport.update({
+  id: '/auth/mfa',
+  path: '/auth/mfa',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/auth/login',
   path: '/auth/login',
@@ -270,6 +276,7 @@ export interface FileRoutesByFullPath {
   '/admin/users': typeof AdminUsersRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
+  '/auth/mfa': typeof AuthMfaRoute
   '/auth/recover-password': typeof AuthRecoverPasswordRoute
   '/auth/register': typeof AuthRegisterRoute
   '/lecturer/analytics': typeof LecturerAnalyticsRoute
@@ -309,6 +316,7 @@ export interface FileRoutesByTo {
   '/admin/users': typeof AdminUsersRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
+  '/auth/mfa': typeof AuthMfaRoute
   '/auth/recover-password': typeof AuthRecoverPasswordRoute
   '/auth/register': typeof AuthRegisterRoute
   '/lecturer/analytics': typeof LecturerAnalyticsRoute
@@ -352,6 +360,7 @@ export interface FileRoutesById {
   '/admin/users': typeof AdminUsersRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
+  '/auth/mfa': typeof AuthMfaRoute
   '/auth/recover-password': typeof AuthRecoverPasswordRoute
   '/auth/register': typeof AuthRegisterRoute
   '/lecturer/analytics': typeof LecturerAnalyticsRoute
@@ -396,6 +405,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/auth/forgot-password'
     | '/auth/login'
+    | '/auth/mfa'
     | '/auth/recover-password'
     | '/auth/register'
     | '/lecturer/analytics'
@@ -435,6 +445,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/auth/forgot-password'
     | '/auth/login'
+    | '/auth/mfa'
     | '/auth/recover-password'
     | '/auth/register'
     | '/lecturer/analytics'
@@ -477,6 +488,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/auth/forgot-password'
     | '/auth/login'
+    | '/auth/mfa'
     | '/auth/recover-password'
     | '/auth/register'
     | '/lecturer/analytics'
@@ -509,6 +521,7 @@ export interface RootRouteChildren {
   TutorRouteRoute: typeof TutorRouteRouteWithChildren
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
+  AuthMfaRoute: typeof AuthMfaRoute
   AuthRecoverPasswordRoute: typeof AuthRecoverPasswordRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
   StudentCheckInRoute: typeof StudentCheckInRoute
@@ -690,6 +703,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/recover-password'
       fullPath: '/auth/recover-password'
       preLoaderRoute: typeof AuthRecoverPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/mfa': {
+      id: '/auth/mfa'
+      path: '/auth/mfa'
+      fullPath: '/auth/mfa'
+      preLoaderRoute: typeof AuthMfaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/login': {
@@ -897,6 +917,7 @@ const rootRouteChildren: RootRouteChildren = {
   TutorRouteRoute: TutorRouteRouteWithChildren,
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,
+  AuthMfaRoute: AuthMfaRoute,
   AuthRecoverPasswordRoute: AuthRecoverPasswordRoute,
   AuthRegisterRoute: AuthRegisterRoute,
   StudentCheckInRoute: StudentCheckInRoute,

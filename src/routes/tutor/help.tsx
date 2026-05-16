@@ -50,7 +50,7 @@ const HELP_TOPICS: HelpTopic[] = [
       {
         question: "I cannot drag a session card between columns",
         answer:
-          "Only sessions you own can be moved, and some statuses lock the card. Refresh the page if the board looks stuck after a network error. If the card snaps back, the server rejected the update—check that the session is still assigned to you and not already verified.",
+          "Use the grip handle on the card and drop on Today, Upcoming, or Completed (not Claims pending). Drafts live on the calendar lanes; after you submit for verification they move to Claims pending. Dropping onto another card in the target column works. Submitted or disputed claims cannot be rescheduled from the board.",
       },
       {
         question: "A session does not appear on my board",
