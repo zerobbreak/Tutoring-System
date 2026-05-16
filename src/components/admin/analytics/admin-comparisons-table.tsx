@@ -39,7 +39,6 @@ export function AdminComparisonsTable({
             <TableRow>
               <TableHead>Cohort</TableHead>
               <TableHead className="text-right">Sessions</TableHead>
-              <TableHead className="text-right">Attendance</TableHead>
               <TableHead className="text-right">Utilization</TableHead>
               <TableHead className="text-right">Pending</TableHead>
             </TableRow>
@@ -50,9 +49,6 @@ export function AdminComparisonsTable({
                 <TableCell className="font-medium">{row.label}</TableCell>
                 <TableCell className="text-right tabular-nums">
                   {row.sessionCount}
-                </TableCell>
-                <TableCell className="text-right tabular-nums">
-                  {pct(row.averageAttendanceRate)}
                 </TableCell>
                 <TableCell className="text-right tabular-nums">
                   {pct(row.utilizationRate)}

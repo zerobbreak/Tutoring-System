@@ -36,7 +36,6 @@ export function AdminTutorsTable({ tutors }: AdminTutorsTableProps) {
             <TableHead className="text-right">Score</TableHead>
             <TableHead className="text-right">Sessions</TableHead>
             <TableHead className="text-right">Approval</TableHead>
-            <TableHead className="text-right">Attendance</TableHead>
             <TableHead className="text-right">Submissions</TableHead>
             <TableHead>Engagement</TableHead>
           </TableRow>
@@ -53,9 +52,6 @@ export function AdminTutorsTable({ tutors }: AdminTutorsTableProps) {
               </TableCell>
               <TableCell className="text-right tabular-nums">
                 {pct(row.approvalRate)}
-              </TableCell>
-              <TableCell className="text-right tabular-nums">
-                {pct(row.attendanceAverage)}
               </TableCell>
               <TableCell className="text-right tabular-nums">
                 {row.submissionsInPeriod}

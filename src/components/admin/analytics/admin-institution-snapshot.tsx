@@ -25,10 +25,6 @@ export function AdminInstitutionSnapshot({
       label: "Schedule utilization",
       value: pct(snapshot.utilizationRate),
     },
-    {
-      label: "Attendance health",
-      value: pct(snapshot.averageAttendanceRate),
-    },
   ];
 
   return (
@@ -36,7 +32,7 @@ export function AdminInstitutionSnapshot({
       {institutionName ? (
         <p className="text-sm text-muted-foreground">{institutionName}</p>
       ) : null}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {items.map((item) => (
           <div
             key={item.label}

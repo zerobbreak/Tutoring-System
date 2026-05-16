@@ -1,7 +1,5 @@
-import type { IntegrityIssueDTO } from "#/server-actions/lecturer-attendance/types";
 import type {
   LecturerActivityItemDTO,
-  LecturerAttendanceAlertDTO,
   LecturerModuleDTO,
 } from "#/server-actions/lecturer-dashboard/types";
 
@@ -48,8 +46,6 @@ export type AdminDashboardDataDTO = {
   activeSessionsCount: number;
   approvedHours: number;
   pipeline: AdminPipelineDTO;
-  attendanceAlerts: LecturerAttendanceAlertDTO[];
-  integrityIssues: IntegrityIssueDTO[];
   activityFeed: LecturerActivityItemDTO[];
   lecturerActivity: AdminLecturerActivityDTO[];
   deadlines: AdminDeadlineDTO[];

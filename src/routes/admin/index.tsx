@@ -8,11 +8,7 @@ import {
   type AdminLecturerActivityDTO,
   type AdminPipelineDTO,
 } from "#/server-actions/admin-dashboard";
-import type { IntegrityIssueDTO } from "#/server-actions/lecturer-attendance/types";
-import type {
-  LecturerActivityItemDTO,
-  LecturerAttendanceAlertDTO,
-} from "#/server-actions/lecturer-dashboard";
+import type { LecturerActivityItemDTO } from "#/server-actions/lecturer-dashboard";
 
 const rootRouteApi = getRouteApi("__root__");
 
@@ -38,12 +34,6 @@ function AdminDashboardPage() {
     stalledClaims: 0,
     pendingScheduleChanges: 0,
   });
-  const [attendanceAlerts, setAttendanceAlerts] = useState<
-    LecturerAttendanceAlertDTO[]
-  >([]);
-  const [integrityIssues, setIntegrityIssues] = useState<IntegrityIssueDTO[]>(
-    [],
-  );
   const [activityFeed, setActivityFeed] = useState<LecturerActivityItemDTO[]>(
     [],
   );
@@ -85,8 +75,6 @@ function AdminDashboardPage() {
         setActiveSessionsCount(data.activeSessionsCount);
         setApprovedHours(data.approvedHours);
         setPipeline(data.pipeline);
-        setAttendanceAlerts(data.attendanceAlerts);
-        setIntegrityIssues(data.integrityIssues);
         setActivityFeed(data.activityFeed);
         setLecturerActivity(data.lecturerActivity);
         setDeadlines(data.deadlines);
@@ -128,8 +116,6 @@ function AdminDashboardPage() {
       activeSessionsCount={activeSessionsCount}
       approvedHours={approvedHours}
       pipeline={pipeline}
-      attendanceAlerts={attendanceAlerts}
-      integrityIssues={integrityIssues}
       activityFeed={activityFeed}
       lecturerActivity={lecturerActivity}
       deadlines={deadlines}

@@ -1,5 +1,3 @@
-import type { AttendanceTrendPointDTO } from "#/server-actions/lecturer-attendance/types";
-
 export const PLAN_TIERS = [
   "free",
   "standard",
@@ -73,7 +71,6 @@ export type InstitutionDashboardDTO = {
   activeTutors: number;
   totalLecturers: number;
   totalClaims: number;
-  attendanceTrend: AttendanceTrendPointDTO[];
   verification: InstitutionVerificationMetricsDTO;
 };
 

@@ -9,5 +9,6 @@ export type {
   InstitutionSnapshotDTO,
   LecturerAnalyticsRowDTO,
   OnboardingAnalyticsDTO,
+  OnboardingStatusCountDTO,
   WorkflowStageTimingDTO,
 } from "./types";

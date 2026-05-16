@@ -1,18 +1,15 @@
 import { Link } from "@tanstack/react-router";
-import { format, formatDistanceToNow, isAfter, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import {
-  AlertTriangle,
   Calendar,
   ExternalLink,
   FileText,
   History,
   Loader2,
   MapPin,
-  QrCode,
   Scale,
-  User,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import {
@@ -66,17 +63,6 @@ export function AdminSessionDetailSheet({
     else setSession(null);
   }, [open, claimId, load]);
 
-  const qrExpired = useMemo(() => {
-    if (!session?.qr_expires_at) return false;
-    return isAfter(new Date(), parseISO(session.qr_expires_at));
-  }, [session?.qr_expires_at]);
-
-  const checkInUrl = useMemo(() => {
-    if (!session?.qr_check_in_url || typeof window === "undefined") return null;
-    const path = session.qr_check_in_url;
-    return path.startsWith("http") ? path : `${window.location.origin}${path}`;
-  }, [session?.qr_check_in_url]);
-
   const hasNotes =
     session?.notes ||
     session?.topics_covered ||
@@ -94,7 +80,7 @@ export function AdminSessionDetailSheet({
         <SheetHeader>
           <SheetTitle>Session details</SheetTitle>
           <SheetDescription>
-            Read-only inspection: attendance, evidence, QR, disputes, and audit trail.
+            Read-only inspection: evidence, disputes, notes, and audit trail.
           </SheetDescription>
         </SheetHeader>
 
@@ -163,97 +149,6 @@ export function AdminSessionDetailSheet({
               </div>
             </dl>
 
-            {(session.missing_evidence || session.headcount_matches_scans === false) && (
-              <div className="space-y-2 rounded-lg border border-amber-200/80 bg-amber-50/80 p-3 text-sm text-amber-950">
-                {session.missing_evidence ? (
-                  <p className="flex items-center gap-1">
-                    <AlertTriangle className="size-4 shrink-0" />
-                    No attendance register uploaded for this session.
-                  </p>
-                ) : null}
-                {session.headcount_matches_scans === false ? (
-                  <p className="flex items-center gap-1">
-                    <AlertTriangle className="size-4 shrink-0" />
-                    Headcount does not match QR scan count.
-                  </p>
-                ) : null}
-              </div>
-            )}
-
-            <section className="space-y-2">
-              <h3 className="flex items-center gap-2 text-sm font-semibold">
-                <User className="size-4" />
-                Attendance
-              </h3>
-              <div className="rounded-lg border bg-muted/30 p-3 text-sm">
-                <p>
-                  {session.attendance_present_count != null
-                    ? `${session.attendance_present_count} present`
-                    : `${session.attendance_scan_count} QR scans`}
-                  {session.attendance_expected_count != null
-                    ? ` / ${session.attendance_expected_count} expected`
-                    : ""}
-                </p>
-                {Object.keys(session.attendance_by_status).length > 0 ? (
-                  <ul className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                    {Object.entries(session.attendance_by_status).map(([status, n]) => (
-                      <li key={status}>
-                        {status}: {n}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-              {session.attendance_rows.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No check-ins recorded.</p>
-              ) : (
-                <ul className="max-h-48 space-y-2 overflow-y-auto">
-                  {session.attendance_rows.map((row) => (
-                    <li
-                      key={row.id}
-                      className="flex items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-sm"
-                    >
-                      <span className="min-w-0 truncate">
-                        {row.notes?.trim() ||
-                          (row.check_in_time
-                            ? `Check-in · ${format(parseISO(row.check_in_time), "HH:mm")}`
-                            : "Unregistered check-in")}
-                      </span>
-                      <Badge variant="secondary" className="shrink-0 text-[10px]">
-                        {row.status}
-                      </Badge>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            <section className="space-y-2">
-              <h3 className="flex items-center gap-2 text-sm font-semibold">
-                <QrCode className="size-4" />
-                QR attendance
-              </h3>
-              <div className="rounded-lg border bg-muted/30 p-3 text-sm">
-                <p>
-                  <span className="text-muted-foreground">Scans:</span>{" "}
-                  {session.attendance_scan_count}
-                </p>
-                {session.qr_expires_at ? (
-                  <p className="mt-1 text-muted-foreground">
-                    Expires{" "}
-                    {formatDistanceToNow(parseISO(session.qr_expires_at), {
-                      addSuffix: true,
-                    })}
-                    {qrExpired ? " (expired)" : ""}
-                  </p>
-                ) : null}
-                {checkInUrl ? (
-                  <p className="mt-2 break-all font-mono text-xs text-muted-foreground">
-                    {checkInUrl}
-                  </p>
-                ) : null}
-              </div>
-            </section>
 
             <section className="space-y-2">
               <h3 className="flex items-center gap-2 text-sm font-semibold">

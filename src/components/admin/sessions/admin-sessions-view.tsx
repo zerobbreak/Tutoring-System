@@ -1,11 +1,8 @@
 import type { NavigateOptions } from "@tanstack/react-router";
-import { Link } from "@tanstack/react-router";
 import {
   Activity,
-  BarChart3,
   CalendarCheck,
   Loader2,
-  QrCode,
   Scale,
   Video,
   XCircle,
@@ -63,11 +60,6 @@ export type AdminSessionsViewProps = {
   onSheetOpenChange: (open: boolean) => void;
 };
 
-function formatRate(rate: number | null): string {
-  if (rate == null) return "—";
-  return `${Math.round(rate * 100)}%`;
-}
-
 function SessionsKpiStrip({
   booting,
   summary,
@@ -97,27 +89,15 @@ function SessionsKpiStrip({
       icon: XCircle,
     },
     {
-      label: "Avg attendance",
-      value: formatRate(summary?.averageAttendanceRate ?? null),
-      sub: "Present / expected",
-      icon: BarChart3,
-    },
-    {
       label: "Open disputes",
       value: summary?.openDisputesCount ?? 0,
       sub: "Institution-wide",
       icon: Scale,
     },
-    {
-      label: "Missing registers",
-      value: summary?.missingRegisterCount ?? 0,
-      sub: `${summary?.liveQrCount ?? 0} live QR`,
-      icon: QrCode,
-    },
   ];
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {items.map((item) => (
         <Card key={item.label}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -169,23 +149,15 @@ export function AdminSessionsView({
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain p-6 pb-10 md:p-8">
-        <header className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
-              <Video className="size-7 text-(--lagoon-deep)" />
-              Sessions
-            </h2>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-              Institution-wide session monitoring — attendance, evidence, QR, and
-              claim status across all modules.
-            </p>
-          </div>
-          <Link
-            to="/admin/attendance"
-            className="text-sm font-medium text-(--lagoon-deep) underline-offset-4 hover:underline"
-          >
-            Full attendance analytics →
-          </Link>
+        <header className="shrink-0">
+          <h2 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
+            <Video className="size-7 text-(--lagoon-deep)" />
+            Sessions
+          </h2>
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+            Institution-wide session monitoring — evidence, disputes, and claim
+            status across all modules.
+          </p>
         </header>
 
         {loadError ? (

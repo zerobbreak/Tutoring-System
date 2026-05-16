@@ -41,7 +41,6 @@ export type LecturerAnalyticsRowDTO = {
   pendingVerificationCount: number;
   medianVerifyHours: number | null;
   verificationActionsCount: number;
-  averageAttendanceRate: number | null;
 };
 
 export type OnboardingStatusCountDTO = {
@@ -59,7 +58,6 @@ export type ComparisonSliceDTO = {
   id: string;
   label: string;
   sessionCount: number;
-  averageAttendanceRate: number | null;
   utilizationRate: number | null;
   pendingCount: number;
 };
@@ -72,7 +70,6 @@ export type InstitutionComparisonsDTO = {
 export type InstitutionSnapshotDTO = {
   activeScheduledSessions: number;
   utilizationRate: number | null;
-  averageAttendanceRate: number | null;
   totalModules: number;
   activeTutors: number;
 };

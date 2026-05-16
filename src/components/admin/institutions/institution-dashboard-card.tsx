@@ -1,11 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import { BarChart3, Users } from "lucide-react";
-import { useMemo } from "react";
-import {
-  Area,
-  AreaChart,
-  ResponsiveContainer,
-} from "recharts";
 import {
   Card,
   CardContent,
@@ -33,15 +27,6 @@ export function InstitutionDashboardCard({
   booting,
   dashboard,
 }: InstitutionDashboardCardProps) {
-  const chartData = useMemo(
-    () =>
-      (dashboard?.attendanceTrend ?? []).map((d) => ({
-        ...d,
-        rateValue: d.rate ?? 0,
-      })),
-    [dashboard?.attendanceTrend],
-  );
-
   const verification = dashboard?.verification;
 
   const kpis = [
@@ -59,7 +44,7 @@ export function InstitutionDashboardCard({
           Institution overview
         </CardTitle>
         <CardDescription>
-          Operational metrics for your institution (last 30 days for attendance)
+          Operational metrics for your institution
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -79,70 +64,44 @@ export function InstitutionDashboardCard({
               ))}
             </div>
 
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div>
-                <p className="mb-2 text-sm font-medium">Attendance trend</p>
-                {chartData.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No attendance data in the last 30 days.
-                  </p>
-                ) : (
-                  <div className="h-28 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={chartData}>
-                        <Area
-                          type="monotone"
-                          dataKey="rateValue"
-                          stroke="hsl(var(--primary))"
-                          fill="hsl(var(--primary) / 0.15)"
-                          strokeWidth={2}
-                          dot={false}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <p className="mb-2 text-sm font-medium">Verification</p>
-                <ul className="space-y-1 text-sm text-muted-foreground">
-                  <li>
-                    Pending verification:{" "}
-                    <span className="font-medium text-foreground">
-                      {verification?.pendingVerificationCount ?? 0}
-                    </span>
-                  </li>
-                  <li>
-                    Open disputes:{" "}
-                    <span className="font-medium text-foreground">
-                      {verification?.openDisputes ?? 0}
-                    </span>
-                  </li>
-                  <li>
-                    Median lecturer turnaround:{" "}
-                    <span className="font-medium text-foreground">
-                      {verification?.medianTurnaroundHours != null
-                        ? `${verification.medianTurnaroundHours.toFixed(1)}h`
-                        : "—"}
-                    </span>
-                  </li>
-                </ul>
-                {verification?.claimsByStatus?.length ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {verification.claimsByStatus
-                      .filter((s) => s.count > 0)
-                      .map((s) => (
-                        <span
-                          key={s.status}
-                          className="rounded-md border border-border/60 px-2 py-0.5 text-xs"
-                        >
-                          {formatStatusLabel(s.status)}: {s.count}
-                        </span>
-                      ))}
-                  </div>
-                ) : null}
-              </div>
+            <div>
+              <p className="mb-2 text-sm font-medium">Verification</p>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                <li>
+                  Pending verification:{" "}
+                  <span className="font-medium text-foreground">
+                    {verification?.pendingVerificationCount ?? 0}
+                  </span>
+                </li>
+                <li>
+                  Open disputes:{" "}
+                  <span className="font-medium text-foreground">
+                    {verification?.openDisputes ?? 0}
+                  </span>
+                </li>
+                <li>
+                  Median lecturer turnaround:{" "}
+                  <span className="font-medium text-foreground">
+                    {verification?.medianTurnaroundHours != null
+                      ? `${verification.medianTurnaroundHours.toFixed(1)}h`
+                      : "—"}
+                  </span>
+                </li>
+              </ul>
+              {verification?.claimsByStatus?.length ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {verification.claimsByStatus
+                    .filter((s) => s.count > 0)
+                    .map((s) => (
+                      <span
+                        key={s.status}
+                        className="rounded-md border border-border/60 px-2 py-0.5 text-xs"
+                      >
+                        {formatStatusLabel(s.status)}: {s.count}
+                      </span>
+                    ))}
+                </div>
+              ) : null}
             </div>
 
             <Link

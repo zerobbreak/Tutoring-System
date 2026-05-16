@@ -17,8 +17,6 @@ export function emptyAdminDashboard(
       stalledClaims: 0,
       pendingScheduleChanges: 0,
     },
-    attendanceAlerts: [],
-    integrityIssues: [],
     activityFeed: [],
     lecturerActivity: [],
     deadlines: [],

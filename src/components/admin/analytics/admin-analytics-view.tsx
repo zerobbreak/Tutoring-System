@@ -133,7 +133,7 @@ export function AdminAnalyticsView() {
       </div>
 
       <Tabs defaultValue="workflow" className="w-full">
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
+        <TabsList className="grid w-full max-w-xl grid-cols-4">
           <TabsTrigger value="workflow">Workflow</TabsTrigger>
           <TabsTrigger value="tutors">Tutors</TabsTrigger>
           <TabsTrigger value="lecturers">Lecturers</TabsTrigger>
@@ -216,7 +216,7 @@ export function AdminAnalyticsView() {
             <CardHeader>
               <CardTitle className="text-base">Tutor performance</CardTitle>
               <CardDescription>
-                Workload, approval rates, attendance, and engagement proxy
+                Workload, approval rates, and engagement proxy
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -295,7 +295,7 @@ export function AdminAnalyticsView() {
             <CardHeader>
               <CardTitle className="text-base">Institution snapshot</CardTitle>
               <CardDescription>
-                Active sessions, utilization, and attendance health
+                Active sessions and schedule utilization
               </CardDescription>
             </CardHeader>
             <CardContent>

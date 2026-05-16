@@ -108,7 +108,7 @@ export function AdminApprovalsView({
             />
             <AdminApprovalsClaimsSection
               title="Disputed claims"
-              description="Attendance or hour disputes"
+              description="Hour or session disputes"
               claims={disputed}
               countLabel={`${disputed.length} disputed`}
               emptyMessage="No open disputes."

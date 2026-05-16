@@ -1,5 +1,5 @@
 import { formatDistanceToNow, parseISO } from "date-fns";
-import { CheckCircle2, Snowflake, Users } from "lucide-react";
+import { CheckCircle2, Snowflake } from "lucide-react";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import {
@@ -14,17 +14,6 @@ type AdminApprovalClaimCardProps = {
   claim: AdminApprovalClaimCardDTO;
   onReview: (claimId: string) => void;
 };
-
-function attendanceLabel(claim: AdminApprovalClaimCardDTO) {
-  const present = claim.attendance_present_count;
-  if (present != null) {
-    return `${present} students`;
-  }
-  if (claim.attendance_scan_count > 0) {
-    return `${claim.attendance_scan_count} QR scans`;
-  }
-  return "No attendance recorded";
-}
 
 function statusLine(claim: AdminApprovalClaimCardDTO) {
   if (claim.frozen_at) return "Frozen — under review";
@@ -79,13 +68,6 @@ export function AdminApprovalClaimCard({
         <div className="flex justify-between gap-4">
           <span className="text-muted-foreground">Hours</span>
           <span className="font-medium">{claim.hours}</span>
-        </div>
-        <div className="flex justify-between gap-4">
-          <span className="flex items-center gap-1 text-muted-foreground">
-            <Users className="size-3.5" />
-            Attendance
-          </span>
-          <span className="font-medium">{attendanceLabel(claim)}</span>
         </div>
         <p className="text-xs font-medium text-amber-800">{statusLine(claim)}</p>
         {submittedLabel ? (

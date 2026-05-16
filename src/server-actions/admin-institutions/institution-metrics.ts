@@ -1,6 +1,4 @@
-import { subDays } from "date-fns";
 import type { createSupabaseServerClient } from "#/lib/supabase-server";
-import { buildTrendSeries } from "#/server-actions/lecturer-attendance/build-trend-series";
 import {
   firstApproveByClaim,
   median,
@@ -14,7 +12,6 @@ import {
 } from "#/server-actions/lecturer-tutors/compute-tutor-stats";
 import type { InstitutionDashboardDTO } from "./types";
 
-const LOOKBACK_DAYS = 30;
 const STATUS_ORDER = [
   "DRAFT",
   "PENDING_VERIFICATION",
@@ -43,19 +40,15 @@ export async function loadInstitutionDashboard(
       activeTutors: 0,
       totalLecturers: 0,
       totalClaims: 0,
-      attendanceTrend: buildTrendSeries([], LOOKBACK_DAYS, now),
       verification: emptyVerification,
     };
   }
-
-  const trendFrom = subDays(now, LOOKBACK_DAYS).toISOString().slice(0, 10);
 
   const [
     usersRes,
     tutorsRes,
     lecturersCountRes,
     claimsCountRes,
-    trendClaimsRes,
     claimsForStatusRes,
     pendingCountRes,
     disputesRes,
@@ -81,12 +74,6 @@ export async function loadInstitutionDashboard(
       .from("session_claims")
       .select("id", { count: "exact", head: true })
       .in("module_id", moduleIds),
-    supabase
-      .from("session_claims")
-      .select("session_date, attendance_present_count, attendance_expected_count")
-      .in("module_id", moduleIds)
-      .gte("session_date", trendFrom)
-      .neq("status", "DRAFT"),
     supabase
       .from("session_claims")
       .select("status")
@@ -116,7 +103,6 @@ export async function loadInstitutionDashboard(
     tutorsRes.error,
     lecturersCountRes.error,
     claimsCountRes.error,
-    trendClaimsRes.error,
     claimsForStatusRes.error,
     pendingCountRes.error,
     disputesRes.error,
@@ -202,22 +188,11 @@ export async function loadInstitutionDashboard(
     }
   }
 
-  const attendanceTrend = buildTrendSeries(
-    (trendClaimsRes.data ?? []) as {
-      session_date: string;
-      attendance_present_count: number | null;
-      attendance_expected_count: number | null;
-    }[],
-    LOOKBACK_DAYS,
-    now,
-  );
-
   return {
     activeUsers: usersRes.count ?? 0,
     activeTutors,
     totalLecturers: lecturersCountRes.count ?? 0,
     totalClaims: claimsCountRes.count ?? 0,
-    attendanceTrend,
     verification: {
       pendingVerificationCount: pendingCountRes.count ?? 0,
       medianTurnaroundHours: median(turnaroundSamples),

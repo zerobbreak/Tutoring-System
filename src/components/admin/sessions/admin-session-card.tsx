@@ -58,11 +58,6 @@ export function AdminSessionCard({
             Missing evidence
           </Badge>
         ) : null}
-        {session.low_attendance ? (
-          <Badge variant="outline" className="border-amber-300 text-[10px] text-amber-800">
-            Low attendance
-          </Badge>
-        ) : null}
         {session.status === "DISPUTED" ? (
           <Badge variant="outline" className="border-destructive/40 text-[10px] text-destructive">
             Disputed

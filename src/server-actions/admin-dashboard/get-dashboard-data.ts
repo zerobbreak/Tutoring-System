@@ -10,23 +10,14 @@ import {
 } from "date-fns";
 import { requireAdminContext } from "#/lib/admin-server";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
-import { buildIntegrityIssues } from "#/server-actions/lecturer-attendance/build-integrity-issues";
 import { buildActivityFeed } from "#/server-actions/lecturer-dashboard/build-activity-feed";
-import { buildAttendanceAlerts } from "#/server-actions/lecturer-dashboard/build-attendance-alerts";
-import {
-  ALERT_LOOKBACK_DAYS,
-  MISSING_REGISTER_LOOKBACK_DAYS,
-} from "#/server-actions/lecturer-dashboard/constants";
-import { loadEvidenceByClaim } from "#/server-actions/lecturer-dashboard/load-evidence-by-claim";
 import type {
   ActivityClaimRow,
-  AlertClaimRow,
   AuditRow,
   DisputeRow,
   LecturerModuleDTO,
 } from "#/server-actions/lecturer-dashboard/types";
 import { unwrapOne } from "#/server-actions/lecturer-dashboard/unwrap";
-import { loadClaimCounts } from "#/server-actions/lecturer-verification/load-claim-counts";
 import {
   computeTutorStats,
   isTutorInactive,
@@ -61,11 +52,6 @@ export const getAdminDashboardDataFn = createServerFn({ method: "GET" }).handler
     const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
     const startStr = format(weekStart, "yyyy-MM-dd");
     const endStr = format(weekEnd, "yyyy-MM-dd");
-    const alertFrom = format(subDays(now, ALERT_LOOKBACK_DAYS), "yyyy-MM-dd");
-    const registerFrom = format(
-      subDays(now, MISSING_REGISTER_LOOKBACK_DAYS),
-      "yyyy-MM-dd",
-    );
     const stalledBefore = subDays(now, STALLED_DAYS).toISOString();
     const tomorrowStart = startOfDay(addDays(now, 1)).toISOString();
     const tomorrowEnd = endOfDay(addDays(now, 1)).toISOString();
@@ -105,7 +91,6 @@ export const getAdminDashboardDataFn = createServerFn({ method: "GET" }).handler
       scheduleChangesRes,
       weekSessionsRes,
       approvedHoursRes,
-      alertClaimsRes,
       activityClaimsRes,
       auditsRes,
       disputesRes,
@@ -157,14 +142,6 @@ export const getAdminDashboardDataFn = createServerFn({ method: "GET" }).handler
         .select("hours")
         .in("module_id", moduleIds)
         .in("status", ["VERIFIED", "APPROVED"]),
-      supabase
-        .from("session_claims")
-        .select(
-          "id, module_id, session_date, status, attendance_present_count, attendance_expected_count",
-        )
-        .in("module_id", moduleIds)
-        .gte("session_date", alertFrom)
-        .neq("status", "DRAFT"),
       supabase
         .from("session_claims")
         .select(
@@ -257,7 +234,6 @@ export const getAdminDashboardDataFn = createServerFn({ method: "GET" }).handler
       scheduleChangesRes.error,
       weekSessionsRes.error,
       approvedHoursRes.error,
-      alertClaimsRes.error,
       activityClaimsRes.error,
       auditsRes.error,
       disputesRes.error,
@@ -307,65 +283,6 @@ export const getAdminDashboardDataFn = createServerFn({ method: "GET" }).handler
         if (!inactive) activeTutors += 1;
       }
     }
-
-    const alertClaimRows = (alertClaimsRes.data ?? []) as AlertClaimRow[];
-    const alertClaimIds = [...new Set(alertClaimRows.map((r) => r.id))];
-
-    const { evidenceClaimIds } = await loadEvidenceByClaim(
-      supabase,
-      alertClaimIds,
-    );
-
-    const attendanceAlerts = buildAttendanceAlerts(
-      moduleRows,
-      alertClaimRows,
-      evidenceClaimIds,
-    );
-
-    const registerAlertClaims = alertClaimRows.filter(
-      (r) => r.session_date >= registerFrom,
-    );
-
-    const integrityClaimIds = [
-      ...new Set(registerAlertClaims.map((r) => r.id)),
-    ];
-
-    const { scanCountByClaim } = await loadClaimCounts(
-      supabase,
-      integrityClaimIds,
-    );
-
-    const unverifiedByClaim = new Map<string, number>();
-    if (integrityClaimIds.length) {
-      const { data: unverifiedRows, error: uvErr } = await supabase
-        .from("session_attendance")
-        .select("session_id")
-        .in("session_id", integrityClaimIds)
-        .eq("is_verified", false);
-
-      if (uvErr) throw new Error(uvErr.message);
-
-      for (const row of unverifiedRows ?? []) {
-        const id = row.session_id as string;
-        unverifiedByClaim.set(id, (unverifiedByClaim.get(id) ?? 0) + 1);
-      }
-    }
-
-    const moduleById = new Map(moduleRows.map((m) => [m.id, m]));
-    const integrityClaims = registerAlertClaims.map((row) => ({
-      id: row.id,
-      session_date: row.session_date,
-      status: row.status,
-      attendance_present_count: row.attendance_present_count,
-      moduleCode: moduleById.get(row.module_id)?.code ?? "—",
-    }));
-
-    const integrityIssues = buildIntegrityIssues(
-      integrityClaims,
-      scanCountByClaim,
-      evidenceClaimIds,
-      unverifiedByClaim,
-    );
 
     const activityFeed = buildActivityFeed(
       (activityClaimsRes.data ?? []) as ActivityClaimRow[],
@@ -454,8 +371,6 @@ export const getAdminDashboardDataFn = createServerFn({ method: "GET" }).handler
         stalledClaims: stalledCountRes.count ?? 0,
         pendingScheduleChanges: scheduleChangesRes.count ?? 0,
       },
-      attendanceAlerts,
-      integrityIssues,
       activityFeed,
       lecturerActivity,
       deadlines,

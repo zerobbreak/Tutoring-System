@@ -150,14 +150,6 @@ export function AdminApprovalDetailSheet({
                 <dt className="text-muted-foreground">Hours</dt>
                 <dd className="font-medium">{claim.hours}</dd>
               </div>
-              <div>
-                <dt className="text-muted-foreground">Attendance</dt>
-                <dd className="font-medium">
-                  {claim.attendance_present_count != null
-                    ? `${claim.attendance_present_count} students`
-                    : `${claim.attendance_scan_count} scans`}
-                </dd>
-              </div>
               <div className="col-span-2">
                 <dt className="flex items-center gap-1 text-muted-foreground">
                   <Calendar className="size-3.5" />
@@ -208,7 +200,7 @@ export function AdminApprovalDetailSheet({
             <section className="space-y-2">
               <h3 className="flex items-center gap-2 text-sm font-semibold">
                 <FileText className="size-4" />
-                Attendance evidence
+                Session evidence
               </h3>
               {claim.evidence.length === 0 ? (
                 <p className="text-sm text-amber-700">No register uploaded.</p>

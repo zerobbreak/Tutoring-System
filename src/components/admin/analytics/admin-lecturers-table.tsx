@@ -8,11 +8,6 @@ import {
 } from "#/components/ui/table";
 import type { LecturerAnalyticsRowDTO } from "#/server-actions/admin-analytics";
 
-function pct(v: number | null): string {
-  if (v == null) return "—";
-  return `${Math.round(v * 100)}%`;
-}
-
 function hours(v: number | null): string {
   if (v == null) return "—";
   if (v < 24) return `${Math.round(v)}h`;
@@ -42,7 +37,6 @@ export function AdminLecturersTable({ lecturers }: AdminLecturersTableProps) {
             <TableHead className="text-right">Pending</TableHead>
             <TableHead className="text-right">Median verify</TableHead>
             <TableHead className="text-right">Actions</TableHead>
-            <TableHead className="text-right">Attendance</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -60,9 +54,6 @@ export function AdminLecturersTable({ lecturers }: AdminLecturersTableProps) {
               </TableCell>
               <TableCell className="text-right tabular-nums">
                 {row.verificationActionsCount}
-              </TableCell>
-              <TableCell className="text-right tabular-nums">
-                {pct(row.averageAttendanceRate)}
               </TableCell>
             </TableRow>
           ))}

@@ -84,6 +84,7 @@ function emptyAdminAnalytics(): AdminAnalyticsDTO {
     tutors: [],
     modules: [],
     lecturers: [],
+    moduleHeatMap: [],
     workflow: {
       funnel,
       pendingAges: [
@@ -115,14 +116,12 @@ function emptyAdminAnalytics(): AdminAnalyticsDTO {
       pendingAdminApprovals: 0,
       disputeCountInPeriod: 0,
     },
-    moduleHeatMap: [],
     workloadDistribution: [],
     onboarding: { tutors: mapOnboardingCounts([], "TUTOR"), lecturers: mapOnboardingCounts([], "LECTURER") },
     comparisons: { byTerm: [], byCampus: [] },
     institution: {
       activeScheduledSessions: 0,
       utilizationRate: null,
-      averageAttendanceRate: null,
       totalModules: 0,
       activeTutors: 0,
     },
@@ -136,29 +135,17 @@ function buildComparisonSlice(
   scheduledExpected: number,
   scheduledCompleted: number,
 ): ComparisonSliceDTO {
-  let presentSum = 0;
-  let expectedSum = 0;
   let pendingCount = 0;
   const nonDraft = claims.filter((c) => c.status !== "DRAFT");
 
   for (const c of claims) {
     if (c.status === "PENDING_VERIFICATION") pendingCount += 1;
-    const p = c.attendance_present_count;
-    const e = c.attendance_expected_count;
-    if (p != null && e != null && e > 0 && c.status !== "DRAFT") {
-      presentSum += p;
-      expectedSum += e;
-    }
   }
 
   return {
     id,
     label,
     sessionCount: nonDraft.length,
-    averageAttendanceRate:
-      expectedSum > 0
-        ? Math.round((presentSum / expectedSum) * 100) / 100
-        : null,
     utilizationRate:
       scheduledExpected > 0
         ? Math.round((scheduledCompleted / scheduledExpected) * 100) / 100
@@ -240,7 +227,7 @@ export const getAdminAnalyticsFn = createServerFn({ method: "GET" }).handler(
         .order("session_date", { ascending: true }),
       supabase
         .from("session_claims")
-        .select("id, status, submitted_at, module_id")
+        .select("id, status, submitted_at, module_id, tutor_id")
         .in("module_id", moduleIds),
       supabase
         .from("disputes")
@@ -249,7 +236,7 @@ export const getAdminAnalyticsFn = createServerFn({ method: "GET" }).handler(
         .order("raised_at", { ascending: false }),
       supabase
         .from("disputes")
-        .select("id", { count: "exact", head: true })
+        .select("claim_id")
         .eq("status", "OPEN"),
       supabase
         .from("verification_actions")
@@ -322,22 +309,38 @@ export const getAdminAnalyticsFn = createServerFn({ method: "GET" }).handler(
     }
 
     const claims = (claimsRes.data ?? []) as ClaimRow[];
-    const claimIds = new Set(claims.map((c) => c.id));
-    const claimIdToTutor = new Map(claims.map((c) => [c.id, c.tutor_id]));
-    const claimIdToModule = new Map(claims.map((c) => [c.id, c.module_id]));
+    const pipelineClaims = pipelineClaimsRes.data ?? [];
+    const institutionClaimIds = new Set(
+      pipelineClaims.map((c) => c.id as string),
+    );
+    const claimIdToModule = new Map(
+      pipelineClaims.map((c) => [c.id as string, c.module_id as string]),
+    );
+    const claimIdToTutor = new Map(
+      pipelineClaims.map((c) => [c.id as string, c.tutor_id as string]),
+    );
 
     const disputes = (disputesRes.data ?? []).filter((d) =>
-      claimIds.has(d.claim_id as string),
+      institutionClaimIds.has(d.claim_id as string),
     );
-    const openDisputes = openDisputesRes.count ?? 0;
+    const openDisputes = (openDisputesRes.data ?? []).filter((d) =>
+      institutionClaimIds.has(d.claim_id as string),
+    ).length;
     const disputeCountInPeriod = disputes.length;
 
     const allActions = (actionsRes.data ?? []) as VerificationActionRow[];
-    const claimActions = allActions.filter((a) => claimIds.has(a.claim_id));
+    const claimActions = allActions.filter((a) =>
+      institutionClaimIds.has(a.claim_id),
+    );
     const firstApproveAt = firstApproveByClaim(claimActions);
     const verifiedAt = firstVerifiedByClaim(claimActions);
     const adminApprovedAt = firstAdminApprovedByClaim(claimActions);
-    const submittedByClaim = buildSubmittedByClaim(claims);
+    const submittedByClaim = buildSubmittedByClaim(
+      pipelineClaims.map((c) => ({
+        id: c.id as string,
+        submitted_at: c.submitted_at as string | null,
+      })),
+    );
 
     const stageTimings = buildWorkflowStageTimings(
       submittedByClaim,
@@ -397,6 +400,9 @@ export const getAdminAnalyticsFn = createServerFn({ method: "GET" }).handler(
       ANALYTICS_LOOKBACK_DAYS,
       now,
     );
+
+    let totalPresent = 0;
+    let totalExpected = 0;
     const claimsVolumeTrend = buildClaimsVolumeTrend(
       claims,
       ANALYTICS_LOOKBACK_DAYS,
@@ -404,8 +410,6 @@ export const getAdminAnalyticsFn = createServerFn({ method: "GET" }).handler(
       firstApproveAt,
     );
 
-    let totalPresent = 0;
-    let totalExpected = 0;
     const turnaroundHoursList: number[] = [];
 
     for (const claim of claims) {
@@ -432,7 +436,6 @@ export const getAdminAnalyticsFn = createServerFn({ method: "GET" }).handler(
     const pendingVerificationCount = pendingVerifyRes.count ?? 0;
     const pendingAdminApprovals = pendingAdminRes.count ?? 0;
 
-    const pipelineClaims = pipelineClaimsRes.data ?? [];
     const pendingClaims = pipelineClaims.filter(
       (c) => c.status === "PENDING_VERIFICATION",
     );
@@ -729,8 +732,6 @@ export const getAdminAnalyticsFn = createServerFn({ method: "GET" }).handler(
       (lecturerId) => {
         const modIds = modulesByLecturer.get(lecturerId) ?? [];
         const lecClaims = claims.filter((c) => modIds.includes(c.module_id));
-        let presentSum = 0;
-        let expectedSum = 0;
         let pendingVerificationCount = 0;
         const verifyHours: number[] = [];
         let verificationActionsCount = 0;
@@ -738,12 +739,6 @@ export const getAdminAnalyticsFn = createServerFn({ method: "GET" }).handler(
         for (const c of lecClaims) {
           if (c.status === "PENDING_VERIFICATION") {
             pendingVerificationCount += 1;
-          }
-          const p = c.attendance_present_count;
-          const e = c.attendance_expected_count;
-          if (p != null && e != null && e > 0 && c.status !== "DRAFT") {
-            presentSum += p;
-            expectedSum += e;
           }
           if (c.submitted_at) {
             const verified = verifiedAt.get(c.id);
@@ -766,10 +761,6 @@ export const getAdminAnalyticsFn = createServerFn({ method: "GET" }).handler(
           pendingVerificationCount,
           medianVerifyHours: median(verifyHours),
           verificationActionsCount,
-          averageAttendanceRate:
-            expectedSum > 0
-              ? Math.round((presentSum / expectedSum) * 100) / 100
-              : null,
         };
       },
     );
@@ -986,6 +977,7 @@ export const getAdminAnalyticsFn = createServerFn({ method: "GET" }).handler(
       modules: modulesAnalytics.sort((a, b) =>
         a.isHighRisk === b.isHighRisk ? 0 : a.isHighRisk ? -1 : 1,
       ),
+      moduleHeatMap,
       lecturers: lecturers.sort(
         (a, b) => b.pendingVerificationCount - a.pendingVerificationCount,
       ),
@@ -999,7 +991,6 @@ export const getAdminAnalyticsFn = createServerFn({ method: "GET" }).handler(
         pendingAdminApprovals,
         disputeCountInPeriod,
       },
-      moduleHeatMap,
       workloadDistribution,
       onboarding: {
         tutors: mapOnboardingCounts(onboardingRows, "TUTOR"),
@@ -1012,7 +1003,6 @@ export const getAdminAnalyticsFn = createServerFn({ method: "GET" }).handler(
           scheduleCompletionRate != null
             ? Math.round(scheduleCompletionRate * 100) / 100
             : null,
-        averageAttendanceRate,
         totalModules: moduleRows.length,
         activeTutors,
       },
