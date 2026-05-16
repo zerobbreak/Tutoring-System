@@ -2,11 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdminContext } from "#/lib/admin-server";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
-import {
-  ADMIN_USER_CATEGORIES,
-  type AdminUserCategory,
-  type AdminUserRowDTO,
-} from "./types";
+import { ADMIN_USER_CATEGORIES, type AdminUserRowDTO } from "./types";
 
 const listSchema = z.object({
   category: z.enum(ADMIN_USER_CATEGORIES).optional(),

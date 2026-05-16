@@ -100,7 +100,7 @@ function AdminUsersPage() {
   if (!user) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
-        <motion className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
   }

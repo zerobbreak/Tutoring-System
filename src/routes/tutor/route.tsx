@@ -4,6 +4,7 @@ import { IncomingMessagesListener } from "#/components/messaging/incoming-messag
 import { TutorAppShell } from "#/components/tutor-app-shell"
 import { supabase } from "#/lib/supabase"
 import { isTutorDashboardRole } from "#/lib/user-role"
+import { fetchUserApprovalAllowed } from "#/lib/user-approval-gate"
 
 export const Route = createFileRoute("/tutor")({
   component: TutorLayout,
@@ -25,6 +26,11 @@ function TutorLayout() {
       const role = u?.user_metadata?.role as string | undefined
       if (!u || !isTutorDashboardRole(role)) {
         navigate({ to: "/auth/login" })
+        return
+      }
+      const allowed = await fetchUserApprovalAllowed()
+      if (!allowed) {
+        navigate({ to: "/settings" })
         return
       }
       setUser(u)

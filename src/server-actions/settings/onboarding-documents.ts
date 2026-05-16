@@ -5,6 +5,7 @@ import {
   ONBOARDING_DOCUMENT_KINDS,
   type OnboardingDocumentKind,
 } from "#/lib/onboarding-documents";
+import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 
 async function requireUserId(
@@ -151,7 +152,9 @@ export const uploadOnboardingDocumentFn = createServerFn({ method: "POST" })
     const allPresent = ONBOARDING_DOCUMENT_KINDS.every((k) => kinds.has(k));
 
     if (allPresent) {
-      const { error: statusErr } = await supabase
+      const admin = getSupabaseAdmin();
+      const statusDb = admin ?? supabase;
+      const { error: statusErr } = await statusDb
         .from("users")
         .update({ approval_status: "pending_review" })
         .eq("id", userId);

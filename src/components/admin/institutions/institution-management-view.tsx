@@ -38,8 +38,9 @@ export function InstitutionManagementView({
     user.user_metadata?.full_name || user.email || formatRoleLabel(role);
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-6 md:p-8">
-      <div>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-6 overflow-y-auto overscroll-contain p-6 pb-10 md:p-8">
+      <div className="shrink-0">
         <h2 className="text-2xl font-semibold tracking-tight text-foreground">
           Institution management
         </h2>
@@ -61,7 +62,7 @@ export function InstitutionManagementView({
       {loadError ? (
         <div
           role="alert"
-          className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          className="shrink-0 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
         >
           {loadError}
         </div>
@@ -89,6 +90,7 @@ export function InstitutionManagementView({
       </div>
 
       <VenuesCampusHint />
+      </div>
     </div>
   );
 }

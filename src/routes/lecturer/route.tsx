@@ -5,6 +5,7 @@ import { LecturerAppShell } from "#/components/lecturer-app-shell";
 import type { AppShellUser } from "#/components/app-shell";
 import { supabase } from "#/lib/supabase";
 import { isLecturerDashboardRole } from "#/lib/user-role";
+import { fetchUserApprovalAllowed } from "#/lib/user-approval-gate";
 
 export const Route = createFileRoute("/lecturer")({
   component: LecturerLayout,
@@ -23,6 +24,11 @@ function LecturerLayout() {
       const role = u?.user_metadata?.role as string | undefined;
       if (!u || !isLecturerDashboardRole(role)) {
         navigate({ to: "/auth/login" });
+        return;
+      }
+      const allowed = await fetchUserApprovalAllowed();
+      if (!allowed) {
+        navigate({ to: "/settings" });
         return;
       }
       setUser(u);

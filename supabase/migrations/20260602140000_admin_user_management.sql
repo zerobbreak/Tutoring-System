@@ -32,11 +32,9 @@ ALTER TABLE public.users
 ALTER TABLE public.users
   ADD COLUMN IF NOT EXISTS approval_note text;
 
--- Existing users keep full access
+-- Existing users keep full access (new signups default to pending_documents)
 UPDATE public.users
-SET approval_status = 'approved'::public.user_approval_status
-WHERE approval_status IS NULL
-   OR approval_status = 'pending_documents'::public.user_approval_status;
+SET approval_status = 'approved'::public.user_approval_status;
 
 ALTER TABLE public.users
   ALTER COLUMN approval_status SET NOT NULL;
@@ -105,19 +103,8 @@ CREATE POLICY "onboarding_docs_select_own" ON storage.objects
     AND (storage.foldername(name))[1] = auth.uid()::text
   );
 
-DROP POLICY IF EXISTS "onboarding_docs_select_admin" ON storage.objects;
-CREATE POLICY "onboarding_docs_select_admin" ON storage.objects
-  FOR SELECT TO authenticated
-  USING (
-    bucket_id = 'onboarding-documents'
-    AND public.auth_user_is_admin()
-    AND EXISTS (
-      SELECT 1
-      FROM public.users u
-      WHERE u.id = ((storage.foldername(name))[1])::uuid
-        AND u.institution_id = public.get_auth_user_institution_id()
-    )
-  );
+-- onboarding_docs_select_admin is created in 20260602150000_fix_users_update_self_rls.sql
+-- (uses user_belongs_to_auth_institution to avoid users RLS recursion)
 
 -- ---------------------------------------------------------------------------
 -- RLS: user_onboarding_documents
@@ -162,21 +149,7 @@ CREATE POLICY "users_admin_update_institution" ON public.users
     AND institution_id = public.get_auth_user_institution_id()
   );
 
-DROP POLICY IF EXISTS "users_update_self" ON public.users;
-CREATE POLICY "users_update_self" ON public.users
-  FOR UPDATE TO authenticated
-  USING (id = auth.uid())
-  WITH CHECK (
-    id = auth.uid()
-    AND role = (SELECT u.role FROM public.users u WHERE u.id = auth.uid())
-    AND institution_id IS NOT DISTINCT FROM (
-      SELECT u.institution_id FROM public.users u WHERE u.id = auth.uid()
-    )
-    AND is_active = (SELECT u.is_active FROM public.users u WHERE u.id = auth.uid())
-    AND approval_status = (
-      SELECT u.approval_status FROM public.users u WHERE u.id = auth.uid()
-    )
-  );
+-- users_update_self hardened policy is in 20260602150000_fix_users_update_self_rls.sql
 
 -- ---------------------------------------------------------------------------
 -- RLS: modules admin update (lecturer assignment)

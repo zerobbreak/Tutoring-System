@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AdminAppShell } from "#/components/admin-app-shell";
 import { supabase } from "#/lib/supabase";
 import { isAdminDashboardRole } from "#/lib/user-role";
+import { fetchUserApprovalAllowed } from "#/lib/user-approval-gate";
 import type { AppShellUser } from "#/components/app-shell";
 
 export const Route = createFileRoute("/admin")({
@@ -22,6 +23,11 @@ function AdminLayout() {
       const role = u?.user_metadata?.role as string | undefined;
       if (!u || !isAdminDashboardRole(role)) {
         navigate({ to: "/auth/login" });
+        return;
+      }
+      const allowed = await fetchUserApprovalAllowed();
+      if (!allowed) {
+        navigate({ to: "/settings" });
         return;
       }
       setUser(u);
