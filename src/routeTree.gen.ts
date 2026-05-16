@@ -41,10 +41,10 @@ import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminSessionsRouteImport } from './routes/admin/sessions'
 import { Route as AdminSchedulesRouteImport } from './routes/admin/schedules'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
+import { Route as AdminPaymentsRouteImport } from './routes/admin/payments'
 import { Route as AdminMessagingRouteImport } from './routes/admin/messaging'
 import { Route as AdminInstitutionsRouteImport } from './routes/admin/institutions'
 import { Route as AdminAuditLogsRouteImport } from './routes/admin/audit-logs'
-import { Route as AdminAttendanceRouteImport } from './routes/admin/attendance'
 import { Route as AdminApprovalsRouteImport } from './routes/admin/approvals'
 import { Route as AdminAnalyticsRouteImport } from './routes/admin/analytics'
 import { Route as TutorClaimsIndexRouteImport } from './routes/tutor/claims.index'
@@ -211,6 +211,11 @@ const AdminReportsRoute = AdminReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminPaymentsRoute = AdminPaymentsRouteImport.update({
+  id: '/payments',
+  path: '/payments',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminMessagingRoute = AdminMessagingRouteImport.update({
   id: '/messaging',
   path: '/messaging',
@@ -224,11 +229,6 @@ const AdminInstitutionsRoute = AdminInstitutionsRouteImport.update({
 const AdminAuditLogsRoute = AdminAuditLogsRouteImport.update({
   id: '/audit-logs',
   path: '/audit-logs',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
-const AdminAttendanceRoute = AdminAttendanceRouteImport.update({
-  id: '/attendance',
-  path: '/attendance',
   getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminApprovalsRoute = AdminApprovalsRouteImport.update({
@@ -259,10 +259,10 @@ export interface FileRoutesByFullPath {
   '/tutor': typeof TutorRouteRouteWithChildren
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/approvals': typeof AdminApprovalsRoute
-  '/admin/attendance': typeof AdminAttendanceRoute
   '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/institutions': typeof AdminInstitutionsRoute
   '/admin/messaging': typeof AdminMessagingRoute
+  '/admin/payments': typeof AdminPaymentsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/schedules': typeof AdminSchedulesRoute
   '/admin/sessions': typeof AdminSessionsRoute
@@ -298,10 +298,10 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/approvals': typeof AdminApprovalsRoute
-  '/admin/attendance': typeof AdminAttendanceRoute
   '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/institutions': typeof AdminInstitutionsRoute
   '/admin/messaging': typeof AdminMessagingRoute
+  '/admin/payments': typeof AdminPaymentsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/schedules': typeof AdminSchedulesRoute
   '/admin/sessions': typeof AdminSessionsRoute
@@ -341,10 +341,10 @@ export interface FileRoutesById {
   '/tutor': typeof TutorRouteRouteWithChildren
   '/admin/analytics': typeof AdminAnalyticsRoute
   '/admin/approvals': typeof AdminApprovalsRoute
-  '/admin/attendance': typeof AdminAttendanceRoute
   '/admin/audit-logs': typeof AdminAuditLogsRoute
   '/admin/institutions': typeof AdminInstitutionsRoute
   '/admin/messaging': typeof AdminMessagingRoute
+  '/admin/payments': typeof AdminPaymentsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/schedules': typeof AdminSchedulesRoute
   '/admin/sessions': typeof AdminSessionsRoute
@@ -385,10 +385,10 @@ export interface FileRouteTypes {
     | '/tutor'
     | '/admin/analytics'
     | '/admin/approvals'
-    | '/admin/attendance'
     | '/admin/audit-logs'
     | '/admin/institutions'
     | '/admin/messaging'
+    | '/admin/payments'
     | '/admin/reports'
     | '/admin/schedules'
     | '/admin/sessions'
@@ -424,10 +424,10 @@ export interface FileRouteTypes {
     | '/'
     | '/admin/analytics'
     | '/admin/approvals'
-    | '/admin/attendance'
     | '/admin/audit-logs'
     | '/admin/institutions'
     | '/admin/messaging'
+    | '/admin/payments'
     | '/admin/reports'
     | '/admin/schedules'
     | '/admin/sessions'
@@ -466,10 +466,10 @@ export interface FileRouteTypes {
     | '/tutor'
     | '/admin/analytics'
     | '/admin/approvals'
-    | '/admin/attendance'
     | '/admin/audit-logs'
     | '/admin/institutions'
     | '/admin/messaging'
+    | '/admin/payments'
     | '/admin/reports'
     | '/admin/schedules'
     | '/admin/sessions'
@@ -741,6 +741,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminReportsRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/payments': {
+      id: '/admin/payments'
+      path: '/payments'
+      fullPath: '/admin/payments'
+      preLoaderRoute: typeof AdminPaymentsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/messaging': {
       id: '/admin/messaging'
       path: '/messaging'
@@ -760,13 +767,6 @@ declare module '@tanstack/react-router' {
       path: '/audit-logs'
       fullPath: '/admin/audit-logs'
       preLoaderRoute: typeof AdminAuditLogsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
-    '/admin/attendance': {
-      id: '/admin/attendance'
-      path: '/attendance'
-      fullPath: '/admin/attendance'
-      preLoaderRoute: typeof AdminAttendanceRouteImport
       parentRoute: typeof AdminRouteRoute
     }
     '/admin/approvals': {
@@ -803,10 +803,10 @@ declare module '@tanstack/react-router' {
 interface AdminRouteRouteChildren {
   AdminAnalyticsRoute: typeof AdminAnalyticsRoute
   AdminApprovalsRoute: typeof AdminApprovalsRoute
-  AdminAttendanceRoute: typeof AdminAttendanceRoute
   AdminAuditLogsRoute: typeof AdminAuditLogsRoute
   AdminInstitutionsRoute: typeof AdminInstitutionsRoute
   AdminMessagingRoute: typeof AdminMessagingRoute
+  AdminPaymentsRoute: typeof AdminPaymentsRoute
   AdminReportsRoute: typeof AdminReportsRoute
   AdminSchedulesRoute: typeof AdminSchedulesRoute
   AdminSessionsRoute: typeof AdminSessionsRoute
@@ -818,10 +818,10 @@ interface AdminRouteRouteChildren {
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAnalyticsRoute: AdminAnalyticsRoute,
   AdminApprovalsRoute: AdminApprovalsRoute,
-  AdminAttendanceRoute: AdminAttendanceRoute,
   AdminAuditLogsRoute: AdminAuditLogsRoute,
   AdminInstitutionsRoute: AdminInstitutionsRoute,
   AdminMessagingRoute: AdminMessagingRoute,
+  AdminPaymentsRoute: AdminPaymentsRoute,
   AdminReportsRoute: AdminReportsRoute,
   AdminSchedulesRoute: AdminSchedulesRoute,
   AdminSessionsRoute: AdminSessionsRoute,

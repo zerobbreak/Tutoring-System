@@ -2,14 +2,19 @@ export {
   CONVERSATION_TYPES,
   METADATA_CATEGORY,
   MESSAGING_UI_CATEGORIES,
+  ADMIN_MESSAGING_UI_CATEGORIES,
+  NOTICE_TYPES,
   buildMetadata,
   defaultTitleForType,
   uiCategoryMatchesConversation,
+  adminUiCategoryMatchesConversation,
   conversationMetadataSchema,
   type ConversationMetadata,
   type ConversationType,
   type MessagingUiCategoryId,
+  type AdminMessagingUiCategoryId,
   type MetadataCategory,
+  type NoticeType,
 } from "./metadata-contract";
 
 export type {
@@ -37,3 +42,13 @@ export {
   getOrCreateDisputeConversationFn,
   getOrCreateSessionConversationFn,
 } from "./workflow-conversations";
+
+export {
+  searchInstitutionUsersForAdminFn,
+  createAdminDirectConversationFn,
+  createInstitutionNoticeFn,
+  listOpenDisputesForMessagingFn,
+  joinAdminDisputeConversationFn,
+  type AdminMessagingUserDTO,
+  type AdminDisputeMessagingRowDTO,
+} from "./admin-messaging";

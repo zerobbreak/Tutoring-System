@@ -40,7 +40,7 @@ const ADMIN_NAV_GROUPS: readonly AppShellNavGroup[] = [
     items: [
       { to: "/admin/schedules", label: "Schedules", icon: Calendar },
       { to: "/admin/sessions", label: "Sessions", icon: Video },
-      { to: "/admin/attendance", label: "Attendance", icon: UserCheck },
+      { to: "/admin/payements", label: "Payment", icon: UserCheck },
     ],
   },
   {

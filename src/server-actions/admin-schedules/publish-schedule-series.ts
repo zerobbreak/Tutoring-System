@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { logInstitutionAudit } from "#/lib/audit-log";
 import { requireAdminContext } from "#/lib/admin-server";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { ensureClaimForScheduledSession } from "#/server-actions/lecturer-schedule/ensure-claim-for-session";
@@ -9,11 +10,11 @@ export const adminPublishScheduleSeriesFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => publishSeriesSchema.parse(input))
   .handler(async ({ data }): Promise<{ sessionCount: number }> => {
     const supabase = createSupabaseServerClient();
-    const { institutionId } = await requireAdminContext(supabase);
+    const { userId, institutionId } = await requireAdminContext(supabase);
 
     const { data: series, error: seriesErr } = await supabase
       .from("schedule_series")
-      .select("id, status, module_id")
+      .select("id, status, module_id, title")
       .eq("id", data.seriesId)
       .single();
 
@@ -44,6 +45,18 @@ export const adminPublishScheduleSeriesFn = createServerFn({ method: "POST" })
       .eq("id", data.seriesId);
 
     if (pubErr) throw new Error(pubErr.message);
+
+    await logInstitutionAudit(supabase, {
+      institutionId,
+      actorId: userId,
+      entityType: "SCHEDULE_SERIES",
+      entityId: data.seriesId,
+      event: "SCHEDULE_SERIES_PUBLISHED",
+      payload: {
+        title: series.title as string,
+        session_count: sessionCount,
+      },
+    });
 
     const { data: sessions, error: sessErr } = await supabase
       .from("scheduled_sessions")

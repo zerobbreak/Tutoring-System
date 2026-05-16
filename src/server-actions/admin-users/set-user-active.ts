@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { logInstitutionAudit } from "#/lib/audit-log";
 import { requireAdminContext } from "#/lib/admin-server";
 import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
@@ -31,6 +32,15 @@ export const setUserActiveFn = createServerFn({ method: "POST" })
       .eq("institution_id", ctx.institutionId);
 
     if (error) throw new Error(error.message);
+
+    await logInstitutionAudit(supabase, {
+      institutionId: ctx.institutionId,
+      actorId: ctx.userId,
+      entityType: "USER",
+      entityId: data.userId,
+      event: "USER_ACTIVE_CHANGED",
+      payload: { is_active: data.is_active },
+    });
 
     return { ok: true as const };
   });

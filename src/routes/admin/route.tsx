@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { IncomingMessagesListener } from "#/components/messaging/incoming-messages-listener";
 import { AdminAppShell } from "#/components/admin-app-shell";
 import { supabase } from "#/lib/supabase";
 import { isAdminDashboardRole } from "#/lib/user-role";
@@ -46,6 +47,10 @@ function AdminLayout() {
 
   return (
     <AdminAppShell user={user}>
+      <IncomingMessagesListener
+        messagingPath="/admin/messaging"
+        conversationSearchParam
+      />
       <Outlet />
     </AdminAppShell>
   );

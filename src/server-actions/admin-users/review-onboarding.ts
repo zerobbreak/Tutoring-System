@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { logInstitutionAudit } from "#/lib/audit-log";
 import { requireAdminContext } from "#/lib/admin-server";
 import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
@@ -45,6 +46,15 @@ export const reviewOnboardingFn = createServerFn({ method: "POST" })
         reviewed_by: ctx.userId,
       })
       .eq("user_id", data.userId);
+
+    await logInstitutionAudit(supabase, {
+      institutionId: ctx.institutionId,
+      actorId: ctx.userId,
+      entityType: "USER",
+      entityId: data.userId,
+      event: "USER_ONBOARDING_REVIEWED",
+      payload: { decision: data.decision, note: data.note ?? null },
+    });
 
     return { ok: true as const, approval_status };
   });

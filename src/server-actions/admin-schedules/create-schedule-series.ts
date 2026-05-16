@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { logInstitutionAudit } from "#/lib/audit-log";
 import { requireAdminContext } from "#/lib/admin-server";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { assertModuleInInstitution } from "./helpers";
@@ -51,5 +52,20 @@ export const adminCreateScheduleSeriesFn = createServerFn({ method: "POST" })
       .single();
 
     if (insErr) throw new Error(insErr.message);
-    return { seriesId: inserted.id as string };
+
+    const seriesId = inserted.id as string;
+    await logInstitutionAudit(supabase, {
+      institutionId,
+      actorId: userId,
+      entityType: "SCHEDULE_SERIES",
+      entityId: seriesId,
+      event: "SCHEDULE_SERIES_CREATED",
+      payload: {
+        title: data.title.trim(),
+        module_id: data.moduleId,
+        tutor_id: data.tutorId,
+      },
+    });
+
+    return { seriesId };
   });

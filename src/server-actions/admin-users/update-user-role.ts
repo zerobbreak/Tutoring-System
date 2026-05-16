@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { logInstitutionAudit } from "#/lib/audit-log";
 import { requireAdminContext } from "#/lib/admin-server";
 import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
@@ -63,6 +64,15 @@ export const updateUserRoleFn = createServerFn({ method: "POST" })
       { user_metadata: { role: data.role } },
     );
     if (authErr) throw new Error(authErr.message);
+
+    await logInstitutionAudit(supabase, {
+      institutionId: ctx.institutionId,
+      actorId: ctx.userId,
+      entityType: "USER",
+      entityId: data.userId,
+      event: "ROLE_CHANGED",
+      payload: { from: target.role, to: data.role },
+    });
 
     return { ok: true as const, role: data.role as UserRole };
   });

@@ -17,27 +17,44 @@ import {
   METADATA_CATEGORY,
 } from "#/server-actions/messaging";
 import { toast } from "sonner";
-interface User {
+
+export type NewConversationUser = {
   id: string;
   full_name: string;
   email: string;
-}
+  role?: string;
+};
 
 interface NewConversationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConversationCreated: (conversationId: string) => void;
+  title?: string;
+  description?: string;
+  searchUsers?: (query: string) => Promise<NewConversationUser[]>;
+  onSelectUser?: (user: NewConversationUser) => Promise<string>;
 }
 
 export function NewConversationDialog({
   open,
   onOpenChange,
   onConversationCreated,
+  title = "New Message",
+  description = "Search for a lecturer, admin, or tutor to start a conversation.",
+  searchUsers,
+  onSelectUser,
 }: NewConversationDialogProps) {
   const [query, setQuery] = React.useState("");
-  const [results, setResults] = React.useState<User[]>([]);
+  const [results, setResults] = React.useState<NewConversationUser[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isCreating, setIsCreating] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!open) {
+      setQuery("");
+      setResults([]);
+    }
+  }, [open]);
 
   React.useEffect(() => {
     if (!query.trim()) {
@@ -48,8 +65,10 @@ export function NewConversationDialog({
     const timer = setTimeout(async () => {
       setIsLoading(true);
       try {
-        const users = await searchUsersFn({ data: { query } });
-        setResults(users as User[]);
+        const users = searchUsers
+          ? await searchUsers(query)
+          : ((await searchUsersFn({ data: { query } })) as NewConversationUser[]);
+        setResults(users);
       } catch (err) {
         console.error("Search failed:", err);
       } finally {
@@ -58,26 +77,34 @@ export function NewConversationDialog({
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, searchUsers]);
 
-  const handleCreate = async (targetUser: User) => {
+  const handleCreate = async (targetUser: NewConversationUser) => {
     setIsCreating(true);
     try {
-      const conv = await createConversationFn({
-        data: {
-          type: "DIRECT",
-          participants: [targetUser.id],
-          metadata: buildMetadata(METADATA_CATEGORY.TUTOR_DISCUSSION, {
-            tutor_id: targetUser.id,
-          }),
-        },
-      });
+      let conversationId: string;
+      if (onSelectUser) {
+        conversationId = await onSelectUser(targetUser);
+      } else {
+        const conv = await createConversationFn({
+          data: {
+            type: "DIRECT",
+            participants: [targetUser.id],
+            metadata: buildMetadata(METADATA_CATEGORY.TUTOR_DISCUSSION, {
+              tutor_id: targetUser.id,
+            }),
+          },
+        });
+        conversationId = conv.id as string;
+      }
       toast.success(`Conversation with ${targetUser.full_name} started`);
-      onConversationCreated(conv.id);
+      onConversationCreated(conversationId);
       onOpenChange(false);
     } catch (err) {
       console.error("Failed to create conversation:", err);
-      toast.error("Failed to start conversation");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to start conversation",
+      );
     } finally {
       setIsCreating(false);
     }
@@ -85,12 +112,10 @@ export function NewConversationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] p-0 gap-0">
+      <DialogContent className="gap-0 p-0 sm:max-w-[425px]">
         <DialogHeader className="p-6 pb-2">
-          <DialogTitle>New Message</DialogTitle>
-          <DialogDescription>
-            Search for a lecturer, admin, or tutor to start a conversation.
-          </DialogDescription>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <div className="p-6 pt-2">
           <div className="relative">
@@ -107,7 +132,7 @@ export function NewConversationDialog({
         <ScrollArea className="h-[300px] border-t">
           <div className="p-2">
             {isLoading ? (
-              <div className="flex items-center justify-center h-32">
+              <div className="flex h-32 items-center justify-center">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : results.length > 0 ? (
@@ -115,36 +140,38 @@ export function NewConversationDialog({
                 {results.map((user) => (
                   <button
                     key={user.id}
-                    onClick={() => handleCreate(user)}
+                    type="button"
+                    onClick={() => void handleCreate(user)}
                     disabled={isCreating}
-                    className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-accent transition-colors text-left"
+                    className="flex w-full items-center gap-3 rounded-lg p-3 text-left transition-colors hover:bg-accent"
                   >
                     <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                      <AvatarFallback className="bg-primary/10 font-bold text-primary">
                         {user.full_name
                           .split(" ")
                           .map((n) => n[0])
                           .join("")}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">
                         {user.full_name}
                       </p>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="truncate text-xs text-muted-foreground">
+                        {user.role ? `${user.role} · ` : ""}
                         {user.email}
                       </p>
                     </div>
-                    <UserPlus className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100" />
+                    <UserPlus className="h-4 w-4 text-muted-foreground" />
                   </button>
                 ))}
               </div>
             ) : query.trim() ? (
-              <div className="flex flex-col items-center justify-center h-32 text-muted-foreground">
-                <p className="text-sm">No users found matching "{query}"</p>
+              <div className="flex h-32 flex-col items-center justify-center text-muted-foreground">
+                <p className="text-sm">No users found matching &quot;{query}&quot;</p>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-32 text-muted-foreground text-center px-6">
+              <div className="flex h-32 flex-col items-center justify-center px-6 text-center text-muted-foreground">
                 <p className="text-sm">Type a name to search</p>
               </div>
             )}
