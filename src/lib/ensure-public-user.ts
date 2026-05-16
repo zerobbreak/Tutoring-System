@@ -18,6 +18,29 @@ function roleFromAuth(user: User): string {
   return VALID_ROLES.has(raw) ? raw : "TUTOR";
 }
 
+const LAST_LOGIN_THROTTLE_MS = 60 * 60 * 1000;
+
+async function touchLastLoginAt(
+  db: ReturnType<typeof createSupabaseServerClient>,
+  userId: string,
+): Promise<void> {
+  const { data: row } = await db
+    .from("users")
+    .select("last_login_at")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const last = row?.last_login_at
+    ? new Date(row.last_login_at as string).getTime()
+    : 0;
+  if (Date.now() - last < LAST_LOGIN_THROTTLE_MS) return;
+
+  await db
+    .from("users")
+    .update({ last_login_at: new Date().toISOString() })
+    .eq("id", userId);
+}
+
 function fullNameFromAuth(user: User): string {
   const meta = user.user_metadata ?? {};
   const name = meta.full_name as string | undefined;
@@ -97,6 +120,8 @@ export async function ensurePublicUserProfile(
     }
     throw new Error(`Profile could not be saved: ${upsertError.message}`);
   }
+
+  await touchLastLoginAt(db, user.id);
 
   return {
     id: saved.id as string,
