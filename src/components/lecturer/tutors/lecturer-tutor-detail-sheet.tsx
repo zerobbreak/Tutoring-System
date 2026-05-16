@@ -75,19 +75,19 @@ function DetailSection({
         className,
       )}
     >
-      <motion className="mb-4 flex items-start gap-3">
+      <div className="mb-4 flex items-start gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--lagoon-deep)/10">
           <Icon className="size-4 text-(--lagoon-deep)" aria-hidden />
         </span>
-        <motion className="min-w-0 pt-0.5">
+        <div className="min-w-0 pt-0.5">
           <h3 className="text-sm font-semibold leading-none">{title}</h3>
           {description ? (
             <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
               {description}
             </p>
           ) : null}
-        </motion>
-      </motion>
+        </div>
+      </div>
       {children}
     </section>
   );
@@ -103,15 +103,15 @@ function StatCard({
   icon: LucideIcon;
 }) {
   return (
-    <motion className="flex flex-col gap-2 rounded-xl border border-border/80 bg-muted/20 p-4">
-      <motion className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+    <div className="flex flex-col gap-2 rounded-xl border border-border/80 bg-muted/20 p-4">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
         <Icon className="size-3.5 shrink-0" aria-hidden />
         {label}
-      </motion>
+      </div>
       <p className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">
         {value}
       </p>
-    </motion>
+    </div>
   );
 }
 
@@ -187,19 +187,19 @@ export function LecturerTutorDetailSheet({
         </SheetHeader>
 
         {loading || !detail ? (
-          <motion className="flex flex-1 items-center justify-center py-20">
+          <div className="flex flex-1 items-center justify-center py-20">
             <Loader2 className="size-8 animate-spin text-muted-foreground" />
-          </motion>
+          </div>
         ) : (
           <>
-            <motion className="shrink-0 border-b bg-linear-to-br from-(--lagoon-deep)/10 via-background to-background px-6 py-5">
-              <motion className="flex items-start gap-4">
+            <div className="shrink-0 border-b bg-linear-to-br from-(--lagoon-deep)/10 via-background to-background px-6 py-5">
+              <div className="flex items-start gap-4">
                 <Avatar className="size-14 shrink-0 ring-2 ring-(--lagoon-deep)/15">
                   <AvatarFallback className="text-lg">
                     {getInitials(detail.fullName) || "?"}
                   </AvatarFallback>
                 </Avatar>
-                <motion className="min-w-0 flex-1 pt-0.5">
+                <div className="min-w-0 flex-1 pt-0.5">
                   <h2 className="truncate text-lg font-semibold tracking-tight">
                     {detail.fullName}
                   </h2>
@@ -214,7 +214,7 @@ export function LecturerTutorDetailSheet({
                       })}
                     </p>
                   ) : null}
-                  <motion className="mt-2.5">
+                  <div className="mt-2.5">
                     {detail.isInactive ? (
                       <Badge
                         variant="outline"
@@ -230,11 +230,11 @@ export function LecturerTutorDetailSheet({
                         Active
                       </Badge>
                     )}
-                  </motion>
-                </motion>
-              </motion>
+                  </div>
+                </div>
+              </div>
 
-              <motion className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-2">
                 <Button
                   size="sm"
                   onClick={() => void handleMessage()}
@@ -250,10 +250,10 @@ export function LecturerTutorDetailSheet({
                     </Link>
                   </Button>
                 ) : null}
-              </motion>
-            </motion>
+              </div>
+            </div>
 
-            <motion className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-6 py-5">
+            <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-6 py-5">
               <section className="grid grid-cols-2 gap-3">
                 <StatCard
                   label="Sessions completed"
@@ -408,7 +408,7 @@ export function LecturerTutorDetailSheet({
                   Email tutor
                 </a>
               </Button>
-            </motion>
+            </div>
           </>
         )}
       </SheetContent>

@@ -1,9 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
-import { isAfter, parse, parseISO } from "date-fns";
+import { parse } from "date-fns";
 import * as z from "zod";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { assertClaimNotFrozen } from "#/server-actions/admin-approvals/assert-claim-not-frozen";
 import { getSupabaseAdmin } from "#/lib/supabase-admin";
+import {
+  assertValidQrSession,
+  findOrCreateStudent,
+  getSessionInstitutionId,
+  recordSessionCheckIn,
+} from "#/server-actions/tutor-sessions/student-roster";
 import {
   schedulingDateForColumn,
   type ClaimStatus,
@@ -677,70 +683,90 @@ export const getHistoricalAttendanceFn = createServerFn({ method: "GET" })
     }));
   });
 
-/** Student check-in via QR token. */
+const studentRosterInputSchema = z.object({
+  fullName: z.string().trim().min(2).max(255),
+  studentReference: z.string().trim().min(1).max(100),
+  email: z
+    .string()
+    .trim()
+    .email("Enter a valid email address.")
+    .max(255)
+    .optional()
+    .or(z.literal("")),
+});
+
+/** Student self check-in via QR token (registers roster entry when new). */
 export const checkInStudentFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => 
-    z.object({
-      token: z.string().uuid(),
-      sessionId: z.string().uuid(),
-      studentReference: z.string().min(1),
-    }).parse(input)
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        token: z.string().uuid(),
+        sessionId: z.string().uuid(),
+      })
+      .merge(studentRosterInputSchema)
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const admin = getSupabaseAdmin();
+    if (!admin) {
+      throw new Error(
+        "Check-in is not available right now. Please ask your tutor to register you manually.",
+      );
+    }
+
+    await assertValidQrSession(admin, data.sessionId, data.token);
+    const institutionId = await getSessionInstitutionId(admin, data.sessionId);
+    const student = await findOrCreateStudent(admin, institutionId, {
+      fullName: data.fullName,
+      studentReference: data.studentReference,
+      email: data.email || null,
+    });
+    await recordSessionCheckIn(admin, data.sessionId, student.id);
+
+    return {
+      success: true,
+      studentName: student.full_name,
+      registered: student.created,
+    };
+  });
+
+/** Tutor manually registers a student on the session roster. */
+export const registerStudentForSessionFn = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        claimId: z.string().uuid(),
+      })
+      .merge(studentRosterInputSchema)
+      .parse(input),
   )
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
+    const tutorId = await requireUserId(supabase);
 
-    // 1. Verify session and token
     const { data: claim, error: cErr } = await supabase
       .from("session_claims")
-      .select("id, qr_token, qr_expires_at, attendance_present_count")
-      .eq("id", data.sessionId)
-      .single();
-
-    if (cErr || !claim) throw new Error("Session not found.");
-    if (claim.qr_token !== data.token) throw new Error("Invalid QR token.");
-    if (claim.qr_expires_at && isAfter(new Date(), parseISO(claim.qr_expires_at))) {
-      throw new Error("QR token has expired.");
-    }
-
-    // 2. Find student by reference
-    const { data: student, error: sErr } = await supabase
-      .from("students")
-      .select("id, full_name")
-      .eq("student_reference", data.studentReference)
+      .select("id")
+      .eq("id", data.claimId)
+      .eq("tutor_id", tutorId)
       .maybeSingle();
 
-    if (sErr || !student) throw new Error("Student not found. Please verify your student reference number.");
+    if (cErr) throw new Error(cErr.message);
+    if (!claim) throw new Error("Session not found.");
 
-    // 3. Create attendance record
-    const admin = getSupabaseAdmin();
-    const db = admin || supabase; // Fallback to server client if admin not configured
+    const institutionId = await getSessionInstitutionId(supabase, data.claimId);
+    const student = await findOrCreateStudent(supabase, institutionId, {
+      fullName: data.fullName,
+      studentReference: data.studentReference,
+      email: data.email || null,
+    });
+    await recordSessionCheckIn(supabase, data.claimId, student.id);
 
-    const { error: aErr } = await db
-      .from("session_attendance")
-      .upsert({
-        session_id: data.sessionId,
-        student_id: student.id,
-        status: "PRESENT",
-        check_in_time: new Date().toISOString(),
-      }, { onConflict: "session_id, student_id" });
-
-    if (aErr) {
-      if (aErr.code === "23505") throw new Error("You have already checked in for this session.");
-      throw new Error(aErr.message);
-    }
-
-    // 4. Update aggregate count
-    const { data: countData } = await db
-      .from("session_attendance")
-      .select("id", { count: "exact" })
-      .eq("session_id", data.sessionId);
-
-    await db
-      .from("session_claims")
-      .update({ attendance_present_count: countData?.length || 0 })
-      .eq("id", data.sessionId);
-
-    return { success: true, studentName: student.full_name };
+    return {
+      success: true,
+      studentName: student.full_name,
+      registered: student.created,
+    };
   });
 
 /** Get detailed information for a single claim, including history and evidence. */
