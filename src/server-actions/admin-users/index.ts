@@ -6,6 +6,13 @@ export { reviewOnboardingFn } from "./review-onboarding";
 export { resetUserMfaFn } from "./reset-user-mfa";
 export { assignModuleLecturerFn } from "./assign-module-lecturer";
 export { listInstitutionModulesFn } from "./list-institution-modules";
+export { provisionInstitutionUserFn } from "./provision-institution-user";
+export { createRegistrationInviteFn } from "./create-registration-invite";
+export {
+  listRegistrationInvitesFn,
+  type RegistrationInviteRowDTO,
+} from "./list-registration-invites";
+export { revokeRegistrationInviteFn } from "./revoke-registration-invite";
 
 export type {
   AdminUserCategory,

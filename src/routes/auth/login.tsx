@@ -186,12 +186,12 @@ function Login() {
           </form>
 
           <div className="mt-8 text-center text-sm text-gray-500">
-            Don't have an account?{" "}
+            Have an invite code?{" "}
             <Link
               to="/auth/register"
               className="font-semibold text-[#FF6F61] hover:underline"
             >
-              Join us today
+              Create account
             </Link>
           </div>
         </div>
