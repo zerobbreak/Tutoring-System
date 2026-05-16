@@ -51,6 +51,8 @@ export type SessionAttendanceRowDTO = {
   check_in_time: string | null;
   is_verified: boolean;
   notes: string | null;
+  /** Present when roster embed is unavailable (e.g. admin read without students table). */
+  student_id?: string | null;
   student: {
     full_name: string;
     email: string | null;
