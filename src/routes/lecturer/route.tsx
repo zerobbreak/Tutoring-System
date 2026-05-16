@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { IncomingMessagesListener } from "#/components/messaging/incoming-messages-listener";
 import { LecturerAppShell } from "#/components/lecturer-app-shell";
 import type { AppShellUser } from "#/components/app-shell";
 import { supabase } from "#/lib/supabase";
@@ -40,6 +41,10 @@ function LecturerLayout() {
 
   return (
     <LecturerAppShell user={user}>
+      <IncomingMessagesListener
+        messagingPath="/lecturer/messages"
+        conversationSearchParam
+      />
       <Outlet />
     </LecturerAppShell>
   );

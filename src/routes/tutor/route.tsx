@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router"
 import { useEffect, useState } from "react"
+import { IncomingMessagesListener } from "#/components/messaging/incoming-messages-listener"
 import { TutorAppShell } from "#/components/tutor-app-shell"
 import { supabase } from "#/lib/supabase"
 import { isTutorDashboardRole } from "#/lib/user-role"
@@ -42,6 +43,7 @@ function TutorLayout() {
 
   return (
     <TutorAppShell user={user}>
+      <IncomingMessagesListener messagingPath="/tutor/messaging" />
       <Outlet />
     </TutorAppShell>
   )

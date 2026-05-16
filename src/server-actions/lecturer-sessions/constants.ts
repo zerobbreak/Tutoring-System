@@ -21,7 +21,7 @@ export const LECTURER_SESSION_CLAIM_SELECT = `
   source_schedule_import_id,
   source_scheduled_session_id,
   module:modules ( id, code, name ),
-  tutor:users!session_claims_tutor_id_fkey ( full_name, email )
+  tutor:users!session_claims_tutor_id_fkey ( id, full_name, email )
 `;
 
 export const CANCELLED_SESSION_SELECT = `

@@ -4,6 +4,7 @@ import {
   Download,
   FileText,
   MessageSquare,
+  Users,
 } from "lucide-react";
 
 export const LECTURER_QUICK_ACTIONS = [
@@ -11,6 +12,11 @@ export const LECTURER_QUICK_ACTIONS = [
     label: "Review Claims",
     to: "/lecturer/verification-queue" as const,
     icon: ClipboardList,
+  },
+  {
+    label: "Manage Tutors",
+    to: "/lecturer/tutors" as const,
+    icon: Users,
   },
   {
     label: "Open Schedule",

@@ -36,6 +36,17 @@ import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthRecoverPasswordRouteImport } from './routes/auth/recover-password'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
+import { Route as AdminUsersRouteImport } from './routes/admin/users'
+import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
+import { Route as AdminSessionsRouteImport } from './routes/admin/sessions'
+import { Route as AdminSchedulesRouteImport } from './routes/admin/schedules'
+import { Route as AdminReportsRouteImport } from './routes/admin/reports'
+import { Route as AdminMessagingRouteImport } from './routes/admin/messaging'
+import { Route as AdminInstitutionsRouteImport } from './routes/admin/institutions'
+import { Route as AdminAuditLogsRouteImport } from './routes/admin/audit-logs'
+import { Route as AdminAttendanceRouteImport } from './routes/admin/attendance'
+import { Route as AdminApprovalsRouteImport } from './routes/admin/approvals'
+import { Route as AdminAnalyticsRouteImport } from './routes/admin/analytics'
 import { Route as TutorClaimsIndexRouteImport } from './routes/tutor/claims.index'
 import { Route as TutorClaimsClaimIdRouteImport } from './routes/tutor/claims.$claimId'
 
@@ -175,6 +186,61 @@ const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
   path: '/auth/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSettingsRoute = AdminSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSessionsRoute = AdminSessionsRouteImport.update({
+  id: '/sessions',
+  path: '/sessions',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminSchedulesRoute = AdminSchedulesRouteImport.update({
+  id: '/schedules',
+  path: '/schedules',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminReportsRoute = AdminReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminMessagingRoute = AdminMessagingRouteImport.update({
+  id: '/messaging',
+  path: '/messaging',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminInstitutionsRoute = AdminInstitutionsRouteImport.update({
+  id: '/institutions',
+  path: '/institutions',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAuditLogsRoute = AdminAuditLogsRouteImport.update({
+  id: '/audit-logs',
+  path: '/audit-logs',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAttendanceRoute = AdminAttendanceRouteImport.update({
+  id: '/attendance',
+  path: '/attendance',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminApprovalsRoute = AdminApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
+const AdminAnalyticsRoute = AdminAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const TutorClaimsIndexRoute = TutorClaimsIndexRouteImport.update({
   id: '/claims/',
   path: '/claims/',
@@ -191,6 +257,17 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteRouteWithChildren
   '/lecturer': typeof LecturerRouteRouteWithChildren
   '/tutor': typeof TutorRouteRouteWithChildren
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/approvals': typeof AdminApprovalsRoute
+  '/admin/attendance': typeof AdminAttendanceRoute
+  '/admin/audit-logs': typeof AdminAuditLogsRoute
+  '/admin/institutions': typeof AdminInstitutionsRoute
+  '/admin/messaging': typeof AdminMessagingRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/schedules': typeof AdminSchedulesRoute
+  '/admin/sessions': typeof AdminSessionsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/recover-password': typeof AuthRecoverPasswordRoute
@@ -219,6 +296,17 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/approvals': typeof AdminApprovalsRoute
+  '/admin/attendance': typeof AdminAttendanceRoute
+  '/admin/audit-logs': typeof AdminAuditLogsRoute
+  '/admin/institutions': typeof AdminInstitutionsRoute
+  '/admin/messaging': typeof AdminMessagingRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/schedules': typeof AdminSchedulesRoute
+  '/admin/sessions': typeof AdminSessionsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/recover-password': typeof AuthRecoverPasswordRoute
@@ -251,6 +339,17 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteRouteWithChildren
   '/lecturer': typeof LecturerRouteRouteWithChildren
   '/tutor': typeof TutorRouteRouteWithChildren
+  '/admin/analytics': typeof AdminAnalyticsRoute
+  '/admin/approvals': typeof AdminApprovalsRoute
+  '/admin/attendance': typeof AdminAttendanceRoute
+  '/admin/audit-logs': typeof AdminAuditLogsRoute
+  '/admin/institutions': typeof AdminInstitutionsRoute
+  '/admin/messaging': typeof AdminMessagingRoute
+  '/admin/reports': typeof AdminReportsRoute
+  '/admin/schedules': typeof AdminSchedulesRoute
+  '/admin/sessions': typeof AdminSessionsRoute
+  '/admin/settings': typeof AdminSettingsRoute
+  '/admin/users': typeof AdminUsersRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/recover-password': typeof AuthRecoverPasswordRoute
@@ -284,6 +383,17 @@ export interface FileRouteTypes {
     | '/admin'
     | '/lecturer'
     | '/tutor'
+    | '/admin/analytics'
+    | '/admin/approvals'
+    | '/admin/attendance'
+    | '/admin/audit-logs'
+    | '/admin/institutions'
+    | '/admin/messaging'
+    | '/admin/reports'
+    | '/admin/schedules'
+    | '/admin/sessions'
+    | '/admin/settings'
+    | '/admin/users'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/recover-password'
@@ -312,6 +422,17 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin/analytics'
+    | '/admin/approvals'
+    | '/admin/attendance'
+    | '/admin/audit-logs'
+    | '/admin/institutions'
+    | '/admin/messaging'
+    | '/admin/reports'
+    | '/admin/schedules'
+    | '/admin/sessions'
+    | '/admin/settings'
+    | '/admin/users'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/recover-password'
@@ -343,6 +464,17 @@ export interface FileRouteTypes {
     | '/admin'
     | '/lecturer'
     | '/tutor'
+    | '/admin/analytics'
+    | '/admin/approvals'
+    | '/admin/attendance'
+    | '/admin/audit-logs'
+    | '/admin/institutions'
+    | '/admin/messaging'
+    | '/admin/reports'
+    | '/admin/schedules'
+    | '/admin/sessions'
+    | '/admin/settings'
+    | '/admin/users'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/recover-password'
@@ -574,6 +706,83 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/settings': {
+      id: '/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/sessions': {
+      id: '/admin/sessions'
+      path: '/sessions'
+      fullPath: '/admin/sessions'
+      preLoaderRoute: typeof AdminSessionsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/schedules': {
+      id: '/admin/schedules'
+      path: '/schedules'
+      fullPath: '/admin/schedules'
+      preLoaderRoute: typeof AdminSchedulesRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/reports': {
+      id: '/admin/reports'
+      path: '/reports'
+      fullPath: '/admin/reports'
+      preLoaderRoute: typeof AdminReportsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/messaging': {
+      id: '/admin/messaging'
+      path: '/messaging'
+      fullPath: '/admin/messaging'
+      preLoaderRoute: typeof AdminMessagingRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/institutions': {
+      id: '/admin/institutions'
+      path: '/institutions'
+      fullPath: '/admin/institutions'
+      preLoaderRoute: typeof AdminInstitutionsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/audit-logs': {
+      id: '/admin/audit-logs'
+      path: '/audit-logs'
+      fullPath: '/admin/audit-logs'
+      preLoaderRoute: typeof AdminAuditLogsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/attendance': {
+      id: '/admin/attendance'
+      path: '/attendance'
+      fullPath: '/admin/attendance'
+      preLoaderRoute: typeof AdminAttendanceRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/approvals': {
+      id: '/admin/approvals'
+      path: '/approvals'
+      fullPath: '/admin/approvals'
+      preLoaderRoute: typeof AdminApprovalsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
+    '/admin/analytics': {
+      id: '/admin/analytics'
+      path: '/analytics'
+      fullPath: '/admin/analytics'
+      preLoaderRoute: typeof AdminAnalyticsRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/tutor/claims/': {
       id: '/tutor/claims/'
       path: '/claims'
@@ -592,10 +801,32 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteRouteChildren {
+  AdminAnalyticsRoute: typeof AdminAnalyticsRoute
+  AdminApprovalsRoute: typeof AdminApprovalsRoute
+  AdminAttendanceRoute: typeof AdminAttendanceRoute
+  AdminAuditLogsRoute: typeof AdminAuditLogsRoute
+  AdminInstitutionsRoute: typeof AdminInstitutionsRoute
+  AdminMessagingRoute: typeof AdminMessagingRoute
+  AdminReportsRoute: typeof AdminReportsRoute
+  AdminSchedulesRoute: typeof AdminSchedulesRoute
+  AdminSessionsRoute: typeof AdminSessionsRoute
+  AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
+  AdminAnalyticsRoute: AdminAnalyticsRoute,
+  AdminApprovalsRoute: AdminApprovalsRoute,
+  AdminAttendanceRoute: AdminAttendanceRoute,
+  AdminAuditLogsRoute: AdminAuditLogsRoute,
+  AdminInstitutionsRoute: AdminInstitutionsRoute,
+  AdminMessagingRoute: AdminMessagingRoute,
+  AdminReportsRoute: AdminReportsRoute,
+  AdminSchedulesRoute: AdminSchedulesRoute,
+  AdminSessionsRoute: AdminSessionsRoute,
+  AdminSettingsRoute: AdminSettingsRoute,
+  AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 

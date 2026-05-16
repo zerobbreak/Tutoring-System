@@ -24,6 +24,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "#/components/ui/sheet";
+import { WorkflowMessageButton } from "#/components/messaging/workflow-message-button";
 import { formatClaimStatus } from "#/lib/session-claim-display";
 import { toast } from "#/lib/toast";
 import {
@@ -130,6 +131,17 @@ export function VerificationClaimDetailSheet({
                 </p>
               </div>
               <Badge>{formatClaimStatus(claim.status)}</Badge>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <WorkflowMessageButton kind="claim" claimId={claim.id} />
+              <WorkflowMessageButton kind="session" claimId={claim.id} />
+              {claim.open_dispute ? (
+                <WorkflowMessageButton
+                  kind="dispute"
+                  disputeId={claim.open_dispute.id}
+                />
+              ) : null}
             </div>
 
             <dl className="grid grid-cols-2 gap-3 text-sm">

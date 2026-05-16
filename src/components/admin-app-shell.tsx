@@ -1,5 +1,18 @@
 import type { ReactNode } from "react";
-import { LayoutDashboard } from "lucide-react";
+import {
+  BarChart3,
+  Building2,
+  Calendar,
+  ClipboardCheck,
+  FileText,
+  LayoutDashboard,
+  MessageSquare,
+  ScrollText,
+
+  UserCheck,
+  Users,
+  Video,
+} from "lucide-react";
 import {
   AppShell,
   type AppShellNavGroup,
@@ -10,7 +23,39 @@ import { formatRoleLabel } from "#/lib/user-role";
 const ADMIN_NAV_GROUPS: readonly AppShellNavGroup[] = [
   {
     label: "Overview",
-    items: [{ to: "/admin", label: "Dashboard", icon: LayoutDashboard }],
+    items: [
+      { to: "/admin", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/admin/approvals", label: "Approvals", icon: ClipboardCheck },
+    ],
+  },
+  {
+    label: "Organization",
+    items: [
+      { to: "/admin/institutions", label: "Institutions", icon: Building2 },
+      { to: "/admin/users", label: "Users", icon: Users },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { to: "/admin/schedules", label: "Schedules", icon: Calendar },
+      { to: "/admin/sessions", label: "Sessions", icon: Video },
+      { to: "/admin/attendance", label: "Attendance", icon: UserCheck },
+    ],
+  },
+  {
+    label: "Communication",
+    items: [
+      { to: "/admin/messaging", label: "Messaging", icon: MessageSquare },
+    ],
+  },
+  {
+    label: "Insights",
+    items: [
+      { to: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+      { to: "/admin/reports", label: "Reports", icon: FileText },
+      { to: "/admin/audit-logs", label: "Audit Logs", icon: ScrollText },
+    ],
   },
 ] as const;
 

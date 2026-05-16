@@ -5,16 +5,24 @@ import {
   Pin,
   MessageSquare,
   Users,
-  FileText,
   AlertCircle,
   Bookmark,
+  Megaphone,
+  Scale,
 } from "lucide-react";
 import { Input } from "#/components/ui/input";
 import { Button } from "#/components/ui/button";
 import { ScrollArea } from "#/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "#/components/ui/avatar";
 import { cn } from "#/lib/utils";
-import type { ConversationDTO } from "#/server-actions/messaging";
+import {
+  MESSAGING_UI_CATEGORIES,
+  searchMessagesFn,
+  uiCategoryMatchesConversation,
+  type ConversationDTO,
+  type MessageSearchResultDTO,
+  type MessagingUiCategoryId,
+} from "#/server-actions/messaging";
 import { formatDistanceToNow } from "date-fns";
 
 interface ConversationSidebarProps {
@@ -25,13 +33,14 @@ interface ConversationSidebarProps {
   isLoading?: boolean;
 }
 
-const CATEGORIES = [
-  { id: "ALL", label: "All", icon: MessageSquare },
-  { id: "DIRECT", label: "Direct", icon: Users },
-  { id: "SESSION", label: "Sessions", icon: Bookmark },
-  { id: "CLAIM", label: "Claims", icon: FileText },
-  { id: "ATTENDANCE", label: "Attendance", icon: AlertCircle },
-];
+const CATEGORY_ICONS: Record<MessagingUiCategoryId, React.ElementType> = {
+  ALL: MessageSquare,
+  TUTOR: Users,
+  SESSION: Bookmark,
+  ATTENDANCE: AlertCircle,
+  ADMIN: Megaphone,
+  DISPUTE: Scale,
+};
 
 export function ConversationSidebar({
   conversations,
@@ -40,29 +49,54 @@ export function ConversationSidebar({
   onCreateNew,
 }: ConversationSidebarProps) {
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [activeCategory, setActiveCategory] = React.useState("ALL");
+  const [activeCategory, setActiveCategory] =
+    React.useState<MessagingUiCategoryId>("ALL");
+  const [searchResults, setSearchResults] = React.useState<
+    MessageSearchResultDTO[]
+  >([]);
+  const [searching, setSearching] = React.useState(false);
+
+  React.useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const results = await searchMessagesFn({ data: { query: q, limit: 20 } });
+        setSearchResults(results);
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const filteredConversations = conversations.filter((conv) => {
-    const matchesSearch =
-      conv.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.last_message?.content
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      activeCategory === "ALL" || conv.type === activeCategory;
-    return matchesSearch && matchesCategory;
+    const matchesCategory = uiCategoryMatchesConversation(activeCategory, conv);
+    if (!matchesCategory) return false;
+    if (!searchQuery.trim() || searchResults.length > 0) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      conv.title?.toLowerCase().includes(q) ||
+      conv.last_message?.content.toLowerCase().includes(q)
+    );
   });
 
-  const pinnedConversations = filteredConversations.filter((c) =>
-    c.participants.some((p) => p.is_pinned),
-  );
-  const recentConversations = filteredConversations.filter(
-    (c) => !c.participants.some((p) => p.is_pinned),
-  );
+  const pinnedConversations = filteredConversations.filter((c) => c.my_is_pinned);
+  const recentConversations = filteredConversations.filter((c) => !c.my_is_pinned);
+
+  const showMessageSearch = searchQuery.trim().length >= 2;
 
   return (
-    <div className="flex flex-col h-full bg-card border-r w-80 shrink-0">
-      <div className="p-4 space-y-4">
+    <div className="flex h-full w-80 shrink-0 flex-col border-r bg-card">
+      <div className="space-y-4 p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold tracking-tight">Messages</h2>
           <Button size="icon" variant="ghost" onClick={onCreateNew}>
@@ -73,25 +107,25 @@ export function ConversationSidebar({
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search conversations..."
-            className="pl-9 bg-muted/50 border-none"
+            placeholder="Search messages..."
+            className="border-none bg-muted/50 pl-9"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
-          {CATEGORIES.map((cat) => {
-            const Icon = cat.icon;
+        <div className="no-scrollbar flex gap-1 overflow-x-auto pb-1">
+          {MESSAGING_UI_CATEGORIES.map((cat) => {
+            const Icon = CATEGORY_ICONS[cat.id];
             return (
               <Button
                 key={cat.id}
                 variant={activeCategory === cat.id ? "secondary" : "ghost"}
                 size="sm"
-                className="whitespace-nowrap h-8 px-2.5"
+                className="h-8 whitespace-nowrap px-2.5"
                 onClick={() => setActiveCategory(cat.id)}
               >
-                <Icon className="h-3.5 w-3.5 mr-1.5" />
+                <Icon className="mr-1.5 h-3.5 w-3.5" />
                 {cat.label}
               </Button>
             );
@@ -100,10 +134,39 @@ export function ConversationSidebar({
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="px-2 space-y-4 pb-4">
-          {pinnedConversations.length > 0 && (
+        <div className="space-y-4 px-2 pb-4">
+          {showMessageSearch ? (
             <div>
-              <div className="px-2 mb-2 text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+              <div className="mb-2 px-2 text-xs font-semibold text-muted-foreground">
+                {searching ? "Searching…" : `Message matches (${searchResults.length})`}
+              </div>
+              <div className="space-y-0.5">
+                {searchResults.length === 0 && !searching ? (
+                  <p className="px-2 py-4 text-center text-sm text-muted-foreground">
+                    No messages found
+                  </p>
+                ) : (
+                  searchResults.map((hit) => (
+                    <button
+                      key={hit.message_id}
+                      type="button"
+                      onClick={() => onSelect(hit.conversation_id)}
+                      className={cn(
+                        "w-full rounded-lg p-3 text-left text-sm transition-colors hover:bg-accent/50",
+                        selectedId === hit.conversation_id && "bg-accent",
+                      )}
+                    >
+                      <p className="line-clamp-2 text-muted-foreground">{hit.content}</p>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          ) : null}
+
+          {!showMessageSearch && pinnedConversations.length > 0 ? (
+            <div>
+              <div className="mb-2 flex items-center gap-1.5 px-2 text-xs font-semibold text-muted-foreground">
                 <Pin className="h-3 w-3" /> PINNED
               </div>
               <div className="space-y-0.5">
@@ -117,31 +180,33 @@ export function ConversationSidebar({
                 ))}
               </div>
             </div>
-          )}
+          ) : null}
 
-          <div>
-            {pinnedConversations.length > 0 && (
-              <div className="px-2 mb-2 text-xs font-semibold text-muted-foreground">
-                RECENT
-              </div>
-            )}
-            <div className="space-y-0.5">
-              {recentConversations.length > 0 ? (
-                recentConversations.map((conv) => (
-                  <ConversationItem
-                    key={conv.id}
-                    conversation={conv}
-                    isSelected={selectedId === conv.id}
-                    onClick={() => onSelect(conv.id)}
-                  />
-                ))
-              ) : (
-                <div className="text-center py-8 text-sm text-muted-foreground">
-                  No conversations found
+          {!showMessageSearch ? (
+            <div>
+              {pinnedConversations.length > 0 ? (
+                <div className="mb-2 px-2 text-xs font-semibold text-muted-foreground">
+                  RECENT
                 </div>
-              )}
+              ) : null}
+              <div className="space-y-0.5">
+                {recentConversations.length > 0 ? (
+                  recentConversations.map((conv) => (
+                    <ConversationItem
+                      key={conv.id}
+                      conversation={conv}
+                      isSelected={selectedId === conv.id}
+                      onClick={() => onSelect(conv.id)}
+                    />
+                  ))
+                ) : (
+                  <div className="py-8 text-center text-sm text-muted-foreground">
+                    No conversations found
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
       </ScrollArea>
     </div>
@@ -158,13 +223,16 @@ function ConversationItem({
   onClick: () => void;
 }) {
   const lastMsg = conversation.last_message;
-  const otherParticipant = conversation.participants[0]; // Simplified for now
+  const otherParticipant = conversation.participants.find(
+    (p) => p.user_id !== conversation.participants[0]?.user_id,
+  ) ?? conversation.participants[0];
 
   return (
     <button
+      type="button"
       onClick={onClick}
       className={cn(
-        "w-full flex items-start gap-3 p-3 rounded-lg transition-colors text-left group",
+        "group flex w-full items-start gap-3 rounded-lg p-3 text-left transition-colors",
         isSelected ? "bg-accent" : "hover:bg-accent/50",
       )}
     >
@@ -174,31 +242,31 @@ function ConversationItem({
             {conversation.title?.[0] || otherParticipant?.full_name[0] || "?"}
           </AvatarFallback>
         </Avatar>
-        {conversation.unread_count > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
-            {conversation.unread_count}
+        {conversation.unread_count > 0 ? (
+          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+            {conversation.unread_count > 9 ? "9+" : conversation.unread_count}
           </span>
-        )}
+        ) : null}
       </div>
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between mb-0.5">
-          <span className="font-semibold truncate">
+      <div className="min-w-0 flex-1">
+        <div className="mb-0.5 flex items-center justify-between">
+          <span className="truncate font-semibold">
             {conversation.title ||
               otherParticipant?.full_name ||
-              "New Conversation"}
+              "New conversation"}
           </span>
-          <span className="text-[10px] text-muted-foreground whitespace-nowrap ml-2">
+          <span className="ml-2 whitespace-nowrap text-[10px] text-muted-foreground">
             {conversation.updated_at &&
               formatDistanceToNow(new Date(conversation.updated_at), {
                 addSuffix: false,
               })}
           </span>
         </div>
-        <p className="text-xs text-muted-foreground line-clamp-1">
+        <p className="line-clamp-1 text-xs text-muted-foreground">
           {lastMsg ? (
             <>
-              <span className="text-foreground/70 font-medium">
+              <span className="font-medium text-foreground/70">
                 {lastMsg.sender_name}:{" "}
               </span>
               {lastMsg.content}

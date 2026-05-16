@@ -11,7 +11,13 @@ import {
   Users,
   Video,
 } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { DashboardRecentMessages } from "#/components/tutor/dashboard/dashboard-recent-messages";
+import { useDashboardPreferences } from "#/lib/dashboard-preferences";
+import {
+  listConversationsFn,
+  type ConversationDTO,
+} from "#/server-actions/messaging";
 import {
   TutorSessionsActivityChart,
   type SessionDayPoint,
@@ -67,6 +73,32 @@ export function TutorDashboardView({
   upcomingEvents,
   notifications,
 }: TutorDashboardViewProps) {
+  const { prefs } = useDashboardPreferences();
+  const [messageConversations, setMessageConversations] = useState<
+    ConversationDTO[]
+  >([]);
+
+  useEffect(() => {
+    if (!prefs.dashboard_show_messages) {
+      setMessageConversations([]);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const convs = (await listConversationsFn({
+          data: {},
+        })) as ConversationDTO[];
+        if (!cancelled) setMessageConversations(convs);
+      } catch {
+        if (!cancelled) setMessageConversations([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [prefs.dashboard_show_messages]);
+
   const recentClaims = useMemo(() => {
     return [...claims].sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1)).slice(0, 5);
   }, [claims]);
@@ -98,8 +130,10 @@ export function TutorDashboardView({
     },
   ];
 
+  const rootGap = prefs.dashboard_compact_mode ? "gap-4" : "gap-6";
+
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+    <div className={`mx-auto flex w-full max-w-7xl flex-col ${rootGap}`}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">Dashboard</h2>
@@ -133,6 +167,7 @@ export function TutorDashboardView({
         </Card>
       ) : null}
 
+      {prefs.dashboard_show_stats ? (
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {kpiItems.map((k) => {
           const Icon = k.icon;
@@ -156,8 +191,9 @@ export function TutorDashboardView({
           );
         })}
       </div>
+      ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-7">
+      <div className={`grid lg:grid-cols-7 ${prefs.dashboard_compact_mode ? "gap-4" : "gap-6"}`}>
         <Card className="border-border shadow-sm lg:col-span-4">
           <CardHeader className="flex flex-row items-start justify-between space-y-0">
             <div>
@@ -183,7 +219,7 @@ export function TutorDashboardView({
           </CardFooter>
         </Card>
 
-        <div className="flex flex-col gap-6 lg:col-span-3">
+        <div className={`flex flex-col lg:col-span-3 ${prefs.dashboard_compact_mode ? "gap-4" : "gap-6"}`}>
           <Link
             to="/settings"
             className="group block rounded-xl outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
@@ -298,6 +334,14 @@ export function TutorDashboardView({
             </CardContent>
           </Card>
 
+          {prefs.dashboard_show_messages ? (
+            <DashboardRecentMessages
+              booting={booting}
+              conversations={messageConversations}
+            />
+          ) : null}
+
+          {prefs.dashboard_show_notifications ? (
           <Card>
             <CardHeader>
               <CardTitle className="text-base font-semibold">Notifications</CardTitle>
@@ -342,6 +386,7 @@ export function TutorDashboardView({
               )}
             </CardContent>
           </Card>
+          ) : null}
 
           <Card>
             <CardHeader>

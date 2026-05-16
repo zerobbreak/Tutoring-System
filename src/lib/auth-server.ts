@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import * as z from "zod";
+import { ensurePublicUserProfile } from "./ensure-public-user";
 import { createSupabaseServerClient } from "./supabase-server";
 import { getSupabaseAdmin } from "./supabase-admin";
 import { SELF_REGISTER_ROLES, type SelfRegisterRole } from "./user-role";
@@ -49,37 +50,28 @@ export const signUpServerFn = createServerFn({ method: "POST" })
 
     if (error) throw new Error(error.message);
 
-    // 3. Sync public.users (trigger on auth.users may have already inserted the row)
+    // 3. Sync public.users (trigger may run; upsert guarantees the row when possible)
     if (authData.user) {
-      const row = {
-        id: authData.user.id,
-        email,
-        full_name: fullName,
-        role,
-        institution_id: null as string | null,
-      };
-
       const admin = getSupabaseAdmin();
       if (admin) {
-        const { error: dbError } = await admin.from("users").upsert(row, {
-          onConflict: "id",
+        await ensurePublicUserProfile(supabase, {
+          full_name: fullName,
+          role,
         });
-        if (dbError) {
-          throw new Error(`Profile could not be saved: ${dbError.message}`);
-        }
       } else {
         const {
           data: { session },
         } = await supabase.auth.getSession();
         if (session) {
-          const { error: dbError } = await supabase.from("users").upsert(row, {
-            onConflict: "id",
+          await ensurePublicUserProfile(supabase, {
+            full_name: fullName,
+            role,
           });
-          if (dbError) {
-            throw new Error(`Profile could not be saved: ${dbError.message}`);
-          }
+        } else {
+          throw new Error(
+            "Account created but profile sync is pending. Confirm your email, then sign in. If the problem persists, set SUPABASE_SERVICE_ROLE_KEY on the server.",
+          );
         }
-        // No session yet (e.g. email confirmation pending): auth trigger creates public.users
       }
     }
 
@@ -112,6 +104,12 @@ export const getCurrentUserFn = createServerFn({ method: "GET" }).handler(
     } = await supabase.auth.getSession();
 
     if (sessionError || !session) return null;
+
+    try {
+      await ensurePublicUserProfile(supabase);
+    } catch (syncError) {
+      console.error("public.users sync on session load:", syncError);
+    }
 
     const userPOJO = JSON.parse(JSON.stringify(session.user));
 
@@ -151,24 +149,7 @@ export const updateProfileServerFn = createServerFn({ method: "POST" })
     });
     if (updateError) throw new Error(updateError.message);
 
-    const admin = getSupabaseAdmin();
-    if (admin) {
-      const { error: dbError } = await admin
-        .from("users")
-        .update({ full_name: fullName })
-        .eq("id", user.id);
-      if (dbError) {
-        console.error("Server-side profile sync error:", dbError);
-      }
-    } else {
-      const { error: dbError } = await supabase
-        .from("users")
-        .update({ full_name: fullName })
-        .eq("id", user.id);
-      if (dbError) {
-        console.error("Server-side profile sync error:", dbError);
-      }
-    }
+    await ensurePublicUserProfile(supabase, { full_name: fullName });
 
     return { success: true };
   });

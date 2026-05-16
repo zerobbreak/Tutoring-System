@@ -60,8 +60,24 @@ export function SecuritySettings({
   const [enrollSecret, setEnrollSecret] = useState<string | null>(null);
   const [enrollFactorId, setEnrollFactorId] = useState<string | null>(null);
   const [verifyCode, setVerifyCode] = useState("");
+  const [unenrollFactorId, setUnenrollFactorId] = useState<string | null>(null);
+  const [unenrollCode, setUnenrollCode] = useState("");
+  const [disablingMfa, setDisablingMfa] = useState(false);
   const [resetSending, setResetSending] = useState(false);
   const [signingOutAll, setSigningOutAll] = useState(false);
+
+  const elevateSessionToAal2 = async (factorId: string, code: string) => {
+    const { data: challenge, error: challengeError } =
+      await supabase.auth.mfa.challenge({ factorId });
+    if (challengeError) throw challengeError;
+
+    const { error: verifyError } = await supabase.auth.mfa.verify({
+      factorId,
+      challengeId: challenge.id,
+      code: code.trim(),
+    });
+    if (verifyError) throw verifyError;
+  };
 
   const loadFactors = useCallback(async () => {
     setMfaLoading(true);
@@ -139,10 +155,19 @@ export function SecuritySettings({
     }
   };
 
-  const handleDisableMfa = async (factorId: string) => {
+  const handleConfirmDisableMfa = async () => {
+    if (!unenrollFactorId || unenrollCode.trim().length < 6) return;
+
+    setDisablingMfa(true);
     try {
-      const { error } = await supabase.auth.mfa.unenroll({ factorId });
+      // Supabase requires AAL2 before removing a verified factor.
+      await elevateSessionToAal2(unenrollFactorId, unenrollCode);
+
+      const { error } = await supabase.auth.mfa.unenroll({
+        factorId: unenrollFactorId,
+      });
       if (error) throw error;
+
       await syncMfaEnabledFn({ data: { enabled: false } });
       await logSecurityEventFn({
         data: {
@@ -153,11 +178,17 @@ export function SecuritySettings({
         },
       });
       onProfileChange({ ...profile, mfa_enabled: false });
+      setUnenrollFactorId(null);
+      setUnenrollCode("");
       await loadFactors();
       await onRefresh();
       toast.success("Two-factor authentication disabled.");
     } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : "Could not disable MFA.");
+      toast.error(
+        err instanceof Error ? err.message : "Could not disable MFA.",
+      );
+    } finally {
+      setDisablingMfa(false);
     }
   };
 
@@ -287,19 +318,76 @@ export function SecuritySettings({
           {mfaFactors.map((factor) => (
             <div
               key={factor.id}
-              className="flex items-center justify-between rounded-lg border px-4 py-3"
+              className="space-y-3 rounded-lg border px-4 py-3"
             >
-              <span className="text-sm font-medium">
-                {factor.friendly_name ?? "Authenticator app"}
-              </span>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => handleDisableMfa(factor.id)}
-              >
-                Remove
-              </Button>
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">
+                  {factor.friendly_name ?? "Authenticator app"}
+                </span>
+                {unenrollFactorId === factor.id ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={disablingMfa}
+                    onClick={() => {
+                      setUnenrollFactorId(null);
+                      setUnenrollCode("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={disablingMfa}
+                    onClick={() => {
+                      setUnenrollFactorId(factor.id);
+                      setUnenrollCode("");
+                    }}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+              {unenrollFactorId === factor.id ? (
+                <div className="space-y-2 border-t pt-3">
+                  <p className="text-sm text-muted-foreground">
+                    Enter the 6-digit code from your authenticator app to
+                    confirm removal.
+                  </p>
+                  <Label htmlFor={`mfa-unenroll-${factor.id}`}>
+                    Verification code
+                  </Label>
+                  <Input
+                    id={`mfa-unenroll-${factor.id}`}
+                    value={unenrollCode}
+                    onChange={(e) => setUnenrollCode(e.target.value)}
+                    placeholder="000000"
+                    maxLength={6}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={disablingMfa || unenrollCode.length < 6}
+                    onClick={() => void handleConfirmDisableMfa()}
+                  >
+                    {disablingMfa ? (
+                      <>
+                        <Loader2 className="mr-2 size-4 animate-spin" />
+                        Removing…
+                      </>
+                    ) : (
+                      "Confirm remove"
+                    )}
+                  </Button>
+                </div>
+              ) : null}
             </div>
           ))}
         </CardContent>

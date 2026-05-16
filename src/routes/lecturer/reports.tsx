@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { LecturerPlaceholderPage } from "#/components/lecturer/lecturer-placeholder-page";
+import { LecturerReportsView } from "#/components/lecturer/reports/lecturer-reports-view";
 
 export const Route = createFileRoute("/lecturer/reports")({
-  component: ReportsPage,
+  component: LecturerReportsPage,
 });
 
-function ReportsPage() {
-  return <LecturerPlaceholderPage title="Reports" />;
+function LecturerReportsPage() {
+  return <LecturerReportsView />;
 }

@@ -48,7 +48,7 @@ export function AttendanceAlertsPanel({
                 <span className="mr-1">⚠</span>
                 {alert.claimId ? (
                   <Link
-                    to="/lecturer/sessions"
+                    to="/lecturer/attendance"
                     search={{ claim: alert.claimId }}
                     className="underline-offset-2 hover:underline"
                   >

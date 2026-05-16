@@ -201,8 +201,8 @@ export const getLecturerSessionDetailFn = createServerFn({ method: "GET" })
       ),
       tutor: unwrapOne(
         claim.tutor as
-          | { full_name: string; email: string }
-          | { full_name: string; email: string }[]
+          | { id: string; full_name: string; email: string }
+          | { id: string; full_name: string; email: string }[]
           | null,
       ),
       evidence,

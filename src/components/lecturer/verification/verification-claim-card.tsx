@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { FileText, Users } from "lucide-react";
 import { Badge } from "#/components/ui/badge";
@@ -46,7 +47,17 @@ export function VerificationClaimCard({
           <div>
             <p className="text-sm text-muted-foreground">Tutor</p>
             <p className="font-semibold text-foreground">
-              {claim.tutor?.full_name ?? "Unknown tutor"}
+              {claim.tutor?.id ? (
+                <Link
+                  to="/lecturer/tutors"
+                  search={{ tutor: claim.tutor.id }}
+                  className="hover:underline"
+                >
+                  {claim.tutor.full_name}
+                </Link>
+              ) : (
+                (claim.tutor?.full_name ?? "Unknown tutor")
+              )}
             </p>
           </div>
           <Badge variant="secondary">{formatClaimStatus(claim.status)}</Badge>

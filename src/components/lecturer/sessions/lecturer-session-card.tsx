@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/react-router";
 import { format, parseISO } from "date-fns";
 import { Clock, MapPin, User } from "lucide-react";
 import { Badge } from "#/components/ui/badge";
@@ -39,7 +40,18 @@ export function LecturerSessionCard({
           </p>
           <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
             <User className="size-3.5 shrink-0" />
-            <span className="truncate">{session.tutor?.full_name ?? "Tutor"}</span>
+            {session.tutor?.id ? (
+              <Link
+                to="/lecturer/tutors"
+                search={{ tutor: session.tutor.id }}
+                onClick={(e) => e.stopPropagation()}
+                className="truncate hover:underline"
+              >
+                {session.tutor.full_name}
+              </Link>
+            ) : (
+              <span className="truncate">{session.tutor?.full_name ?? "Tutor"}</span>
+            )}
           </p>
           {session.venue ? (
             <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">

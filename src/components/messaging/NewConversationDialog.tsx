@@ -13,6 +13,8 @@ import { Avatar, AvatarFallback } from "#/components/ui/avatar";
 import {
   searchUsersFn,
   createConversationFn,
+  buildMetadata,
+  METADATA_CATEGORY,
 } from "#/server-actions/messaging";
 import { toast } from "sonner";
 interface User {
@@ -65,6 +67,9 @@ export function NewConversationDialog({
         data: {
           type: "DIRECT",
           participants: [targetUser.id],
+          metadata: buildMetadata(METADATA_CATEGORY.TUTOR_DISCUSSION, {
+            tutor_id: targetUser.id,
+          }),
         },
       });
       toast.success(`Conversation with ${targetUser.full_name} started`);

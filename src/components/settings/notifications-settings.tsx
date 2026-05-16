@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Bell, Calendar, LayoutDashboard, Loader2 } from "lucide-react";
 import { Button } from "#/components/ui/button";
 import {
@@ -22,9 +22,11 @@ import type {
   UserPreferencesDTO,
 } from "#/server-actions/settings";
 import { updateUserPreferencesFn } from "#/server-actions/settings";
+import {
+  dashboardPrefsFromDto,
+  persistDashboardPrefsLocal,
+} from "#/lib/dashboard-preferences";
 import { SettingsPreferenceRow } from "./settings-preference-row";
-
-const DASHBOARD_PREFS_KEY = "tutor-dashboard-prefs";
 
 type NotificationsSettingsProps = {
   profile: SettingsProfileDTO;
@@ -38,23 +40,15 @@ export function NotificationsSettings({
   const [prefs, setPrefs] = useState<UserPreferencesDTO>(profile.preferences);
   const [saving, setSaving] = useState(false);
 
-  const persistLocalDashboard = (next: UserPreferencesDTO) => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(
-      DASHBOARD_PREFS_KEY,
-      JSON.stringify({
-        showStats: next.dashboard_show_stats,
-        showNotifications: next.dashboard_show_notifications,
-        compactMode: next.dashboard_compact_mode,
-      }),
-    );
-  };
+  useEffect(() => {
+    persistDashboardPrefsLocal(dashboardPrefsFromDto(profile.preferences));
+  }, [profile.preferences]);
 
   const handleSave = async () => {
     setSaving(true);
     try {
       await updateUserPreferencesFn({ data: prefs });
-      persistLocalDashboard(prefs);
+      persistDashboardPrefsLocal(dashboardPrefsFromDto(prefs));
       onProfileChange({ ...profile, preferences: prefs });
       toast.success("Notification preferences saved.");
     } catch (err: unknown) {
@@ -67,7 +61,11 @@ export function NotificationsSettings({
   };
 
   const patch = (partial: Partial<UserPreferencesDTO>) => {
-    setPrefs((p) => ({ ...p, ...partial }));
+    setPrefs((p) => {
+      const next = { ...p, ...partial };
+      persistDashboardPrefsLocal(dashboardPrefsFromDto(next));
+      return next;
+    });
   };
 
   return (
@@ -210,6 +208,20 @@ export function NotificationsSettings({
             description="Denser cards with less whitespace."
             checked={prefs.dashboard_compact_mode}
             onCheckedChange={(v) => patch({ dashboard_compact_mode: v })}
+          />
+          <SettingsPreferenceRow
+            id="dash-messages"
+            label="Show recent messages"
+            description="Latest conversations and unread counts on the dashboard."
+            checked={prefs.dashboard_show_messages}
+            onCheckedChange={(v) => patch({ dashboard_show_messages: v })}
+          />
+          <SettingsPreferenceRow
+            id="notify-messages"
+            label="Notify on new messages"
+            description="Toast alerts when you receive a message outside the chat screen."
+            checked={prefs.notify_on_new_messages}
+            onCheckedChange={(v) => patch({ notify_on_new_messages: v })}
           />
         </CardContent>
       </Card>
