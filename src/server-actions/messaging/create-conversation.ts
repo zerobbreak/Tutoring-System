@@ -2,7 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import * as z from "zod";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { CONVERSATION_TYPES, conversationMetadataSchema } from "./metadata-contract";
-import { getUserInstitutionId, requireUserId } from "./helpers";
+import {
+  getUserInstitutionId,
+  insertConversationWithParticipants,
+  requireUserId,
+} from "./helpers";
 
 const createConversationSchema = z.object({
   type: z.enum(CONVERSATION_TYPES),
@@ -18,31 +22,11 @@ export const createConversationFn = createServerFn({ method: "POST" })
     const userId = await requireUserId(supabase);
     const institutionId = await getUserInstitutionId(supabase, userId);
 
-    const allParticipants = Array.from(new Set([...participants, userId]));
-
-    const { data: conv, error: convError } = await supabase
-      .from("conversations")
-      .insert({
-        type,
-        title,
-        metadata: metadata ?? {},
-        institution_id: institutionId,
-      })
-      .select()
-      .single();
-
-    if (convError) throw new Error(convError.message);
-
-    const { error: partError } = await supabase
-      .from("conversation_participants")
-      .insert(
-        allParticipants.map((pid) => ({
-          conversation_id: conv.id,
-          user_id: pid,
-        })),
-      );
-
-    if (partError) throw new Error(partError.message);
-
-    return conv;
+    return insertConversationWithParticipants(supabase, {
+      type,
+      title,
+      metadata: metadata ?? {},
+      institutionId,
+      participantIds: [...participants, userId],
+    });
   });

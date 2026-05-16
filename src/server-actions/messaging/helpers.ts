@@ -79,6 +79,53 @@ export async function findWorkflowConversation(
   return (data?.id as string) ?? null;
 }
 
+/** Insert conversation + participants, then load the row (SELECT RLS requires participation). */
+export async function insertConversationWithParticipants(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  params: {
+    type: ConversationType;
+    title?: string | null;
+    metadata: ConversationMetadata | Record<string, unknown>;
+    institutionId: string;
+    participantIds: string[];
+  },
+) {
+  const conversationId = crypto.randomUUID();
+  const participantIds = Array.from(new Set(params.participantIds));
+
+  const { error: convError } = await supabase.from("conversations").insert({
+    id: conversationId,
+    type: params.type,
+    title: params.title ?? null,
+    metadata: params.metadata,
+    institution_id: params.institutionId,
+  });
+
+  if (convError) throw new Error(convError.message);
+
+  const { error: partError } = await supabase
+    .from("conversation_participants")
+    .insert(
+      participantIds.map((user_id) => ({
+        conversation_id: conversationId,
+        user_id,
+      })),
+    );
+
+  if (partError) throw new Error(partError.message);
+
+  const { data: conv, error: fetchError } = await supabase
+    .from("conversations")
+    .select()
+    .eq("id", conversationId)
+    .single();
+
+  if (fetchError || !conv) {
+    throw new Error(fetchError?.message ?? "Conversation not found");
+  }
+  return conv;
+}
+
 export async function createWorkflowConversation(
   supabase: ReturnType<typeof createSupabaseServerClient>,
   params: {
@@ -90,32 +137,12 @@ export async function createWorkflowConversation(
     participantIds: string[];
   },
 ): Promise<string> {
-  const allParticipants = Array.from(
-    new Set([...params.participantIds, params.userId]),
-  );
-
-  const { data: conv, error: convError } = await supabase
-    .from("conversations")
-    .insert({
-      type: params.type,
-      title: params.title,
-      metadata: params.metadata,
-      institution_id: params.institutionId,
-    })
-    .select("id")
-    .single();
-
-  if (convError) throw new Error(convError.message);
-
-  const { error: partError } = await supabase
-    .from("conversation_participants")
-    .insert(
-      allParticipants.map((user_id) => ({
-        conversation_id: conv.id,
-        user_id,
-      })),
-    );
-
-  if (partError) throw new Error(partError.message);
+  const conv = await insertConversationWithParticipants(supabase, {
+    type: params.type,
+    title: params.title,
+    metadata: params.metadata,
+    institutionId: params.institutionId,
+    participantIds: [...params.participantIds, params.userId],
+  });
   return conv.id as string;
 }

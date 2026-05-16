@@ -1,5 +1,6 @@
 import * as React from "react";
 import { toast } from "sonner";
+import { subscribeToIncomingMessages } from "#/lib/messaging-realtime";
 import { supabase } from "#/lib/supabase";
 import {
   getConversationMessagesFn,
@@ -90,22 +91,7 @@ export function useMessagingPage({ initialConversationId }: UseMessagingPageOpti
   React.useEffect(() => {
     if (!currentUserId) return;
 
-    const channel = supabase
-      .channel(`messages:${currentUserId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages" },
-        async (payload) => {
-          const newMsg = payload.new as {
-            id: string;
-            conversation_id: string;
-            content: string;
-            sender_id: string;
-            parent_message_id: string | null;
-            metadata: Record<string, unknown>;
-            created_at: string;
-          };
-
+    const unsubscribe = subscribeToIncomingMessages(currentUserId, async (newMsg) => {
           if (newMsg.conversation_id === selectedConvId) {
             setMessages((prev) => {
               if (prev.some((m) => m.id === newMsg.id)) return prev;
@@ -164,13 +150,9 @@ export function useMessagingPage({ initialConversationId }: UseMessagingPageOpti
             updated.unshift(item);
             return updated;
           });
-        },
-      )
-      .subscribe();
+    });
 
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+    return unsubscribe;
   }, [selectedConvId, currentUserId, refreshConversations]);
 
   const handleSendMessage = async (

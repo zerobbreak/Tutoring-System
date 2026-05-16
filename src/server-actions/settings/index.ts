@@ -27,6 +27,8 @@ export type UserPreferencesDTO = {
   dashboard_show_stats: boolean;
   dashboard_show_notifications: boolean;
   dashboard_compact_mode: boolean;
+  dashboard_show_messages: boolean;
+  notify_on_new_messages: boolean;
 };
 
 export type InstitutionDTO = {
@@ -70,6 +72,8 @@ const DEFAULT_PREFERENCES: UserPreferencesDTO = {
   dashboard_show_stats: true,
   dashboard_show_notifications: true,
   dashboard_compact_mode: false,
+  dashboard_show_messages: true,
+  notify_on_new_messages: true,
 };
 
 const accountProfileSchema = z.object({
@@ -92,6 +96,8 @@ const preferencesSchema = z.object({
   dashboard_show_stats: z.boolean(),
   dashboard_show_notifications: z.boolean(),
   dashboard_compact_mode: z.boolean(),
+  dashboard_show_messages: z.boolean(),
+  notify_on_new_messages: z.boolean(),
 });
 
 const avatarSchema = z.object({
@@ -158,6 +164,8 @@ export const getSettingsProfileFn = createServerFn({ method: "GET" }).handler(
           dashboard_show_notifications:
             prefsRow.data.dashboard_show_notifications,
           dashboard_compact_mode: prefsRow.data.dashboard_compact_mode,
+          dashboard_show_messages: prefsRow.data.dashboard_show_messages ?? true,
+          notify_on_new_messages: prefsRow.data.notify_on_new_messages ?? true,
         }
       : DEFAULT_PREFERENCES;
 
@@ -277,6 +285,28 @@ export const uploadAvatarFn = createServerFn({ method: "POST" })
 
     return { success: true, avatarUrl };
   });
+
+export const getDashboardPreferencesFn = createServerFn({ method: "GET" }).handler(
+  async (): Promise<
+    Pick<
+      UserPreferencesDTO,
+      | "dashboard_show_stats"
+      | "dashboard_show_notifications"
+      | "dashboard_compact_mode"
+      | "dashboard_show_messages"
+      | "notify_on_new_messages"
+    >
+  > => {
+    const profile = await getSettingsProfileFn();
+    return {
+      dashboard_show_stats: profile.preferences.dashboard_show_stats,
+      dashboard_show_notifications: profile.preferences.dashboard_show_notifications,
+      dashboard_compact_mode: profile.preferences.dashboard_compact_mode,
+      dashboard_show_messages: profile.preferences.dashboard_show_messages,
+      notify_on_new_messages: profile.preferences.notify_on_new_messages,
+    };
+  },
+);
 
 export const updateUserPreferencesFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => preferencesSchema.parse(input))

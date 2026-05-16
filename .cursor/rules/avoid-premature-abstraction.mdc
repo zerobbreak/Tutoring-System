@@ -1,0 +1,51 @@
+---
+description: Avoid new reusable components unless clearly needed
+alwaysApply: true
+---
+
+# Avoid premature abstraction
+
+Keep the codebase small and direct. Do not add reusable components, hooks, or helpers “for later” or “in case we need them again.”
+
+## Default
+
+- Implement UI and logic **inline** in the route, page, or parent feature component first.
+- **Reuse what already exists** (`src/components/ui/`, shared feature modules, server-actions) instead of wrapping them in another layer.
+- Colocate one-off code with the feature (e.g. under `src/routes/admin/` or the nearest feature folder).
+
+## When extraction is allowed
+
+Extract a shared component, hook, or util only when **at least one** applies:
+
+1. The same UI or logic is used in **two or more** real call sites (not hypothetical future use).
+2. The current file is **hard to follow** (rough guide: ~200+ lines of mixed concerns) and splitting improves clarity.
+3. The user **explicitly** asks for a reusable/shared piece.
+4. It matches an **established project pattern** already used nearby (e.g. existing `*-view.tsx` for a route family).
+
+## Do not
+
+- Create thin wrappers whose only job is renaming or re-exporting another component.
+- Add `shared/`, `common/`, or `utils/` components used by a single route.
+- Split a page into many tiny files when a single readable module would do.
+- Introduce generic placeholders or factories to avoid a few similar lines (duplicate small route files are fine if each stays obvious).
+
+## Examples
+
+```tsx
+// ❌ BAD — new shared component for one admin page
+export function AdminApprovalsCard() { ... }  // only used in approvals.tsx
+
+// ✅ GOOD — keep it in the route or feature view until a second consumer exists
+function AdminApprovalsPage() {
+  return <LecturerPlaceholderPage title="Approvals" />;
+}
+```
+
+```tsx
+// ❌ BAD — hook extracted after one use
+function useAdminFilters() { ... }  // only analytics.tsx
+
+// ✅ GOOD — local state/helpers in analytics.tsx until filters are reused elsewhere
+```
+
+When unsure, **keep it local**. Extract in a follow-up change once reuse or complexity is proven.

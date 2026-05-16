@@ -6,5 +6,9 @@ export const Route = createFileRoute("/lecturer/analytics")({
 });
 
 function AnalyticsPage() {
-  return <LecturerAnalyticsView />;
+  return (
+    <div className="p-6 md:p-8">
+      <LecturerAnalyticsView />
+    </div>
+  );
 }
