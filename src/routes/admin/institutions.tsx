@@ -1,6 +1,7 @@
-import { createFileRoute, getRouteApi } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { InstitutionManagementView } from "#/components/admin/institutions/institution-management-view";
+import { useSessionUser } from "#/lib/use-session-user";
 import {
   getInstitutionManagementFn,
   type AcademicTermDTO,
@@ -11,15 +12,12 @@ import {
   type InstitutionProfileDTO,
 } from "#/server-actions/admin-institutions";
 
-const rootRouteApi = getRouteApi("__root__");
-
 export const Route = createFileRoute("/admin/institutions")({
   component: AdminInstitutionsPage,
 });
 
 function AdminInstitutionsPage() {
-  const { sessionData } = rootRouteApi.useLoaderData();
-  const user = sessionData?.user;
+  const { user, pending } = useSessionUser();
 
   const [booting, setBooting] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -65,10 +63,10 @@ function AdminInstitutionsPage() {
     void loadData();
   }, [user, loadData]);
 
-  if (!user) {
+  if (pending || !user) {
     return (
-      <div className="p-8 text-sm text-muted-foreground">
-        Sign in as an administrator to manage your institution.
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
   }

@@ -1,13 +1,12 @@
-import { createFileRoute, getRouteApi } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import * as z from "zod";
 import { AdminSessionsView } from "#/components/admin/sessions/admin-sessions-view";
+import { useSessionUser } from "#/lib/use-session-user";
 import {
   listAdminSessionsFn,
   type AdminSessionsPageDataDTO,
 } from "#/server-actions/admin-sessions";
-
-const rootRouteApi = getRouteApi("__root__");
 
 const sessionsSearchSchema = z.object({
   claim: z.string().uuid().optional(),
@@ -19,8 +18,7 @@ export const Route = createFileRoute("/admin/sessions")({
 });
 
 function AdminSessionsPage() {
-  const { sessionData } = rootRouteApi.useLoaderData();
-  const user = sessionData?.user;
+  const { user, pending } = useSessionUser();
   const urlSearch = Route.useSearch();
   const navigate = Route.useNavigate();
 
@@ -86,11 +84,11 @@ function AdminSessionsPage() {
     }
   };
 
-  if (!user) {
+  if (pending || !user) {
     return (
-      <p className="p-6 text-sm text-muted-foreground">
-        Sign in as an admin to view sessions.
-      </p>
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
     );
   }
 

@@ -1,10 +1,11 @@
-import { createFileRoute, getRouteApi } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { endOfDay, startOfDay } from "date-fns";
 import { useCallback, useEffect, useState } from "react";
 import { AdminSchedulesView } from "#/components/admin/schedules/admin-schedules-view";
 import { rangeForView } from "#/components/lecturer/schedule/schedule-range";
 import type { ScheduleCalendarView } from "#/components/lecturer/schedule/types";
 import { toast } from "#/lib/toast";
+import { useSessionUser } from "#/lib/use-session-user";
 import {
   adminAssignTutorToModuleFn,
   adminCreateScheduleSeriesFn,
@@ -17,15 +18,12 @@ import {
   type SchedulingIssue,
 } from "#/server-actions/admin-schedules";
 
-const rootRouteApi = getRouteApi("__root__");
-
 export const Route = createFileRoute("/admin/schedules")({
   component: AdminSchedulesPage,
 });
 
 function AdminSchedulesPage() {
-  const { sessionData } = rootRouteApi.useLoaderData();
-  const user = sessionData?.user;
+  const { user, pending } = useSessionUser();
 
   const [booting, setBooting] = useState(true);
   const [issuesLoading, setIssuesLoading] = useState(false);
@@ -171,10 +169,16 @@ function AdminSchedulesPage() {
   const handlePublishSeries = async (seriesId: string) => {
     setFormBusy(true);
     try {
-      const { sessionCount } = await adminPublishScheduleSeriesFn({
+      const { sessionCount, repairedOnly } = await adminPublishScheduleSeriesFn({
         data: { seriesId },
       });
-      toast.success(`Published ${sessionCount} session(s).`);
+      toast.success(
+        repairedOnly
+          ? sessionCount > 0
+            ? `Created ${sessionCount} session record(s).`
+            : "Session records are up to date."
+          : `Published ${sessionCount} session(s).`,
+      );
       await load();
       await loadIssues();
     } catch (e) {
@@ -203,10 +207,10 @@ function AdminSchedulesPage() {
     }
   };
 
-  if (!user) {
+  if (pending || !user) {
     return (
-      <div className="p-8 text-sm text-muted-foreground">
-        Sign in as an administrator to manage institution schedules.
+      <div className="flex min-h-[40vh] items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
   }

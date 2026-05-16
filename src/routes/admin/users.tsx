@@ -1,14 +1,13 @@
-import { createFileRoute, getRouteApi } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import * as z from "zod";
 import { AdminUsersView } from "#/components/admin/users/admin-users-view";
+import { useSessionUser } from "#/lib/use-session-user";
 import {
   listAdminUsersFn,
   type AdminUserCategory,
   type AdminUserRowDTO,
 } from "#/server-actions/admin-users";
-
-const rootRouteApi = getRouteApi("__root__");
 
 const usersSearchSchema = z.object({
   user: z.string().uuid().optional(),
@@ -20,8 +19,7 @@ export const Route = createFileRoute("/admin/users")({
 });
 
 function AdminUsersPage() {
-  const { sessionData } = rootRouteApi.useLoaderData();
-  const user = sessionData?.user;
+  const { user, pending } = useSessionUser();
   const urlSearch = Route.useSearch();
   const navigate = Route.useNavigate();
 
@@ -97,7 +95,7 @@ function AdminUsersPage() {
     }
   };
 
-  if (!user) {
+  if (pending || !user) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />

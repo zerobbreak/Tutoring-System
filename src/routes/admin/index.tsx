@@ -1,6 +1,7 @@
-import { createFileRoute, getRouteApi } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AdminDashboardView } from "#/components/admin/dashboard/admin-dashboard-view";
+import { useSessionUser } from "#/lib/use-session-user";
 import {
   getAdminDashboardDataFn,
   type AdminAnalyticsSummaryDTO,
@@ -10,15 +11,12 @@ import {
 } from "#/server-actions/admin-dashboard";
 import type { LecturerActivityItemDTO } from "#/server-actions/lecturer-dashboard";
 
-const rootRouteApi = getRouteApi("__root__");
-
 export const Route = createFileRoute("/admin/")({
   component: AdminDashboardPage,
 });
 
 function AdminDashboardPage() {
-  const { sessionData } = rootRouteApi.useLoaderData();
-  const user = sessionData?.user;
+  const { user, pending } = useSessionUser();
 
   const [booting, setBooting] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -97,7 +95,7 @@ function AdminDashboardPage() {
     };
   }, [user?.id]);
 
-  if (!user) {
+  if (pending || !user) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />

@@ -1,6 +1,7 @@
-import { createFileRoute, getRouteApi } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { AdminAuditLogsView } from "#/components/admin/audit-logs/admin-audit-logs-view";
+import { useSessionUser } from "#/lib/use-session-user";
 import {
   listAuditLogFeedFn,
   type AuditFeedCategory,
@@ -10,8 +11,6 @@ import {
   listAdminUsersFn,
   type AdminUserRowDTO,
 } from "#/server-actions/admin-users";
-
-const rootRouteApi = getRouteApi("__root__");
 
 function dateInputToIsoStart(date: string): string | undefined {
   if (!date) return undefined;
@@ -32,8 +31,7 @@ export const Route = createFileRoute("/admin/audit-logs")({
 });
 
 function AdminAuditLogsPage() {
-  const { sessionData } = rootRouteApi.useLoaderData();
-  const user = sessionData?.user;
+  const { user } = useSessionUser();
 
   const [booting, setBooting] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);

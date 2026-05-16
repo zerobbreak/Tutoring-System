@@ -42,6 +42,8 @@ export type AdminSchedulePageDataDTO = {
   venues: VenueDTO[];
   events: ScheduleEventDTO[];
   series: ScheduleSeriesDTO[];
+  /** Published series with calendar sessions but no session_claims yet. */
+  seriesIdsNeedingClaimSync: string[];
   pendingChangeRequests: ScheduleChangeRequestDTO[];
   scope: AdminScheduleCalendarScope;
   scopeEntityId: string | null;

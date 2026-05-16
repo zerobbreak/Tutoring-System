@@ -165,6 +165,9 @@ export function AdminSchedulesView({
   }, [issues, issueFilter]);
 
   const draftSeries = (data?.series ?? []).filter((s) => s.status === "DRAFT");
+  const seriesNeedingClaimSync = (data?.series ?? []).filter((s) =>
+    (data?.seriesIdsNeedingClaimSync ?? []).includes(s.id),
+  );
 
   const scopeEntities = useMemo(() => {
     if (!data) return [];
@@ -332,6 +335,38 @@ export function AdminSchedulesView({
             busyId={reviewBusyId}
             onReview={onReviewChange}
           />
+        ) : null}
+
+        {seriesNeedingClaimSync.length > 0 ? (
+          <Card className="shrink-0 border-dashed border-amber-500/40 bg-amber-500/5">
+            <CardContent className="flex flex-col gap-2 p-4">
+              <p className="text-sm font-medium">Session records needed</p>
+              <p className="text-xs text-muted-foreground">
+                These published series are on the calendar but are missing tutor
+                session records. Create them to enable claims and attendance.
+              </p>
+              {seriesNeedingClaimSync.map((s) => (
+                <article
+                  key={s.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-card px-3 py-2"
+                >
+                  <span className="text-sm">
+                    <span className="font-medium">{s.moduleCode}</span>
+                    <span className="text-muted-foreground"> · {s.title} · </span>
+                    {s.tutorName}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={formBusy}
+                    onClick={() => void onPublishSeries(s.id)}
+                  >
+                    Create records
+                  </Button>
+                </article>
+              ))}
+            </CardContent>
+          </Card>
         ) : null}
 
         {draftSeries.length > 0 ? (

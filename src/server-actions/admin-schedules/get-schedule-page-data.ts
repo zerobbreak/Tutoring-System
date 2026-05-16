@@ -237,6 +237,46 @@ export const getAdminSchedulePageDataFn = createServerFn({ method: "GET" })
       }
     }
 
+    const mappedSeries = seriesRows.map((s) => mapSeriesRow(s));
+    let seriesIdsNeedingClaimSync: string[] = [];
+
+    const publishedSeriesIds = seriesRows
+      .filter((row) => row.status === "PUBLISHED")
+      .map((row) => row.id as string);
+
+    if (publishedSeriesIds.length) {
+      const { data: publishedSessions, error: psErr } = await supabase
+        .from("scheduled_sessions")
+        .select("id, series_id")
+        .in("series_id", publishedSeriesIds);
+
+      if (psErr) throw new Error(psErr.message);
+
+      const sessionIds = (publishedSessions ?? []).map((s) => s.id as string);
+      if (sessionIds.length) {
+        const { data: claims, error: claimsErr } = await supabase
+          .from("session_claims")
+          .select("source_scheduled_session_id")
+          .in("source_scheduled_session_id", sessionIds);
+
+        if (claimsErr) throw new Error(claimsErr.message);
+
+        const claimedSessionIds = new Set(
+          (claims ?? [])
+            .map((c) => c.source_scheduled_session_id as string | null)
+            .filter((id): id is string => Boolean(id)),
+        );
+
+        const seriesMissingClaims = new Set<string>();
+        for (const session of publishedSessions ?? []) {
+          if (!claimedSessionIds.has(session.id as string)) {
+            seriesMissingClaims.add(session.series_id as string);
+          }
+        }
+        seriesIdsNeedingClaimSync = [...seriesMissingClaims];
+      }
+    }
+
     return {
       modules: (modules ?? []).map((m) => ({
         id: m.id as string,
@@ -265,7 +305,8 @@ export const getAdminSchedulePageDataFn = createServerFn({ method: "GET" })
         isActive: v.is_active as boolean,
       })),
       events,
-      series: seriesRows.map((s) => mapSeriesRow(s)),
+      series: mappedSeries,
+      seriesIdsNeedingClaimSync,
       pendingChangeRequests,
       scope,
       scopeEntityId,

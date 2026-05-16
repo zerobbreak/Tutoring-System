@@ -4,6 +4,7 @@ import {
   Scripts,
   createRootRoute,
   useLocation,
+  useRouter,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { TanStackDevtools } from "@tanstack/react-devtools";
@@ -61,6 +62,7 @@ export const Route = createRootRoute({
 });
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const loaderData = Route.useLoaderData();
   const sessionData = loaderData?.sessionData;
   const [session, setSession] = useState<any>(sessionData?.session ?? null);
@@ -78,12 +80,15 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
+        void router.invalidate();
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [router]);
 
   const location = useLocation();
   const isAuthPage = location.pathname.startsWith("/auth");

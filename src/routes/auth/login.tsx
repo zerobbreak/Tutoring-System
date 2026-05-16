@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,6 +32,7 @@ function Login() {
   const { recovered } = Route.useSearch();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const router = useRouter();
 
   const {
     register,
@@ -70,6 +71,7 @@ function Login() {
 
       const role = data.user.user_metadata?.role as string | undefined;
       toast.success("Signed in successfully.");
+      await router.invalidate();
       await navigate({ to: getPostAuthDashboardPath(role) });
     } catch (error: any) {
       toast.error(error.message || "Invalid email or password.");

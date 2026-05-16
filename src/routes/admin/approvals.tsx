@@ -1,14 +1,13 @@
-import { createFileRoute, getRouteApi } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import * as z from "zod";
 import { AdminApprovalsView } from "#/components/admin/approvals/admin-approvals-view";
+import { useSessionUser } from "#/lib/use-session-user";
 import {
   listApprovalsQueueFn,
   type AdminApprovalClaimCardDTO,
   type VerificationModuleOptionDTO,
 } from "#/server-actions/admin-approvals";
-
-const rootRouteApi = getRouteApi("__root__");
 
 const approvalsSearchSchema = z.object({
   claim: z.string().uuid().optional(),
@@ -20,8 +19,7 @@ export const Route = createFileRoute("/admin/approvals")({
 });
 
 function AdminApprovalsPage() {
-  const { sessionData } = rootRouteApi.useLoaderData();
-  const user = sessionData?.user;
+  const { user, pending } = useSessionUser();
   const urlSearch = Route.useSearch();
   const navigate = Route.useNavigate();
 
@@ -109,7 +107,7 @@ function AdminApprovalsPage() {
     }
   };
 
-  if (!user) {
+  if (pending || !user) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
