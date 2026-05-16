@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { isAfter, parse, parseISO } from "date-fns";
 import * as z from "zod";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
+import { assertClaimNotFrozen } from "#/server-actions/admin-approvals/assert-claim-not-frozen";
 import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import {
   schedulingDateForColumn,
@@ -281,7 +282,7 @@ export const submitSessionClaimFn = createServerFn({ method: "POST" })
 
     const { data: row, error: selErr } = await supabase
       .from("session_claims")
-      .select("id, status")
+      .select("id, status, frozen_at")
       .eq("id", data.claimId)
       .eq("tutor_id", tutorId)
       .maybeSingle();
@@ -291,6 +292,7 @@ export const submitSessionClaimFn = createServerFn({ method: "POST" })
     if (row.status !== "DRAFT") {
       throw new Error("Only draft claims can be submitted.");
     }
+    assertClaimNotFrozen(row.frozen_at as string | null, "submit this session");
 
     const { error: upErr } = await supabase
       .from("session_claims")
@@ -385,6 +387,17 @@ export const upsertAttendanceCountsFn = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const tutorId = await requireUserId(supabase);
+
+    const { data: claimRow, error: cErr } = await supabase
+      .from("session_claims")
+      .select("frozen_at")
+      .eq("id", data.claimId)
+      .eq("tutor_id", tutorId)
+      .maybeSingle();
+
+    if (cErr) throw new Error(cErr.message);
+    if (!claimRow) throw new Error("Session not found.");
+    assertClaimNotFrozen(claimRow.frozen_at as string | null);
 
     const { error } = await supabase
       .from("session_claims")
