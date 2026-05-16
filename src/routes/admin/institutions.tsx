@@ -6,6 +6,8 @@ import {
   type AcademicTermDTO,
   type CampusDTO,
   type InstitutionDashboardDTO,
+  type InstitutionLecturerOptionDTO,
+  type InstitutionModuleDTO,
   type InstitutionProfileDTO,
 } from "#/server-actions/admin-institutions";
 
@@ -26,6 +28,10 @@ function AdminInstitutionsPage() {
   );
   const [campuses, setCampuses] = useState<CampusDTO[]>([]);
   const [academicTerms, setAcademicTerms] = useState<AcademicTermDTO[]>([]);
+  const [modules, setModules] = useState<InstitutionModuleDTO[]>([]);
+  const [lecturers, setLecturers] = useState<InstitutionLecturerOptionDTO[]>(
+    [],
+  );
   const [dashboard, setDashboard] = useState<InstitutionDashboardDTO | null>(
     null,
   );
@@ -39,6 +45,8 @@ function AdminInstitutionsPage() {
       setInstitution(data.institution);
       setCampuses(data.campuses);
       setAcademicTerms(data.academicTerms);
+      setModules(data.modules);
+      setLecturers(data.lecturers);
       setDashboard(data.dashboard);
     } catch (e) {
       setLoadError(
@@ -73,6 +81,8 @@ function AdminInstitutionsPage() {
       institution={institution}
       campuses={campuses}
       academicTerms={academicTerms}
+      modules={modules}
+      lecturers={lecturers}
       dashboard={dashboard}
       onRefresh={() => void loadData()}
     />

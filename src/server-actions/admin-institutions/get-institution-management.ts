@@ -5,7 +5,9 @@ import { loadInstitutionDashboard } from "./institution-metrics";
 import type {
   AcademicTermDTO,
   CampusDTO,
+  InstitutionLecturerOptionDTO,
   InstitutionManagementDTO,
+  InstitutionModuleDTO,
   InstitutionProfileDTO,
 } from "./types";
 
@@ -14,7 +16,8 @@ export const getInstitutionManagementFn = createServerFn({ method: "GET" }).hand
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);
 
-    const [instRes, campusesRes, termsRes, modulesRes] = await Promise.all([
+    const [instRes, campusesRes, termsRes, modulesRes, lecturersRes] =
+      await Promise.all([
       supabase
         .from("institutions")
         .select(
@@ -36,7 +39,20 @@ export const getInstitutionManagementFn = createServerFn({ method: "GET" }).hand
         )
         .eq("institution_id", institutionId)
         .order("start_date", { ascending: false }),
-      supabase.from("modules").select("id").eq("institution_id", institutionId),
+      supabase
+        .from("modules")
+        .select(
+          "id, institution_id, code, name, lecturer_id, academic_term_id, semester, academic_year, is_active",
+        )
+        .eq("institution_id", institutionId)
+        .order("code", { ascending: true }),
+      supabase
+        .from("users")
+        .select("id, full_name, email")
+        .eq("institution_id", institutionId)
+        .eq("role", "LECTURER")
+        .eq("is_active", true)
+        .order("full_name", { ascending: true }),
     ]);
 
     const errors = [
@@ -44,6 +60,7 @@ export const getInstitutionManagementFn = createServerFn({ method: "GET" }).hand
       campusesRes.error,
       termsRes.error,
       modulesRes.error,
+      lecturersRes.error,
     ].filter(Boolean);
     if (errors.length) {
       throw new Error(errors.map((e) => e!.message).join(" · "));
@@ -52,7 +69,41 @@ export const getInstitutionManagementFn = createServerFn({ method: "GET" }).hand
     const institution = instRes.data as InstitutionProfileDTO;
     const campuses = (campusesRes.data ?? []) as CampusDTO[];
     const academicTerms = (termsRes.data ?? []) as AcademicTermDTO[];
-    const moduleIds = (modulesRes.data ?? []).map((m) => m.id as string);
+    const lecturers = (lecturersRes.data ?? []).map(
+      (u) =>
+        ({
+          id: u.id as string,
+          full_name: u.full_name as string,
+          email: u.email as string,
+        }) satisfies InstitutionLecturerOptionDTO,
+    );
+
+    const lecturerNameById = new Map(
+      lecturers.map((l) => [l.id, l.full_name]),
+    );
+    const termLabelById = new Map(
+      academicTerms.map((t) => [t.id, `${t.label} (${t.academic_year})`]),
+    );
+
+    const modules: InstitutionModuleDTO[] = (modulesRes.data ?? []).map(
+      (row) => ({
+        id: row.id as string,
+        institution_id: row.institution_id as string,
+        code: row.code as string,
+        name: row.name as string,
+        lecturer_id: row.lecturer_id as string,
+        lecturer_name: lecturerNameById.get(row.lecturer_id as string) ?? null,
+        academic_term_id: (row.academic_term_id as string | null) ?? null,
+        academic_term_label: row.academic_term_id
+          ? (termLabelById.get(row.academic_term_id as string) ?? null)
+          : null,
+        semester: (row.semester as string | null) ?? null,
+        academic_year: (row.academic_year as string | null) ?? null,
+        is_active: row.is_active as boolean,
+      }),
+    );
+
+    const moduleIds = modules.map((m) => m.id);
 
     const dashboard = await loadInstitutionDashboard(
       supabase,
@@ -64,6 +115,8 @@ export const getInstitutionManagementFn = createServerFn({ method: "GET" }).hand
       institution,
       campuses,
       academicTerms,
+      modules,
+      lecturers,
       dashboard,
     };
   },

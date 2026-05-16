@@ -10,12 +10,15 @@ export {
   deleteAcademicTermFn,
   setCurrentAcademicTermFn,
 } from "./academic-terms";
+export { createModuleFn, updateModuleFn } from "./modules";
 
 export type {
   AcademicTermDTO,
   CampusDTO,
   InstitutionDashboardDTO,
+  InstitutionLecturerOptionDTO,
   InstitutionManagementDTO,
+  InstitutionModuleDTO,
   InstitutionProfileDTO,
   InstitutionVerificationMetricsDTO,
   PlanTier,

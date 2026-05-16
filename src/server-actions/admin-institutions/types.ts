@@ -41,6 +41,26 @@ export type AcademicTermDTO = {
   created_at: string;
 };
 
+export type InstitutionLecturerOptionDTO = {
+  id: string;
+  full_name: string;
+  email: string;
+};
+
+export type InstitutionModuleDTO = {
+  id: string;
+  institution_id: string;
+  code: string;
+  name: string;
+  lecturer_id: string;
+  lecturer_name: string | null;
+  academic_term_id: string | null;
+  academic_term_label: string | null;
+  semester: string | null;
+  academic_year: string | null;
+  is_active: boolean;
+};
+
 export type InstitutionVerificationMetricsDTO = {
   pendingVerificationCount: number;
   medianTurnaroundHours: number | null;
@@ -61,5 +81,7 @@ export type InstitutionManagementDTO = {
   institution: InstitutionProfileDTO;
   campuses: CampusDTO[];
   academicTerms: AcademicTermDTO[];
+  modules: InstitutionModuleDTO[];
+  lecturers: InstitutionLecturerOptionDTO[];
   dashboard: InstitutionDashboardDTO;
 };

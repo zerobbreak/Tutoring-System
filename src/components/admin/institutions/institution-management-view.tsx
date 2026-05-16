@@ -4,10 +4,13 @@ import type {
   AcademicTermDTO,
   CampusDTO,
   InstitutionDashboardDTO,
+  InstitutionLecturerOptionDTO,
+  InstitutionModuleDTO,
   InstitutionProfileDTO,
 } from "#/server-actions/admin-institutions";
 import { AcademicTermsPanel } from "./academic-terms-panel";
 import { CampusesPanel } from "./campuses-panel";
+import { ModulesPanel } from "./modules-panel";
 import { InstitutionDashboardCard } from "./institution-dashboard-card";
 import { InstitutionProfileCard } from "./institution-profile-card";
 import { VenuesCampusHint } from "./venues-campus-hint";
@@ -19,6 +22,8 @@ export type InstitutionManagementViewProps = {
   institution: InstitutionProfileDTO | null;
   campuses: CampusDTO[];
   academicTerms: AcademicTermDTO[];
+  modules: InstitutionModuleDTO[];
+  lecturers: InstitutionLecturerOptionDTO[];
   dashboard: InstitutionDashboardDTO | null;
   onRefresh: () => void;
 };
@@ -30,6 +35,8 @@ export function InstitutionManagementView({
   institution,
   campuses,
   academicTerms,
+  modules,
+  lecturers,
   dashboard,
   onRefresh,
 }: InstitutionManagementViewProps) {
@@ -88,6 +95,14 @@ export function InstitutionManagementView({
           onUpdated={onRefresh}
         />
       </div>
+
+      <ModulesPanel
+        modules={modules}
+        lecturers={lecturers}
+        academicTerms={academicTerms}
+        booting={booting}
+        onUpdated={onRefresh}
+      />
 
       <VenuesCampusHint />
       </div>
