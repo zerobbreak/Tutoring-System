@@ -85,6 +85,7 @@ export const getLecturerAnalyticsFn = createServerFn({ method: "GET" }).handler(
       "yyyy-MM-dd",
     );
     const scheduleFrom = subDays(now, ANALYTICS_LOOKBACK_DAYS).toISOString();
+    const actionsFrom = subDays(now, ANALYTICS_LOOKBACK_DAYS).toISOString();
 
     const { data: modules, error: modErr } = await supabase
       .from("modules")
@@ -115,10 +116,12 @@ export const getLecturerAnalyticsFn = createServerFn({ method: "GET" }).handler(
       supabase
         .from("disputes")
         .select("id, claim_id, status, raised_at")
+        .gte("raised_at", actionsFrom)
         .order("raised_at", { ascending: false }),
       supabase
         .from("verification_actions")
         .select("claim_id, actor_id, action_type, to_status, acted_at")
+        .gte("acted_at", actionsFrom)
         .order("acted_at", { ascending: true }),
       supabase
         .from("scheduled_sessions")

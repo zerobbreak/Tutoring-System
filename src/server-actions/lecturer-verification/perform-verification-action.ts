@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { ClaimStatus } from "#/lib/session-claim-display";
 import { requireLecturerId } from "#/lib/lecturer-server";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
+import { assertClaimNotFrozen } from "#/server-actions/admin-approvals/assert-claim-not-frozen";
 import type { VerificationActionKind } from "./types";
 
 const actionSchema = z.object({
@@ -67,7 +68,7 @@ export const performVerificationActionFn = createServerFn({ method: "POST" })
 
     const { data: claim, error: selErr } = await supabase
       .from("session_claims")
-      .select("id, status, module_id")
+      .select("id, status, module_id, frozen_at")
       .eq("id", data.claimId)
       .maybeSingle();
 
@@ -75,6 +76,7 @@ export const performVerificationActionFn = createServerFn({ method: "POST" })
     if (!claim) throw new Error("Claim not found.");
 
     const fromStatus = claim.status as ClaimStatus;
+    assertClaimNotFrozen(claim.frozen_at as string | null);
 
     if (
       data.action !== "REQUEST_CLARIFICATION" &&

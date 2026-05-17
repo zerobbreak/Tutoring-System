@@ -13,6 +13,7 @@ import {
   QrCode,
   RefreshCw,
   Search,
+  UserPlus,
   Users,
   XCircle,
 } from "lucide-react";
@@ -37,7 +38,16 @@ import {
   CardHeader,
   CardTitle,
 } from "#/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "#/components/ui/dialog";
 import { Input } from "#/components/ui/input";
+import { Label } from "#/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -45,6 +55,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "#/components/ui/select";
+import { ScrollArea } from "#/components/ui/scroll-area";
 import {
   Table,
   TableBody,
@@ -60,6 +71,7 @@ import {
   getAttendanceDataFn,
   getHistoricalAttendanceFn,
   listTutorSessionClaimsFn,
+  registerStudentForSessionFn,
   type AttendanceRecordDTO,
   type TutorSessionClaimDTO,
 } from "#/server-actions/tutor-sessions";
@@ -75,6 +87,14 @@ export function TutorRegisterGenerationPage() {
   >([]);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [registerOpen, setRegisterOpen] = useState(false);
+  const [registering, setRegistering] = useState(false);
+  const [registerForm, setRegisterForm] = useState({
+    fullName: "",
+    studentReference: "",
+    email: "",
+  });
+  const [activeTab, setActiveTab] = useState<"live" | "analytics">("live");
 
   const selectedSession = useMemo(
     () => sessions.find((s) => s.id === selectedSessionId),
@@ -133,6 +153,40 @@ export function TutorRegisterGenerationPage() {
     }
   }, [selectedSessionId, loadAttendance]);
 
+  const handleRegisterStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSessionId) return;
+    if (!registerForm.fullName.trim() || !registerForm.studentReference.trim()) {
+      toast.error("Full name and student number are required.");
+      return;
+    }
+    setRegistering(true);
+    try {
+      const result = await registerStudentForSessionFn({
+        data: {
+          claimId: selectedSessionId,
+          fullName: registerForm.fullName.trim(),
+          studentReference: registerForm.studentReference.trim(),
+          email: registerForm.email.trim() || undefined,
+        },
+      });
+      toast.success(
+        result.registered
+          ? `${result.studentName} registered and marked present.`
+          : `${result.studentName} checked in.`,
+      );
+      setRegisterForm({ fullName: "", studentReference: "", email: "" });
+      setRegisterOpen(false);
+      await loadAttendance();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Could not register student",
+      );
+    } finally {
+      setRegistering(false);
+    }
+  };
+
   const handleGenerateQR = async () => {
     if (!selectedSessionId) return;
     setGenerating(true);
@@ -185,7 +239,8 @@ export function TutorRegisterGenerationPage() {
   }
 
   return (
-    <div className="rise-in flex flex-col gap-8 p-4 md:p-8">
+    <ScrollArea className="min-h-0 flex-1">
+      <div className="rise-in flex flex-col gap-8 p-4 md:p-8">
       {/* Header & Session Selector */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -232,7 +287,11 @@ export function TutorRegisterGenerationPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="live" className="w-full">
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as "live" | "analytics")}
+        className="w-full"
+      >
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <TabsList className="grid w-full grid-cols-2 sm:w-[400px]">
             <TabsTrigger value="live" className="gap-2">
@@ -378,21 +437,34 @@ export function TutorRegisterGenerationPage() {
 
               {/* Roster Table */}
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-col gap-3 pb-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="space-y-0.5">
-                    <CardTitle className="text-lg">Student Roster</CardTitle>
+                    <CardTitle className="text-lg">Student roster</CardTitle>
                     <CardDescription>
-                      Live attendance data for this session.
+                      Live attendance for this session. Institution is set from
+                      the module automatically.
                     </CardDescription>
                   </div>
-                  <div className="relative w-full max-w-[240px]">
-                    <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      placeholder="Filter students..."
-                      className="pl-9 h-8 text-xs"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                    />
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="gap-2 bg-lagoon-deep hover:bg-lagoon-deep/90"
+                      disabled={!selectedSessionId}
+                      onClick={() => setRegisterOpen(true)}
+                    >
+                      <UserPlus className="size-4" />
+                      Register student
+                    </Button>
+                    <div className="relative w-full sm:w-[200px]">
+                      <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Filter students..."
+                        className="h-8 pl-9 text-xs"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -485,8 +557,10 @@ export function TutorRegisterGenerationPage() {
                   Aggregate presence counts over the last 10 sessions.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
+              <CardContent className="p-6 pt-0">
+                <div className="h-[300px] w-full min-h-[300px] min-w-0 shrink-0">
+                {activeTab === "analytics" ? (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={50}>
                   <BarChart data={historicalData}>
                     <CartesianGrid
                       strokeDasharray="3 3"
@@ -522,6 +596,8 @@ export function TutorRegisterGenerationPage() {
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
+                ) : null}
+                </div>
               </CardContent>
             </Card>
 
@@ -591,6 +667,91 @@ export function TutorRegisterGenerationPage() {
           </div>
         </TabsContent>
       </Tabs>
-    </div>
+
+      <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
+        <DialogContent className="sm:max-w-md">
+          <form onSubmit={handleRegisterStudent}>
+            <DialogHeader>
+              <DialogTitle>Register student</DialogTitle>
+              <DialogDescription>
+                Add a student to your institution roster and mark them present for
+                this session.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="register-fullName">Full name</Label>
+                <Input
+                  id="register-fullName"
+                  value={registerForm.fullName}
+                  onChange={(e) =>
+                    setRegisterForm((f) => ({ ...f, fullName: e.target.value }))
+                  }
+                  placeholder="Student full name"
+                  disabled={registering}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="register-studentReference">Student number</Label>
+                <Input
+                  id="register-studentReference"
+                  value={registerForm.studentReference}
+                  onChange={(e) =>
+                    setRegisterForm((f) => ({
+                      ...f,
+                      studentReference: e.target.value,
+                    }))
+                  }
+                  placeholder="e.g. STU12345"
+                  disabled={registering}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="register-email">
+                  Email{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (optional)
+                  </span>
+                </Label>
+                <Input
+                  id="register-email"
+                  type="email"
+                  value={registerForm.email}
+                  onChange={(e) =>
+                    setRegisterForm((f) => ({ ...f, email: e.target.value }))
+                  }
+                  placeholder="student@university.edu"
+                  disabled={registering}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setRegisterOpen(false)}
+                disabled={registering}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="bg-lagoon-deep hover:bg-lagoon-deep/90"
+                disabled={registering}
+              >
+                {registering ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  "Register & mark present"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      </div>
+    </ScrollArea>
   );
 }

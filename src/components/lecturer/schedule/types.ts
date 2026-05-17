@@ -20,6 +20,8 @@ export type LecturerScheduleViewProps = {
     values: SeriesFormValues & { dtstart: string; until: string | null },
   ) => Promise<void>;
   onPublishSeries: (seriesId: string) => Promise<void>;
+  onDeleteSeries: (seriesId: string) => Promise<void>;
+  onArchiveSeries: (seriesId: string) => Promise<void>;
   onReviewChange: (
     requestId: string,
     decision: "APPROVED" | "REJECTED",

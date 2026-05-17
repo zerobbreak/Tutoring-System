@@ -8,7 +8,7 @@ export const USER_ROLES = [
 
 export type UserRole = (typeof USER_ROLES)[number];
 
-/** Self-service registration — `SUPER_ADMIN` is assigned only by admins. */
+/** Roles assignable via admin-issued registration invites. */
 export const SELF_REGISTER_ROLES = ["TUTOR", "LECTURER", "ADMIN"] as const;
 export type SelfRegisterRole = (typeof SELF_REGISTER_ROLES)[number];
 

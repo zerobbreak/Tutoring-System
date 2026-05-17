@@ -14,8 +14,8 @@ export type SessionKanbanColumnId =
   | "upcoming"
   | "completed";
 
+/** Workflow lane — drafts use the calendar columns until submitted. */
 const CLAIMS_PENDING: readonly ClaimStatus[] = [
-  "DRAFT",
   "PENDING_VERIFICATION",
   "DISPUTED",
   "REJECTED",

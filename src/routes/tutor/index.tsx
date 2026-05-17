@@ -1,6 +1,7 @@
-import { createFileRoute, getRouteApi } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { TutorDashboardView } from "#/components/tutor/dashboard/tutor-dashboard-view";
+import { useSessionUser } from "#/lib/use-session-user";
 import type { SessionDayPoint } from "#/components/tutor-sessions-activity-chart";
 import type { ScheduleParsedEvent } from "#/lib/schedule-spreadsheet";
 import {
@@ -9,15 +10,12 @@ import {
   type DashboardNotificationDTO,
 } from "#/server-actions/tutor-dashboard";
 
-const rootRouteApi = getRouteApi("__root__");
-
 export const Route = createFileRoute("/tutor/")({
   component: TutorDashboard,
 });
 
 function TutorDashboard() {
-  const { sessionData } = rootRouteApi.useLoaderData();
-  const user = sessionData?.user;
+  const { user, pending } = useSessionUser();
 
   const [booting, setBooting] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -70,7 +68,7 @@ function TutorDashboard() {
     };
   }, [user?.id]);
 
-  if (!user) {
+  if (pending || !user) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />

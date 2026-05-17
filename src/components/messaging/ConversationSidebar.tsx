@@ -19,11 +19,22 @@ import {
   MESSAGING_UI_CATEGORIES,
   searchMessagesFn,
   uiCategoryMatchesConversation,
+  type AdminMessagingUiCategoryId,
   type ConversationDTO,
   type MessageSearchResultDTO,
   type MessagingUiCategoryId,
 } from "#/server-actions/messaging";
 import { formatDistanceToNow } from "date-fns";
+
+type SidebarCategory = {
+  id: string;
+  label: string;
+};
+
+type CategoryMatcher = (
+  categoryId: string,
+  conv: { type: ConversationDTO["type"]; metadata: ConversationDTO["metadata"] },
+) => boolean;
 
 interface ConversationSidebarProps {
   conversations: ConversationDTO[];
@@ -31,9 +42,13 @@ interface ConversationSidebarProps {
   onSelect: (id: string) => void;
   onCreateNew?: () => void;
   isLoading?: boolean;
+  title?: string;
+  categories?: readonly SidebarCategory[];
+  categoryMatcher?: CategoryMatcher;
+  categoryIconSet?: "lecturer" | "admin";
 }
 
-const CATEGORY_ICONS: Record<MessagingUiCategoryId, React.ElementType> = {
+const LECTURER_CATEGORY_ICONS: Record<MessagingUiCategoryId, React.ElementType> = {
   ALL: MessageSquare,
   TUTOR: Users,
   SESSION: Bookmark,
@@ -42,15 +57,32 @@ const CATEGORY_ICONS: Record<MessagingUiCategoryId, React.ElementType> = {
   DISPUTE: Scale,
 };
 
+const ADMIN_CATEGORY_ICONS: Record<AdminMessagingUiCategoryId, React.ElementType> = {
+  ALL: MessageSquare,
+  SYSTEM: Megaphone,
+  ACADEMIC: Bookmark,
+  PAYROLL: Users,
+  ANNOUNCEMENT: Megaphone,
+  DISPUTE: Scale,
+};
+
 export function ConversationSidebar({
   conversations,
   selectedId,
   onSelect,
   onCreateNew,
+  title = "Messages",
+  categories = MESSAGING_UI_CATEGORIES,
+  categoryMatcher,
+  categoryIconSet = "lecturer",
 }: ConversationSidebarProps) {
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [activeCategory, setActiveCategory] =
-    React.useState<MessagingUiCategoryId>("ALL");
+  const [activeCategory, setActiveCategory] = React.useState(categories[0]!.id);
+
+  const matchesCategory =
+    categoryMatcher ??
+    ((catId: string, conv: ConversationDTO) =>
+      uiCategoryMatchesConversation(catId as MessagingUiCategoryId, conv));
   const [searchResults, setSearchResults] = React.useState<
     MessageSearchResultDTO[]
   >([]);
@@ -79,8 +111,7 @@ export function ConversationSidebar({
   }, [searchQuery]);
 
   const filteredConversations = conversations.filter((conv) => {
-    const matchesCategory = uiCategoryMatchesConversation(activeCategory, conv);
-    if (!matchesCategory) return false;
+    if (!matchesCategory(activeCategory, conv)) return false;
     if (!searchQuery.trim() || searchResults.length > 0) return true;
     const q = searchQuery.toLowerCase();
     return (
@@ -98,7 +129,7 @@ export function ConversationSidebar({
     <div className="flex h-full w-80 shrink-0 flex-col border-r bg-card">
       <div className="space-y-4 p-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold tracking-tight">Messages</h2>
+          <h2 className="text-xl font-bold tracking-tight">{title}</h2>
           <Button size="icon" variant="ghost" onClick={onCreateNew}>
             <Plus className="h-5 w-5" />
           </Button>
@@ -115,8 +146,11 @@ export function ConversationSidebar({
         </div>
 
         <div className="no-scrollbar flex gap-1 overflow-x-auto pb-1">
-          {MESSAGING_UI_CATEGORIES.map((cat) => {
-            const Icon = CATEGORY_ICONS[cat.id];
+          {categories.map((cat) => {
+            const Icon =
+              categoryIconSet === "admin"
+                ? ADMIN_CATEGORY_ICONS[cat.id as AdminMessagingUiCategoryId]
+                : LECTURER_CATEGORY_ICONS[cat.id as MessagingUiCategoryId];
             return (
               <Button
                 key={cat.id}

@@ -1,85 +1,143 @@
 import { createServerFn } from "@tanstack/react-start";
 import * as z from "zod";
 import { ensurePublicUserProfile } from "./ensure-public-user";
+import {
+  inviteCodeMatches,
+  normalizeInviteEmail,
+} from "./registration-invite-code";
 import { createSupabaseServerClient } from "./supabase-server";
 import { getSupabaseAdmin } from "./supabase-admin";
-import { SELF_REGISTER_ROLES, type SelfRegisterRole } from "./user-role";
-
-// Verification codes (server-side only). Keys match `user_role` enum values.
-const VERIFICATION_CODES: Record<SelfRegisterRole, string> = {
-  TUTOR: "T-4P7-R8",
-  ADMIN: "A-1Z3-C5",
-  LECTURER: "L-9X4-B2",
-};
-
-const selfRegisterRoleSchema = z.enum(SELF_REGISTER_ROLES);
 
 const signUpInputSchema = z.object({
   email: z.email(),
   password: z.string().min(6),
   fullName: z.string().min(2),
-  role: selfRegisterRoleSchema,
-  verificationCode: z.string().optional(),
+  inviteCode: z.string().min(1),
 });
 
+type ActiveInviteRow = {
+  id: string;
+  institution_id: string;
+  email: string;
+  full_name: string | null;
+  role: string;
+  code_hash: string;
+};
+
+async function findMatchingInvite(
+  admin: NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+  email: string,
+  inviteCode: string,
+): Promise<ActiveInviteRow | null> {
+  const now = new Date().toISOString();
+
+  const { data: rows, error } = await admin
+    .from("user_registration_invites")
+    .select(
+      "id, institution_id, email, full_name, role, code_hash",
+    )
+    .eq("email", email)
+    .is("used_at", null)
+    .is("revoked_at", null)
+    .gt("expires_at", now);
+
+  if (error) throw new Error(error.message);
+
+  for (const row of rows ?? []) {
+    if (inviteCodeMatches(row.code_hash as string, inviteCode)) {
+      return row as ActiveInviteRow;
+    }
+  }
+
+  return null;
+}
+
 /**
- * Server Function to handle user registration
+ * Server Function to handle user registration via admin-issued invite code.
  */
 export const signUpServerFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => signUpInputSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
-    const { email, password, fullName, role, verificationCode } = data;
+    const admin = getSupabaseAdmin();
 
-    // 1. Validate verification code for elevated roles (all self-register roles)
-    if (verificationCode !== VERIFICATION_CODES[role]) {
-      throw new Error(`Invalid verification code for the ${role} role.`);
+    if (!admin) {
+      throw new Error(
+        "Registration is unavailable: server configuration is incomplete. Contact your administrator.",
+      );
     }
 
-    // 2. Perform Supabase Sign Up
+    const email = normalizeInviteEmail(data.email);
+    const fullName = data.fullName.trim();
+    const { password, inviteCode } = data;
+
+    const invite = await findMatchingInvite(admin, email, inviteCode);
+    if (!invite) {
+      throw new Error(
+        "Invalid or expired invite code for this email. Contact your administrator.",
+      );
+    }
+
+    const role = invite.role;
+
+    const { data: existingUser } = await admin
+      .from("users")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (existingUser?.id) {
+      throw new Error(
+        "An account with this email already exists. Sign in instead.",
+      );
+    }
+
     const { data: authData, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: fullName,
-          role: role,
+          role,
         },
       },
     });
 
     if (error) throw new Error(error.message);
 
-    // 3. Sync public.users (trigger may run; upsert guarantees the row when possible)
-    if (authData.user) {
-      const admin = getSupabaseAdmin();
-      if (admin) {
-        await ensurePublicUserProfile(supabase, {
-          full_name: fullName,
-          role,
-        });
-      } else {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        if (session) {
-          await ensurePublicUserProfile(supabase, {
-            full_name: fullName,
-            role,
-          });
-        } else {
-          throw new Error(
-            "Account created but profile sync is pending. Confirm your email, then sign in. If the problem persists, set SUPABASE_SERVICE_ROLE_KEY on the server.",
-          );
-        }
-      }
+    if (!authData.user?.id) {
+      throw new Error("Account could not be created.");
     }
+
+    const userId = authData.user.id;
+
+    const { error: profileErr } = await admin.from("users").upsert(
+      {
+        id: userId,
+        email,
+        full_name: fullName,
+        role,
+        institution_id: invite.institution_id,
+        is_active: true,
+        approval_status: "pending_documents",
+      },
+      { onConflict: "id" },
+    );
+
+    if (profileErr) throw new Error(profileErr.message);
+
+    const now = new Date().toISOString();
+    const { error: inviteErr } = await admin
+      .from("user_registration_invites")
+      .update({ used_at: now, used_by: userId })
+      .eq("id", invite.id)
+      .is("used_at", null);
+
+    if (inviteErr) throw new Error(inviteErr.message);
 
     return {
       success: true,
-      user: authData.user
-        ? JSON.parse(JSON.stringify(authData.user))
-        : null,
+      user: JSON.parse(JSON.stringify(authData.user)),
     };
   });
 

@@ -1,10 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { LecturerPlaceholderPage } from "#/components/lecturer/lecturer-placeholder-page";
+import { AdminAnalyticsView } from "#/components/admin/analytics/admin-analytics-view";
 
 export const Route = createFileRoute("/admin/analytics")({
   component: AdminAnalyticsPage,
 });
 
 function AdminAnalyticsPage() {
-  return <LecturerPlaceholderPage title="Analytics" />;
+  return (
+    <div className="p-6 md:p-8">
+      <AdminAnalyticsView />
+    </div>
+  );
 }

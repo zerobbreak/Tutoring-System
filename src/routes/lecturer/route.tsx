@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { IncomingMessagesListener } from "#/components/messaging/incoming-messages-listener";
 import { LecturerAppShell } from "#/components/lecturer-app-shell";
 import type { AppShellUser } from "#/components/app-shell";
-import { supabase } from "#/lib/supabase";
+import { gateAuthenticatedSession } from "#/lib/mfa-auth";
 import { isLecturerDashboardRole } from "#/lib/user-role";
+import { fetchUserApprovalAllowed } from "#/lib/user-approval-gate";
 
 export const Route = createFileRoute("/lecturer")({
   component: LecturerLayout,
@@ -17,12 +18,24 @@ function LecturerLayout() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const {
-        data: { user: u },
-      } = await supabase.auth.getUser();
-      const role = u?.user_metadata?.role as string | undefined;
-      if (!u || !isLecturerDashboardRole(role)) {
+      const gate = await gateAuthenticatedSession();
+      if (gate.status === "unauthenticated") {
         navigate({ to: "/auth/login" });
+        return;
+      }
+      if (gate.status === "mfa_required") {
+        navigate({ to: "/auth/mfa" });
+        return;
+      }
+      const u = gate.user;
+      const role = u.user_metadata?.role as string | undefined;
+      if (!isLecturerDashboardRole(role)) {
+        navigate({ to: "/auth/login" });
+        return;
+      }
+      const allowed = await fetchUserApprovalAllowed();
+      if (!allowed) {
+        navigate({ to: "/settings" });
         return;
       }
       setUser(u);

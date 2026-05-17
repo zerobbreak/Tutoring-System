@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
 import { z } from "zod";
 import { requireLecturerId } from "#/lib/lecturer-server";
+import { provisionInstitutionUser } from "#/lib/provision-institution-user";
 import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { requireLecturerInstitutionId } from "./require-lecturer-institution";
@@ -44,79 +45,17 @@ export const inviteTutorToModuleFn = createServerFn({ method: "POST" })
       if (!mod) throw new Error("Module not found or access denied.");
 
       const email = data.email.trim().toLowerCase();
-      let tutorId: string;
-      let created = false;
 
-      const { data: existingUser } = await admin
-        .from("users")
-        .select("id, role, institution_id")
-        .eq("email", email)
-        .maybeSingle();
-
-      if (existingUser?.id) {
-        if (existingUser.role !== "TUTOR") {
-          throw new Error(
-            "This email is already registered with a non-tutor role.",
-          );
-        }
-        tutorId = existingUser.id as string;
-
-        if (
-          existingUser.institution_id &&
-          existingUser.institution_id !== institutionId
-        ) {
-          throw new Error(
-            "This tutor belongs to a different institution and cannot be assigned.",
-          );
-        }
-
-        const { error: updErr } = await admin
-          .from("users")
-          .update({
-            full_name: data.fullName.trim(),
-            institution_id: institutionId,
-            is_active: true,
-          })
-          .eq("id", tutorId);
-
-        if (updErr) throw new Error(updErr.message);
-      } else {
-        const password =
-          data.temporaryPassword ?? crypto.randomUUID().slice(0, 16) + "Aa1!";
-
-        const { data: authUser, error: authErr } =
-          await admin.auth.admin.createUser({
-            email,
-            password,
-            email_confirm: true,
-            user_metadata: {
-              full_name: data.fullName.trim(),
-              role: "TUTOR",
-            },
-          });
-
-        if (authErr) throw new Error(authErr.message);
-        if (!authUser.user?.id) {
-          throw new Error("Auth user was not created.");
-        }
-
-        tutorId = authUser.user.id;
-        created = true;
-
-        const { error: profileErr } = await admin.from("users").upsert(
-          {
-            id: tutorId,
-            email,
-            full_name: data.fullName.trim(),
-            role: "TUTOR",
-            institution_id: institutionId,
-            is_active: true,
-          },
-          { onConflict: "id" },
-        );
-
-        if (profileErr) throw new Error(profileErr.message);
-      }
+      const { userId: tutorId, created } = await provisionInstitutionUser(
+        admin,
+        {
+          email,
+          fullName: data.fullName.trim(),
+          role: "TUTOR",
+          institutionId,
+          temporaryPassword: data.temporaryPassword,
+        },
+      );
 
       const startDate = format(new Date(), "yyyy-MM-dd");
 

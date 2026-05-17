@@ -6,12 +6,7 @@ import type {
   AdminLecturerActivityDTO,
   AdminPipelineDTO,
 } from "#/server-actions/admin-dashboard";
-import type { IntegrityIssueDTO } from "#/server-actions/lecturer-attendance/types";
-import type {
-  LecturerActivityItemDTO,
-  LecturerAttendanceAlertDTO,
-} from "#/server-actions/lecturer-dashboard";
-import { AdminAttendancePanel } from "./admin-attendance-panel";
+import type { LecturerActivityItemDTO } from "#/server-actions/lecturer-dashboard";
 import { AdminKpiCards } from "./admin-kpi-cards";
 import { AdminQuickActionsPanel } from "./admin-quick-actions-panel";
 import { InstitutionFeedPanel } from "./institution-feed-panel";
@@ -30,8 +25,6 @@ export type AdminDashboardViewProps = {
   activeSessionsCount: number;
   approvedHours: number;
   pipeline: AdminPipelineDTO;
-  attendanceAlerts: LecturerAttendanceAlertDTO[];
-  integrityIssues: IntegrityIssueDTO[];
   activityFeed: LecturerActivityItemDTO[];
   lecturerActivity: AdminLecturerActivityDTO[];
   deadlines: AdminDeadlineDTO[];
@@ -50,8 +43,6 @@ export function AdminDashboardView({
   activeSessionsCount,
   approvedHours,
   pipeline,
-  attendanceAlerts,
-  integrityIssues,
   activityFeed,
   lecturerActivity,
   deadlines,
@@ -99,18 +90,11 @@ export function AdminDashboardView({
 
       <AdminQuickActionsPanel />
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <WorkflowHealthPanel
-          booting={booting}
-          pipeline={pipeline}
-          lecturerActivity={lecturerActivity}
-        />
-        <AdminAttendancePanel
-          booting={booting}
-          alerts={attendanceAlerts}
-          integrityIssues={integrityIssues}
-        />
-      </div>
+      <WorkflowHealthPanel
+        booting={booting}
+        pipeline={pipeline}
+        lecturerActivity={lecturerActivity}
+      />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <InstitutionFeedPanel booting={booting} activityFeed={activityFeed} />

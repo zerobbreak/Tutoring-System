@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Bell, Shield, User } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { AccountSettings } from "#/components/settings/account-settings";
+import { OnboardingDocumentsCard } from "#/components/settings/onboarding-documents-card";
 import { NotificationsSettings } from "#/components/settings/notifications-settings";
 import { SecuritySettings } from "#/components/settings/security-settings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
@@ -101,7 +102,8 @@ function SettingsPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="account">
+          <TabsContent value="account" className="space-y-6">
+            <OnboardingDocumentsCard />
             <AccountSettings profile={profile} onProfileChange={setProfile} />
           </TabsContent>
 

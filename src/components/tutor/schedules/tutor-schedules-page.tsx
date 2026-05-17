@@ -16,6 +16,7 @@ import { format, startOfDay, startOfMonth } from "date-fns";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "#/components/ui/button";
 import { Calendar } from "#/components/ui/calendar";
+import { ScrollArea } from "#/components/ui/scroll-area";
 import {
   clearTutorScheduleImportsFn,
   deleteTutorScheduleImportFn,
@@ -633,7 +634,8 @@ export function TutorSchedulesPage() {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto overscroll-contain px-4 pb-8 md:px-6">
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="px-4 pb-8 md:px-6">
           {!selectedDay ? (
             <div className="flex h-full min-h-48 flex-col items-center justify-center text-center text-muted-foreground">
               <CalendarIcon className="mb-3 size-10 opacity-25" aria-hidden />
@@ -740,7 +742,8 @@ export function TutorSchedulesPage() {
               </ul>
             </div>
           )}
-        </div>
+          </div>
+        </ScrollArea>
       </aside>
     </div>
   );

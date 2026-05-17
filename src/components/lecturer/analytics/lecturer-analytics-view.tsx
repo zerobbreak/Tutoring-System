@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "#/components/ui/card";
+import { ScrollArea, ScrollBar } from "#/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
 import {
   getLecturerAnalyticsFn,
@@ -54,7 +55,7 @@ export function LecturerAnalyticsView() {
   const lookbackDays = data?.lookbackDays ?? 90;
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-6 pb-10 md:p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
@@ -146,7 +147,12 @@ export function LecturerAnalyticsView() {
                   <Loader2 className="size-8 animate-spin" />
                 </div>
               ) : (
-                <AnalyticsTutorsTable tutors={data?.tutors ?? []} />
+                <ScrollArea className="max-h-[min(28rem,55vh)] w-full rounded-lg border border-border/80">
+                  <ScrollBar orientation="horizontal" />
+                  <div className="min-w-[52rem] p-1">
+                    <AnalyticsTutorsTable tutors={data?.tutors ?? []} />
+                  </div>
+                </ScrollArea>
               )}
             </CardContent>
           </Card>
@@ -177,7 +183,12 @@ export function LecturerAnalyticsView() {
                   <Loader2 className="size-8 animate-spin" />
                 </div>
               ) : (
-                <AnalyticsModulesTable modules={data?.modules ?? []} />
+                <ScrollArea className="max-h-[min(28rem,55vh)] w-full rounded-lg border border-border/80">
+                  <ScrollBar orientation="horizontal" />
+                  <div className="min-w-[44rem] p-1">
+                    <AnalyticsModulesTable modules={data?.modules ?? []} />
+                  </div>
+                </ScrollArea>
               )}
             </CardContent>
           </Card>

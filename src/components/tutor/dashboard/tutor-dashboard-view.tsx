@@ -31,6 +31,7 @@ import {
   CardHeader,
   CardTitle,
 } from "#/components/ui/card";
+import { ScrollArea } from "#/components/ui/scroll-area";
 import { Skeleton } from "#/components/ui/skeleton";
 import type { ScheduleParsedEvent } from "#/lib/schedule-spreadsheet";
 import { formatClaimStatus } from "#/lib/session-claim-display";
@@ -133,7 +134,8 @@ export function TutorDashboardView({
   const rootGap = prefs.dashboard_compact_mode ? "gap-4" : "gap-6";
 
   return (
-    <div className={`mx-auto flex w-full max-w-7xl flex-col ${rootGap}`}>
+    <ScrollArea className="min-h-0 flex-1">
+      <div className={`mx-auto flex w-full max-w-7xl flex-col p-6 md:p-8 ${rootGap}`}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">Dashboard</h2>
@@ -437,6 +439,7 @@ export function TutorDashboardView({
           </Card>
         </div>
       </div>
-    </div>
+      </div>
+    </ScrollArea>
   );
 }

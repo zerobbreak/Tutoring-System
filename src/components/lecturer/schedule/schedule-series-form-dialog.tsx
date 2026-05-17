@@ -111,6 +111,9 @@ export function ScheduleSeriesFormDialog({
     return tutors.filter((t) => ids.has(t.id));
   }, [form.moduleId, tutorIdsByModule, tutors]);
 
+  const selectableTutors =
+    tutorsForModule.length > 0 ? tutorsForModule : tutors;
+
   useEffect(() => {
     if (!form.moduleId) return;
     const mod = modules.find((m) => m.id === form.moduleId);
@@ -119,12 +122,12 @@ export function ScheduleSeriesFormDialog({
         ...f,
         title: f.title || `${mod.code} Tutorial`,
         tutorId:
-          f.tutorId && tutorsForModule.some((t) => t.id === f.tutorId)
+          f.tutorId && selectableTutors.some((t) => t.id === f.tutorId)
             ? f.tutorId
-            : (tutorsForModule[0]?.id ?? ""),
+            : (selectableTutors[0]?.id ?? ""),
       }));
     }
-  }, [form.moduleId, modules, tutorsForModule]);
+  }, [form.moduleId, modules, selectableTutors]);
 
   const toggleWeekday = (day: number) => {
     setForm((f) => ({
@@ -137,13 +140,15 @@ export function ScheduleSeriesFormDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.moduleId || !form.tutorId || !form.title.trim()) {
-      toast.error("Module, title, and tutor are required.");
+    if (!form.moduleId || !form.title.trim()) {
+      toast.error("Module and title are required.");
       return;
     }
-    if (!tutorsForModule.length) {
+    if (!form.tutorId) {
       toast.error(
-        "No tutor is assigned to this module. Assign a tutor before creating a schedule.",
+        tutors.length
+          ? "Select a tutor for this series."
+          : "No tutors in your institution. Add a tutor before creating a schedule.",
       );
       return;
     }
@@ -221,29 +226,37 @@ export function ScheduleSeriesFormDialog({
               </Field>
 
               <Field label="Tutor">
-                {!tutorsForModule.length ? (
+                {!selectableTutors.length ? (
                   <p className="rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
-                    No tutor assigned to this module. Assign one from the Tutors
-                    page, or one will be linked when you save this series.
+                    No tutors in your institution yet. Add a tutor from the Users
+                    or Tutors page before creating a schedule.
                   </p>
                 ) : (
-                  <Select
-                    value={form.tutorId}
-                    onValueChange={(tutorId) =>
-                      setForm((f) => ({ ...f, tutorId }))
-                    }
-                  >
-                    <SelectTrigger className={selectTriggerClass}>
-                      <SelectValue placeholder="Assign tutor" />
-                    </SelectTrigger>
-                    <SelectContent {...selectContentProps}>
-                      {tutorsForModule.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.fullName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="space-y-2">
+                    {!tutorsForModule.length ? (
+                      <p className="text-sm text-muted-foreground">
+                        No tutor is linked to this module yet. Pick one below —
+                        they will be assigned when you save.
+                      </p>
+                    ) : null}
+                    <Select
+                      value={form.tutorId}
+                      onValueChange={(tutorId) =>
+                        setForm((f) => ({ ...f, tutorId }))
+                      }
+                    >
+                      <SelectTrigger className={selectTriggerClass}>
+                        <SelectValue placeholder="Select tutor" />
+                      </SelectTrigger>
+                      <SelectContent {...selectContentProps}>
+                        {selectableTutors.map((t) => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.fullName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 )}
               </Field>
 
@@ -338,7 +351,7 @@ export function ScheduleSeriesFormDialog({
             </div>
           </div>
 
-          <DialogFooter className="shrink-0 gap-2 border-t border-border/60 px-6 py-4 sm:gap-0">
+          <DialogFooter className="shrink-0 gap-3 border-t border-border/60 px-6 py-4">
             <Button
               type="button"
               variant="outline"

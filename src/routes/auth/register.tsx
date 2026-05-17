@@ -10,14 +10,12 @@ import { cn } from "../../lib/utils";
 import sidebarImage from "../../assets/auth-sidebar.png";
 import { signUpServerFn } from "../../lib/auth-server";
 import { toast } from "../../lib/toast";
-import { SELF_REGISTER_ROLES, formatRoleLabel } from "../../lib/user-role";
 
 const registerSchema = z
   .object({
     fullName: z.string().min(2, "Full name must be at least 2 characters"),
     email: z.email("Invalid email address"),
-    role: z.enum(SELF_REGISTER_ROLES),
-    verificationCode: z.string().optional(),
+    inviteCode: z.string().min(1, "Invite code is required"),
     password: z.string().min(6, "Password must be at least 6 characters"),
     confirmPassword: z
       .string()
@@ -41,16 +39,10 @@ function Register() {
   const {
     register,
     handleSubmit,
-    watch,
     formState: { errors },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: {
-      role: "TUTOR",
-    },
   });
-
-  const watchRole = watch("role");
 
   const onSubmit = async (values: RegisterFormValues) => {
     setLoading(true);
@@ -61,8 +53,7 @@ function Register() {
           email: values.email,
           password: values.password,
           fullName: values.fullName,
-          role: values.role,
-          verificationCode: values.verificationCode,
+          inviteCode: values.inviteCode,
         },
       });
 
@@ -72,9 +63,11 @@ function Register() {
         duration: 5000,
       });
       setTimeout(() => navigate({ to: "/auth/login" }), 4000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.error(
-        error.message || "An unexpected error occurred during registration.",
+        error instanceof Error
+          ? error.message
+          : "An unexpected error occurred during registration.",
       );
     } finally {
       setLoading(false);
@@ -83,7 +76,6 @@ function Register() {
 
   return (
     <div className="flex min-h-screen bg-[#F7F7F7]">
-      {/* Left Column: Image/Branding */}
       <div className="hidden w-[60%] lg:block relative overflow-hidden">
         <img
           src={sidebarImage}
@@ -97,13 +89,12 @@ function Register() {
             <span className="italic text-[#FF6F61]">Journey Today</span>
           </h1>
           <p className="max-w-md text-lg text-gray-300 font-light leading-relaxed">
-            Create an account and gain access to world-class tutoring. Your
-            future starts with a single step.
+            Use the invite code from your institution administrator to create
+            your account.
           </p>
         </div>
       </div>
 
-      {/* Right Column: Form */}
       <div className="flex w-full flex-col justify-center px-8 lg:w-[40%] lg:px-20">
         <div className="mx-auto w-full max-w-sm">
           <div className="mb-10 text-center lg:text-left">
@@ -111,7 +102,7 @@ function Register() {
               Create Account
             </h2>
             <p className="mt-2 text-sm text-gray-500">
-              Join our community and start learning now.
+              Registration requires an email and invite code from your admin.
             </p>
           </div>
 
@@ -138,59 +129,13 @@ function Register() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="role" className="text-[#0A1128]">
-                I am a...
-              </Label>
-              <select
-                id="role"
-                className={cn(
-                  "w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:border-[#0A1128] focus:outline-none focus:ring-1 focus:ring-[#0A1128]",
-                  errors.role && "border-red-500",
-                )}
-                {...register("role")}
-              >
-                <option value="TUTOR">{formatRoleLabel("TUTOR")}</option>
-                <option value="LECTURER">{formatRoleLabel("LECTURER")}</option>
-                <option value="ADMIN">{formatRoleLabel("ADMIN")}</option>
-              </select>
-              {errors.role && (
-                <p className="text-xs font-medium text-red-500">
-                  {errors.role.message}
-                </p>
-              )}
-            </div>
-
-            {(watchRole === "LECTURER" ||
-              watchRole === "TUTOR" ||
-              watchRole === "ADMIN") && (
-              <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                <Label htmlFor="verificationCode" className="text-[#0A1128]">
-                  {formatRoleLabel(watchRole)} access code
-                </Label>
-                <Input
-                  id="verificationCode"
-                  type="text"
-                  placeholder="Enter secret code"
-                  className={cn(
-                    "border-gray-200 focus:border-[#0A1128] focus:ring-[#0A1128]",
-                    errors.verificationCode &&
-                      "border-red-500 focus:ring-red-500",
-                  )}
-                  {...register("verificationCode")}
-                />
-                <p className="text-[10px] text-gray-400">
-                  Contact your administrator to receive your access code.
-                </p>
-              </div>
-            )}
-
-            <div className="space-y-2">
               <Label htmlFor="email" className="text-[#0A1128]">
                 Email Address
               </Label>
               <Input
                 id="email"
                 type="email"
+                autoComplete="email"
                 placeholder="name@example.com"
                 className={cn(
                   "border-gray-200 focus:border-[#0A1128] focus:ring-[#0A1128]",
@@ -206,12 +151,39 @@ function Register() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="inviteCode" className="text-[#0A1128]">
+                Invite code
+              </Label>
+              <Input
+                id="inviteCode"
+                type="text"
+                placeholder="XXXX-XXXX"
+                autoComplete="off"
+                className={cn(
+                  "border-gray-200 focus:border-[#0A1128] focus:ring-[#0A1128]",
+                  errors.inviteCode && "border-red-500 focus:ring-red-500",
+                )}
+                {...register("inviteCode")}
+              />
+              <p className="text-[10px] text-gray-400">
+                Use the invite code from your institution administrator. It must
+                match this email address.
+              </p>
+              {errors.inviteCode && (
+                <p className="text-xs font-medium text-red-500">
+                  {errors.inviteCode.message}
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="password" className="text-[#0A1128]">
                 Password
               </Label>
               <Input
                 id="password"
                 type="password"
+                autoComplete="new-password"
                 placeholder="••••••••"
                 className={cn(
                   "border-gray-200 focus:border-[#0A1128] focus:ring-[#0A1128]",
@@ -233,6 +205,7 @@ function Register() {
               <Input
                 id="confirmPassword"
                 type="password"
+                autoComplete="new-password"
                 placeholder="••••••••"
                 className={cn(
                   "border-gray-200 focus:border-[#0A1128] focus:ring-[#0A1128]",

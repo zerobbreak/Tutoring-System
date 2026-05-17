@@ -28,16 +28,6 @@ export const publishScheduleSeriesFn = createServerFn({ method: "POST" })
 
     const sessionCount = await materializeSeriesSessions(supabase, data.seriesId);
 
-    const { error: pubErr } = await supabase
-      .from("schedule_series")
-      .update({
-        status: "PUBLISHED",
-        published_at: new Date().toISOString(),
-      })
-      .eq("id", data.seriesId);
-
-    if (pubErr) throw new Error(pubErr.message);
-
     const { data: sessions, error: sessErr } = await supabase
       .from("scheduled_sessions")
       .select("id")
@@ -48,6 +38,16 @@ export const publishScheduleSeriesFn = createServerFn({ method: "POST" })
     for (const s of sessions ?? []) {
       await ensureClaimForScheduledSession(supabase, s.id as string);
     }
+
+    const { error: pubErr } = await supabase
+      .from("schedule_series")
+      .update({
+        status: "PUBLISHED",
+        published_at: new Date().toISOString(),
+      })
+      .eq("id", data.seriesId);
+
+    if (pubErr) throw new Error(pubErr.message);
 
     return { sessionCount };
   });

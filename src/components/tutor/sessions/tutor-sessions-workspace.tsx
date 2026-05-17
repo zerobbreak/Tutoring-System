@@ -1,8 +1,13 @@
 import {
   closestCorners,
   DndContext,
+  DragOverlay,
+  type CollisionDetection,
   type DragEndEvent,
+  type DragStartEvent,
   PointerSensor,
+  TouchSensor,
+  pointerWithin,
   useDraggable,
   useDroppable,
   useSensor,
@@ -16,6 +21,7 @@ import {
   CalendarRange,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   CircleDot,
   ClipboardList,
   GripVertical,
@@ -31,12 +37,6 @@ import {
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  RadialBar,
-  RadialBarChart,
-  PolarAngleAxis,
-  ResponsiveContainer,
-} from "recharts";
 import { Avatar, AvatarFallback } from "#/components/ui/avatar";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
@@ -114,25 +114,99 @@ const ALL_STATUSES: ClaimStatus[] = [
 
 const COLUMN_META: Record<
   SessionKanbanColumnId,
-  { title: string; description: string }
+  {
+    title: string;
+    description: string;
+    accentBorder: string;
+    headerBg: string;
+    countClass: string;
+    emptyHint: string;
+  }
 > = {
   claimsPending: {
     title: "Claims pending",
-    description: "Drafts and items awaiting verification",
+    description: "Awaiting lecturer resolution",
+    accentBorder: "border-t-amber-500",
+    headerBg: "bg-gradient-to-b from-amber-500/8 to-transparent",
+    countClass: "bg-amber-500/15 text-amber-900 dark:text-amber-100",
+    emptyHint: "No claims in review right now.",
   },
   today: {
     title: "Today's sessions",
-    description: "Happening today on your timetable",
+    description: "On your timetable today",
+    accentBorder: "border-t-emerald-500",
+    headerBg: "bg-gradient-to-b from-emerald-500/8 to-transparent",
+    countClass: "bg-emerald-500/15 text-emerald-900 dark:text-emerald-100",
+    emptyHint: "Nothing scheduled for today.",
   },
   upcoming: {
-    title: "Upcoming sessions",
-    description: "Scheduled ahead on the calendar",
+    title: "Upcoming",
+    description: "Scheduled ahead",
+    accentBorder: "border-t-[var(--lagoon-deep)]",
+    headerBg: "bg-gradient-to-b from-lagoon/10 to-transparent",
+    countClass: "bg-lagoon/15 text-lagoon-deep",
+    emptyHint: "Drag sessions here or create one below.",
   },
   completed: {
-    title: "Completed sessions",
-    description: "Past slots you have already delivered",
+    title: "Completed",
+    description: "Already delivered",
+    accentBorder: "border-t-border",
+    headerBg: "bg-gradient-to-b from-muted/50 to-transparent",
+    countClass: "bg-muted text-muted-foreground",
+    emptyHint: "Finished sessions land here.",
   },
 };
+
+const SESSION_STAT_CARDS = [
+  {
+    label: "Total sessions",
+    key: "total" as const,
+    icon: ClipboardList,
+    cardClass: "border-border/70 bg-card/80",
+    iconWrap: "bg-muted text-muted-foreground",
+    valueClass: "",
+  },
+  {
+    label: "Pending claims",
+    key: "pendingClaims" as const,
+    icon: AlertTriangle,
+    cardClass: "border-amber-500/25 bg-amber-500/5",
+    iconWrap: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
+    valueClass: "text-amber-700 dark:text-amber-300",
+  },
+  {
+    label: "Attendance coverage",
+    key: "attendanceRate" as const,
+    icon: CheckCircle2,
+    cardClass: "border-emerald-500/25 bg-emerald-500/5",
+    iconWrap: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
+    valueClass: "text-emerald-700 dark:text-emerald-300",
+    suffix: "%",
+  },
+  {
+    label: "Upcoming sessions",
+    key: "upcomingSessions" as const,
+    icon: CalendarRange,
+    cardClass: "border-lagoon/30 bg-lagoon/5",
+    iconWrap: "bg-lagoon/15 text-lagoon-deep",
+    valueClass: "",
+  },
+] as const;
+
+function claimStatusRail(status: ClaimStatus): string {
+  switch (status) {
+    case "APPROVED":
+    case "VERIFIED":
+      return "border-l-emerald-500";
+    case "PENDING_VERIFICATION":
+      return "border-l-amber-500";
+    case "DISPUTED":
+    case "REJECTED":
+      return "border-l-destructive";
+    default:
+      return "border-l-muted-foreground/30";
+  }
+}
 
 function claimTimes(claim: TutorSessionClaimDTO) {
   return {
@@ -164,6 +238,72 @@ function isSessionUrgent(claim: TutorSessionClaimDTO, now: Date): boolean {
   return true;
 }
 
+function resolveKanbanDropColumn(
+  overId: string,
+  columns: Record<SessionKanbanColumnId, TutorSessionClaimDTO[]>,
+): SessionKanbanColumnId | null {
+  if (overId.startsWith(DROP_PREFIX)) {
+    return overId.slice(DROP_PREFIX.length) as SessionKanbanColumnId;
+  }
+  for (const colId of Object.keys(columns) as SessionKanbanColumnId[]) {
+    if (columns[colId].some((c) => c.id === overId)) {
+      return colId;
+    }
+  }
+  return null;
+}
+
+/** Prefer column drop zones so empty lanes and headers register reliably. */
+const kanbanCollisionDetection: CollisionDetection = (args) => {
+  const pointerHits = pointerWithin(args);
+  if (pointerHits.length > 0) {
+    const dropZone = pointerHits.find((c) =>
+      String(c.id).startsWith(DROP_PREFIX),
+    );
+    if (dropZone) return [dropZone];
+    return pointerHits;
+  }
+  const cornerHits = closestCorners(args);
+  const dropZone = cornerHits.find((c) =>
+    String(c.id).startsWith(DROP_PREFIX),
+  );
+  if (dropZone) return [dropZone];
+  return cornerHits;
+};
+
+function KanbanDragOverlay({ claim }: { claim: TutorSessionClaimDTO }) {
+  const mod = claim.module;
+  const status = claim.status as ClaimStatus;
+  return (
+    <Card
+      className={cn(
+        "w-[min(300px,calc(100vw-2rem))] cursor-grabbing border-l-[3px] bg-card shadow-2xl ring-2 ring-lagoon-deep/20",
+        claimStatusRail(status),
+      )}
+    >
+      <CardHeader className="gap-2 p-4 pb-2">
+        {mod?.code ? (
+          <span className="w-fit rounded-md bg-lagoon/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-lagoon-deep uppercase">
+            {mod.code}
+          </span>
+        ) : null}
+        <CardTitle className="text-sm leading-snug font-semibold">
+          {mod?.name ?? "Unknown module"}
+        </CardTitle>
+        <CardDescription className="text-xs">
+          {format(parseISO(`${claim.session_date}T12:00:00`), "EEE d MMM")}{" "}
+          · {formatClock(claim.start_time)}–{formatClock(claim.end_time)}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="pb-4">
+        <Badge variant={claimBadgeVariant(status)}>
+          {claimBadgeLabel(status)}
+        </Badge>
+      </CardContent>
+    </Card>
+  );
+}
+
 function DroppableColumn({
   id,
   children,
@@ -176,13 +316,18 @@ function DroppableColumn({
   const { setNodeRef, isOver } = useDroppable({
     id: `${DROP_PREFIX}${id}`,
     disabled: id === "claimsPending",
+    data: { columnId: id },
   });
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "flex min-h-0 min-w-0 flex-1 flex-col rounded-xl border bg-card/60 shadow-sm transition-colors",
-        isOver && id !== "claimsPending" && "border-lagoon-deep/50 bg-lagoon/5",
+        "flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-border/70 bg-muted/15 shadow-sm transition-all duration-200",
+        COLUMN_META[id].accentBorder,
+        "border-t-[3px]",
+        isOver &&
+          id !== "claimsPending" &&
+          "border-lagoon-deep/60 bg-lagoon/8 shadow-md ring-1 ring-lagoon-deep/15",
         className,
       )}
     >
@@ -228,9 +373,7 @@ function DraggableSessionCard({
     : undefined;
 
   const mod = claim.module;
-  const titleLine = mod
-    ? `${mod.code} — ${mod.name}`
-    : "Unknown module";
+  const status = claim.status as ClaimStatus;
   const lecturerName = mod?.lecturer?.full_name ?? "Lecturer";
   const initials = lecturerName
     .split(/\s+/)
@@ -254,8 +397,7 @@ function DraggableSessionCard({
       ? "Register on file"
       : "Attendance —";
 
-  const radialData = [{ name: "att", value: Math.round(progressRatio * 100) }];
-
+  const progressPct = Math.round(progressRatio * 100);
   const live = isSessionLive(claim, now);
   const urgent = isSessionUrgent(claim, now);
 
@@ -263,38 +405,41 @@ function DraggableSessionCard({
     <motion.div
       ref={setNodeRef}
       style={style}
-      layout={!reduceMotion}
+      layout={!reduceMotion && !isDragging}
       initial={false}
       animate={
         reduceMotion
           ? undefined
-          : { opacity: isDragging ? 0.85 : 1, scale: isDragging ? 1.01 : 1 }
+          : { opacity: isDragging ? 0.35 : 1, scale: isDragging ? 0.98 : 1 }
       }
       transition={{ type: "spring", stiffness: 420, damping: 32 }}
-      className="touch-manipulation"
+      className={cn(isDragging && "relative z-0")}
     >
       <Card
         className={cn(
-          "border-border/80 bg-card/95 shadow-xs transition-shadow hover:shadow-md",
-          urgent && "border-amber-500/45 ring-1 ring-amber-500/25",
-          live && "border-emerald-500/40 ring-1 ring-emerald-500/20",
+          "group/card cursor-pointer border-l-[3px] bg-card shadow-sm transition-all hover:shadow-md",
+          claimStatusRail(status),
+          urgent && "ring-1 ring-amber-500/20",
+          live && "ring-1 ring-emerald-500/25",
         )}
+        onClick={onOpen}
       >
-        <CardHeader className="gap-2 pb-2">
+        <CardHeader className="gap-2 p-3 pb-2">
           <div className="flex items-start gap-2">
             {!dragDisabled ? (
               <button
                 type="button"
-                className="mt-0.5 cursor-grab rounded-md border border-transparent p-1 text-muted-foreground hover:bg-muted active:cursor-grabbing"
+                className="mt-0.5 shrink-0 cursor-grab touch-none rounded-md bg-muted/60 p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing"
                 aria-label="Drag to reschedule"
+                onClick={(e) => e.stopPropagation()}
                 {...listeners}
                 {...attributes}
               >
-                <GripVertical className="size-4" />
+                <GripVertical className="size-3.5" />
               </button>
             ) : (
-              <span className="mt-0.5 inline-flex w-6 justify-center p-1 text-muted-foreground/40">
-                <GripVertical className="size-4" />
+              <span className="mt-0.5 inline-flex shrink-0 rounded-md bg-muted/40 p-1.5 text-muted-foreground/35">
+                <GripVertical className="size-3.5" />
               </span>
             )}
             <div className="min-w-0 flex-1 space-y-1">
@@ -311,19 +456,34 @@ function DraggableSessionCard({
                     Urgent
                   </Badge>
                 ) : null}
-                <CardTitle className="text-sm leading-snug font-semibold">
-                  {titleLine}
-                </CardTitle>
+                {mod?.code ? (
+                  <span className="rounded bg-lagoon/10 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-lagoon-deep uppercase">
+                    {mod.code}
+                  </span>
+                ) : null}
               </div>
-              <CardDescription className="text-xs">
-                {format(parseISO(`${claim.session_date}T12:00:00`), "EEE d MMM")}{" "}
-                · {formatClock(claim.start_time)}–{formatClock(claim.end_time)}
-                {claim.venue ? ` · ${claim.venue}` : ""}
-              </CardDescription>
+              <CardTitle className="line-clamp-2 text-sm leading-snug font-semibold">
+                {mod?.name ?? "Unknown module"}
+              </CardTitle>
+              <p className="mt-1 text-xs text-muted-foreground">
+                <span className="font-medium text-foreground/80">
+                  {format(parseISO(`${claim.session_date}T12:00:00`), "EEE d MMM")}
+                </span>
+                {" · "}
+                {formatClock(claim.start_time)}–{formatClock(claim.end_time)}
+                {claim.venue ? (
+                  <span className="text-muted-foreground"> · {claim.venue}</span>
+                ) : null}
+              </p>
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="xs" className="shrink-0">
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  className="shrink-0 opacity-70 group-hover/card:opacity-100"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <MoreHorizontal className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -368,71 +528,61 @@ function DraggableSessionCard({
             </DropdownMenu>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="relative size-14 shrink-0">
-              <ResponsiveContainer width="100%" height="100%">
-                <RadialBarChart
-                  data={radialData}
-                  innerRadius={18}
-                  outerRadius={28}
-                  startAngle={90}
-                  endAngle={-270}
-                >
-                  <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
-                  <RadialBar
-                    dataKey="value"
-                    cornerRadius={4}
-                    fill="hsl(var(--chart-2))"
-                    background={{ fill: "hsl(var(--muted))" }}
-                  />
-                </RadialBarChart>
-              </ResponsiveContainer>
-              <span className="pointer-events-none absolute inset-0 flex items-center justify-center text-[10px] font-semibold text-muted-foreground">
-                {hasHeadcount || claim.evidenceCount > 0 ? (
-                  <>{Math.round(progressRatio * 100)}%</>
-                ) : (
-                  "—"
-                )}
-              </span>
+        <CardContent className="space-y-3 px-3 pt-0 pb-3">
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="text-muted-foreground">{progressLabel}</span>
+              {hasHeadcount || claim.evidenceCount > 0 ? (
+                <span className="font-semibold tabular-nums text-foreground">
+                  {progressPct}%
+                </span>
+              ) : null}
             </div>
-            <div className="min-w-0 flex-1 space-y-1">
-              <p className="text-xs text-muted-foreground">{progressLabel}</p>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={claimBadgeVariant(claim.status)}>
-                  {claimBadgeLabel(claim.status)}
-                </Badge>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex text-muted-foreground">
-                      <QrCode className="size-3.5" aria-hidden />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>QR actions in the menu</TooltipContent>
-                </Tooltip>
-                {(claim.notes?.trim() || claim.topics_covered?.trim()) && (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex text-lagoon-deep">
-                        <StickyNote className="size-3.5" aria-hidden />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>Notes or coverage on file</TooltipContent>
-                  </Tooltip>
+            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all",
+                  progressPct >= 100
+                    ? "bg-emerald-500"
+                    : progressPct > 0
+                      ? "bg-lagoon-deep"
+                      : "bg-transparent",
                 )}
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          </div>
+          <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <Avatar className="size-7 shrink-0 border border-border/60">
+                <AvatarFallback className="text-[9px] font-medium">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="truncate text-xs font-medium text-foreground">
+                  {lecturerName}
+                </p>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Badge
+                    variant={claimBadgeVariant(status)}
+                    className="px-1.5 py-0 text-[10px]"
+                  >
+                    {claimBadgeLabel(status)}
+                  </Badge>
+                  {claim.evidenceCount > 0 ? (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                      <CheckCircle2 className="size-3 text-emerald-600" />
+                      Evidence
+                    </span>
+                  ) : null}
+                  {(claim.notes?.trim() || claim.topics_covered?.trim()) && (
+                    <StickyNote className="size-3 text-lagoon-deep" aria-hidden />
+                  )}
+                </div>
               </div>
             </div>
-            <Avatar className="size-9 shrink-0 border border-border/60">
-              <AvatarFallback className="text-[10px] font-medium">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-          <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-            <span className="truncate">{lecturerName}</span>
-            <Button variant="outline" size="xs" onClick={onOpen}>
-              Details
-            </Button>
+            <ChevronRight className="size-4 shrink-0 text-muted-foreground/50 transition-transform group-hover/card:translate-x-0.5 group-hover/card:text-lagoon-deep" />
           </div>
         </CardContent>
       </Card>
@@ -503,9 +653,18 @@ export function TutorSessionsWorkspace({
   const [createEnd, setCreateEnd] = useState("10:00");
   const [createVenue, setCreateVenue] = useState("");
   const [createBusy, setCreateBusy] = useState(false);
+  const [activeDrag, setActiveDrag] = useState<{
+    claim: TutorSessionClaimDTO;
+    columnId: SessionKanbanColumnId;
+  } | null>(null);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 6 },
+    }),
   );
 
   useEffect(() => {
@@ -656,25 +815,42 @@ export function TutorSessionsWorkspace({
     });
   };
 
+  const onDragStart = (event: DragStartEvent) => {
+    const claim = claims.find((c) => c.id === String(event.active.id));
+    const columnId = event.active.data.current?.columnId as
+      | SessionKanbanColumnId
+      | undefined;
+    if (claim && columnId) {
+      setActiveDrag({ claim, columnId });
+    }
+  };
+
+  const clearActiveDrag = () => setActiveDrag(null);
+
   const onDragEnd = async (event: DragEndEvent) => {
+    clearActiveDrag();
     const { active, over } = event;
     if (!over) return;
     const from = active.data.current?.columnId as SessionKanbanColumnId | undefined;
-    const overId = String(over.id);
-    if (!overId.startsWith(DROP_PREFIX)) return;
-    const to = overId.slice(DROP_PREFIX.length) as SessionKanbanColumnId;
-    if (!from || from === "claimsPending" || to === "claimsPending") return;
+    const to = resolveKanbanDropColumn(String(over.id), columns);
+    if (!from || !to || from === "claimsPending" || to === "claimsPending") return;
     if (from === to) return;
     if (to !== "today" && to !== "upcoming" && to !== "completed") return;
     try {
-      await updateSessionClaimSchedulingFn({
+      const { session_date } = await updateSessionClaimSchedulingFn({
         data: { claimId: String(active.id), targetColumn: to },
       });
-      toast.success("Session rescheduled");
+      toast.success(
+        `Session moved to ${COLUMN_META[to].title.toLowerCase()} (${session_date})`,
+      );
       await reload();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not reschedule");
     }
+  };
+
+  const onDragCancel = () => {
+    clearActiveDrag();
   };
 
   const openWorkspace = (c: TutorSessionClaimDTO) => {
@@ -694,12 +870,7 @@ export function TutorSessionsWorkspace({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragEnd={onDragEnd}
-      >
-        <ScrollArea className="h-screen w-full">
+        <ScrollArea className="min-h-0 flex-1 w-full">
           <div className="flex min-h-full flex-col gap-6 p-4 md:p-8">
           <header className="flex flex-col gap-4 border-b border-border/60 pb-6 md:flex-row md:items-start md:justify-between">
             <div className="space-y-2">
@@ -847,38 +1018,38 @@ export function TutorSessionsWorkspace({
           ) : null}
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <Card className="border-border/70 bg-card/80 shadow-sm">
-              <CardHeader className="pb-2">
-                <CardDescription>Total sessions</CardDescription>
-                <CardTitle className="text-2xl tabular-nums">
-                  {loading ? "—" : stats.total}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card className="border-border/70 bg-card/80 shadow-sm">
-              <CardHeader className="pb-2">
-                <CardDescription>Pending claims</CardDescription>
-                <CardTitle className="text-2xl tabular-nums text-amber-700 dark:text-amber-300">
-                  {loading ? "—" : stats.pendingClaims}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card className="border-border/70 bg-card/80 shadow-sm">
-              <CardHeader className="pb-2">
-                <CardDescription>Attendance coverage</CardDescription>
-                <CardTitle className="text-2xl tabular-nums text-emerald-700 dark:text-emerald-300">
-                  {loading ? "—" : `${stats.attendanceRate}%`}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-            <Card className="border-border/70 bg-card/80 shadow-sm">
-              <CardHeader className="pb-2">
-                <CardDescription>Upcoming sessions</CardDescription>
-                <CardTitle className="text-2xl tabular-nums">
-                  {loading ? "—" : stats.upcomingSessions}
-                </CardTitle>
-              </CardHeader>
-            </Card>
+            {SESSION_STAT_CARDS.map((card) => {
+              const { label, key, icon: Icon, cardClass, iconWrap, valueClass } = card;
+              const suffix = "suffix" in card ? card.suffix : undefined;
+              const raw = stats[key];
+              const display =
+                loading ? "—" : suffix ? `${raw}${suffix}` : String(raw);
+                return (
+                  <Card
+                    key={key}
+                    className={cn("shadow-sm transition-shadow hover:shadow-md", cardClass)}
+                  >
+                    <CardHeader className="flex flex-row items-start justify-between gap-3 pb-2">
+                      <div className="min-w-0 space-y-1">
+                        <CardDescription className="text-xs">{label}</CardDescription>
+                        <CardTitle
+                          className={cn("text-2xl tabular-nums tracking-tight", valueClass)}
+                        >
+                          {display}
+                        </CardTitle>
+                      </div>
+                      <span
+                        className={cn(
+                          "flex size-9 shrink-0 items-center justify-center rounded-lg",
+                          iconWrap,
+                        )}
+                      >
+                        <Icon className="size-4" aria-hidden />
+                      </span>
+                    </CardHeader>
+                  </Card>
+                );
+            })}
           </div>
 
           <Tabs defaultValue="kanban" className="min-h-0 flex-1">
@@ -903,28 +1074,49 @@ export function TutorSessionsWorkspace({
                   ))}
                 </div>
               ) : (
-                <ScrollArea className="w-full overflow-x-auto">
-                  <div className="flex min-h-[min(70vh,720px)] gap-4 pb-4">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={kanbanCollisionDetection}
+                  onDragStart={onDragStart}
+                  onDragEnd={onDragEnd}
+                  onDragCancel={onDragCancel}
+                >
+                  <div className="overflow-x-auto pb-4">
+                  <div className="flex min-h-[min(70vh,720px)] min-w-max gap-4">
                   {(Object.keys(COLUMN_META) as SessionKanbanColumnId[]).map(
                     (colId) => (
-                      <DroppableColumn key={colId} id={colId} className="min-h-[320px] min-w-[300px] flex-1">
-                        <div className="sticky top-0 z-10 border-b border-border/60 bg-card/95 px-3 py-2 backdrop-blur-sm">
+                      <DroppableColumn
+                        key={colId}
+                        id={colId}
+                        className="flex h-[min(70vh,720px)] min-h-[320px] min-w-[300px] max-w-[340px] flex-none flex-col"
+                      >
+                        <div
+                          className={cn(
+                            "shrink-0 border-b border-border/60 px-3 py-2.5",
+                            COLUMN_META[colId].headerBg,
+                          )}
+                        >
                           <div className="flex items-center justify-between gap-2">
-                            <div>
-                              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold tracking-tight text-foreground">
                                 {COLUMN_META[colId].title}
                               </p>
-                              <p className="text-[11px] text-muted-foreground/90">
+                              <p className="text-[11px] text-muted-foreground">
                                 {COLUMN_META[colId].description}
                               </p>
                             </div>
-                            <Badge variant="secondary" className="tabular-nums">
+                            <span
+                              className={cn(
+                                "inline-flex min-w-7 items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
+                                COLUMN_META[colId].countClass,
+                              )}
+                            >
                               {columns[colId].length}
-                            </Badge>
+                            </span>
                           </div>
                         </div>
-                        <ScrollArea className="min-h-0 max-h-[min(560px,60vh)] flex-1 px-2 pb-3">
-                          <div className="flex flex-col gap-2 pt-2">
+                        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-3">
+                          <div className="flex min-h-full flex-col gap-2 pt-2">
                             <AnimatePresence initial={false}>
                               {columns[colId].length === 0 ? (
                                 <motion.div
@@ -936,7 +1128,7 @@ export function TutorSessionsWorkspace({
                                   className="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border/70 bg-muted/20 px-4 py-10 text-center text-xs text-muted-foreground"
                                 >
                                   <ClipboardList className="size-8 opacity-40" />
-                                  <p>No sessions in this lane yet.</p>
+                                  <p>{COLUMN_META[colId].emptyHint}</p>
                                 </motion.div>
                               ) : (
                                 columns[colId].map((c) => (
@@ -981,11 +1173,17 @@ export function TutorSessionsWorkspace({
                               )}
                             </AnimatePresence>
                           </div>
-                        </ScrollArea>
+                        </div>
                       </DroppableColumn>
                     ))}
                   </div>
-                </ScrollArea>
+                  </div>
+                  <DragOverlay dropAnimation={null}>
+                    {activeDrag ? (
+                      <KanbanDragOverlay claim={activeDrag.claim} />
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
               )}
             </TabsContent>
 
@@ -1414,7 +1612,6 @@ export function TutorSessionsWorkspace({
           </Dialog>
           </div>
         </ScrollArea>
-      </DndContext>
     </TooltipProvider>
   );
 }

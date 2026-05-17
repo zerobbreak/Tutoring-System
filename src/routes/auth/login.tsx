@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -10,6 +10,7 @@ import { cn } from "../../lib/utils";
 import sidebarImage from "../../assets/auth-sidebar.png";
 import { supabase } from "../../lib/supabase";
 import { toast } from "../../lib/toast";
+import { needsMfaVerification } from "../../lib/mfa-auth";
 import { getPostAuthDashboardPath } from "../../lib/user-role";
 
 const loginSchema = z.object({
@@ -32,6 +33,7 @@ function Login() {
   const { recovered } = Route.useSearch();
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const router = useRouter();
 
   const {
     register,
@@ -68,8 +70,16 @@ function Login() {
         return;
       }
 
+      if (await needsMfaVerification()) {
+        toast.success("Enter your authenticator code to continue.");
+        await router.invalidate();
+        await navigate({ to: "/auth/mfa" });
+        return;
+      }
+
       const role = data.user.user_metadata?.role as string | undefined;
       toast.success("Signed in successfully.");
+      await router.invalidate();
       await navigate({ to: getPostAuthDashboardPath(role) });
     } catch (error: any) {
       toast.error(error.message || "Invalid email or password.");
@@ -126,6 +136,7 @@ function Login() {
               <Input
                 id="email"
                 type="email"
+                autoComplete="email"
                 placeholder="name@example.com"
                 className={cn(
                   "border-gray-200 focus:border-[#0A1128] focus:ring-[#0A1128]",
@@ -155,6 +166,7 @@ function Login() {
               <Input
                 id="password"
                 type="password"
+                autoComplete="current-password"
                 placeholder="••••••••"
                 className={cn(
                   "border-gray-200 focus:border-[#0A1128] focus:ring-[#0A1128]",
@@ -186,12 +198,12 @@ function Login() {
           </form>
 
           <div className="mt-8 text-center text-sm text-gray-500">
-            Don't have an account?{" "}
+            Have an invite code?{" "}
             <Link
               to="/auth/register"
               className="font-semibold text-[#FF6F61] hover:underline"
             >
-              Join us today
+              Create account
             </Link>
           </div>
         </div>

@@ -23,6 +23,30 @@ export const MESSAGING_UI_CATEGORIES = [
 export type MessagingUiCategoryId =
   (typeof MESSAGING_UI_CATEGORIES)[number]["id"];
 
+/** Admin messaging hub notice / broadcast types. */
+export const NOTICE_TYPES = {
+  SYSTEM: "SYSTEM",
+  ACADEMIC: "ACADEMIC",
+  PAYROLL: "PAYROLL",
+  ANNOUNCEMENT: "ANNOUNCEMENT",
+  DIRECT: "DIRECT",
+} as const;
+
+export type NoticeType = (typeof NOTICE_TYPES)[keyof typeof NOTICE_TYPES];
+
+/** Admin-only sidebar categories. */
+export const ADMIN_MESSAGING_UI_CATEGORIES = [
+  { id: "ALL", label: "All" },
+  { id: "SYSTEM", label: "System notices" },
+  { id: "ACADEMIC", label: "Academic notices" },
+  { id: "PAYROLL", label: "Payroll notices" },
+  { id: "ANNOUNCEMENT", label: "Announcements" },
+  { id: "DISPUTE", label: "Disputes" },
+] as const;
+
+export type AdminMessagingUiCategoryId =
+  (typeof ADMIN_MESSAGING_UI_CATEGORIES)[number]["id"];
+
 export const METADATA_CATEGORY = {
   TUTOR_DISCUSSION: "TUTOR_DISCUSSION",
   SESSION_QUERY: "SESSION_QUERY",
@@ -102,6 +126,58 @@ export function uiCategoryMatchesConversation(
   }
 }
 
+function isAdminNoticeGroup(
+  conv: { type: ConversationType; metadata: ConversationMetadata | null },
+  noticeType: NoticeType,
+): boolean {
+  const meta = conv.metadata ?? {};
+  return (
+    conv.type === "GROUP" &&
+    meta.category === METADATA_CATEGORY.ADMIN_NOTICE &&
+    meta.notice_type === noticeType
+  );
+}
+
+function isDisputeConversation(conv: {
+  type: ConversationType;
+  metadata: ConversationMetadata | null;
+}): boolean {
+  const meta = conv.metadata ?? {};
+  return (
+    conv.type === "CLAIM" &&
+    (meta.category === METADATA_CATEGORY.CLAIM_DISPUTE ||
+      Boolean(meta.dispute_id))
+  );
+}
+
+/** Map admin messaging hub category tab to conversation filters. */
+export function adminUiCategoryMatchesConversation(
+  uiCategory: AdminMessagingUiCategoryId,
+  conv: { type: ConversationType; metadata: ConversationMetadata | null },
+): boolean {
+  if (uiCategory === "ALL") return true;
+
+  switch (uiCategory) {
+    case "SYSTEM":
+      return isAdminNoticeGroup(conv, NOTICE_TYPES.SYSTEM);
+    case "ACADEMIC":
+      return isAdminNoticeGroup(conv, NOTICE_TYPES.ACADEMIC);
+    case "PAYROLL":
+      return isAdminNoticeGroup(conv, NOTICE_TYPES.PAYROLL);
+    case "ANNOUNCEMENT":
+      return (
+        isAdminNoticeGroup(conv, NOTICE_TYPES.ANNOUNCEMENT) ||
+        (conv.type === "GROUP" &&
+          conv.metadata?.category === METADATA_CATEGORY.ADMIN_NOTICE &&
+          conv.metadata?.notice_type === "ADMIN")
+      );
+    case "DISPUTE":
+      return isDisputeConversation(conv);
+    default:
+      return true;
+  }
+}
+
 export function defaultTitleForType(
   type: ConversationType,
   metadata: ConversationMetadata,
@@ -115,10 +191,15 @@ export function defaultTitleForType(
       return metadata.dispute_id ? "Claim dispute" : "Claim discussion";
     case "ATTENDANCE":
       return "Attendance issue";
-    case "GROUP":
-      return metadata.notice_type === "ADMIN"
-        ? "Administrative notice"
-        : "Group conversation";
+    case "GROUP": {
+      const nt = metadata.notice_type;
+      if (nt === NOTICE_TYPES.SYSTEM) return "System notice";
+      if (nt === NOTICE_TYPES.ACADEMIC) return "Academic notice";
+      if (nt === NOTICE_TYPES.PAYROLL) return "Payroll notice";
+      if (nt === NOTICE_TYPES.ANNOUNCEMENT) return "Announcement";
+      if (nt === "ADMIN") return "Administrative notice";
+      return "Group conversation";
+    }
     default:
       return "Direct message";
   }
