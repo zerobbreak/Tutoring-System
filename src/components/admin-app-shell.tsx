@@ -9,9 +9,9 @@ import {
   MessageSquare,
   ScrollText,
 
-  UserCheck,
   Users,
   Video,
+  Wallet,
 } from "lucide-react";
 import {
   AppShell,
@@ -40,7 +40,7 @@ const ADMIN_NAV_GROUPS: readonly AppShellNavGroup[] = [
     items: [
       { to: "/admin/schedules", label: "Schedules", icon: Calendar },
       { to: "/admin/sessions", label: "Sessions", icon: Video },
-      { to: "/admin/payements", label: "Payment", icon: UserCheck },
+      { to: "/admin/payments", label: "Payroll", icon: Wallet },
     ],
   },
   {

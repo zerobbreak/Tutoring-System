@@ -1,3 +1,5 @@
+import { deriveClaimPayrollStage } from "#/lib/claim-payroll-stage";
+import type { ClaimStatus } from "#/lib/session-claim-display";
 import type { AdminApprovalTimelineStageDTO } from "./types";
 
 type TimelineAction = {
@@ -61,12 +63,16 @@ export function buildWorkflowStages(
   }
 
   if (payrollExportedAt) {
+    const payrollStage = deriveClaimPayrollStage({
+      status: status as ClaimStatus,
+      exportedPeriodLabel: payrollPeriodLabel,
+    });
     stages.push({
       id: "stage-payroll",
       stage: "PAYROLL_EXPORTED",
-      label: "Payroll exported",
+      label: payrollStage.label,
       at: payrollExportedAt,
-      detail: payrollPeriodLabel ?? undefined,
+      detail: payrollStage.detail ?? payrollPeriodLabel ?? undefined,
     });
   }
 

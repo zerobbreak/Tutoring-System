@@ -15,6 +15,8 @@ export type InstitutionProfileDTO = {
   plan_tier: string | null;
   is_active: boolean;
   created_at: string;
+  default_tutor_hourly_rate_cents: number;
+  rate_currency: string;
 };
 
 export type CampusDTO = {
@@ -57,6 +59,7 @@ export type InstitutionModuleDTO = {
   semester: string | null;
   academic_year: string | null;
   is_active: boolean;
+  tutor_hourly_rate_cents: number | null;
 };
 
 export type InstitutionVerificationMetricsDTO = {

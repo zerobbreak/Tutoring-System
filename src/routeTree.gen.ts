@@ -23,6 +23,7 @@ import { Route as TutorRegisterGenerationRouteImport } from './routes/tutor/regi
 import { Route as TutorNotesRouteImport } from './routes/tutor/notes'
 import { Route as TutorMessagingRouteImport } from './routes/tutor/messaging'
 import { Route as TutorHelpRouteImport } from './routes/tutor/help'
+import { Route as TutorEarningsRouteImport } from './routes/tutor/earnings'
 import { Route as StudentCheckInRouteImport } from './routes/student/check-in'
 import { Route as LecturerVerificationQueueRouteImport } from './routes/lecturer/verification-queue'
 import { Route as LecturerTutorsRouteImport } from './routes/lecturer/tutors'
@@ -119,6 +120,11 @@ const TutorMessagingRoute = TutorMessagingRouteImport.update({
 const TutorHelpRoute = TutorHelpRouteImport.update({
   id: '/help',
   path: '/help',
+  getParentRoute: () => TutorRouteRoute,
+} as any)
+const TutorEarningsRoute = TutorEarningsRouteImport.update({
+  id: '/earnings',
+  path: '/earnings',
   getParentRoute: () => TutorRouteRoute,
 } as any)
 const StudentCheckInRoute = StudentCheckInRouteImport.update({
@@ -288,6 +294,7 @@ export interface FileRoutesByFullPath {
   '/lecturer/tutors': typeof LecturerTutorsRoute
   '/lecturer/verification-queue': typeof LecturerVerificationQueueRoute
   '/student/check-in': typeof StudentCheckInRoute
+  '/tutor/earnings': typeof TutorEarningsRoute
   '/tutor/help': typeof TutorHelpRoute
   '/tutor/messaging': typeof TutorMessagingRoute
   '/tutor/notes': typeof TutorNotesRoute
@@ -328,6 +335,7 @@ export interface FileRoutesByTo {
   '/lecturer/tutors': typeof LecturerTutorsRoute
   '/lecturer/verification-queue': typeof LecturerVerificationQueueRoute
   '/student/check-in': typeof StudentCheckInRoute
+  '/tutor/earnings': typeof TutorEarningsRoute
   '/tutor/help': typeof TutorHelpRoute
   '/tutor/messaging': typeof TutorMessagingRoute
   '/tutor/notes': typeof TutorNotesRoute
@@ -372,6 +380,7 @@ export interface FileRoutesById {
   '/lecturer/tutors': typeof LecturerTutorsRoute
   '/lecturer/verification-queue': typeof LecturerVerificationQueueRoute
   '/student/check-in': typeof StudentCheckInRoute
+  '/tutor/earnings': typeof TutorEarningsRoute
   '/tutor/help': typeof TutorHelpRoute
   '/tutor/messaging': typeof TutorMessagingRoute
   '/tutor/notes': typeof TutorNotesRoute
@@ -417,6 +426,7 @@ export interface FileRouteTypes {
     | '/lecturer/tutors'
     | '/lecturer/verification-queue'
     | '/student/check-in'
+    | '/tutor/earnings'
     | '/tutor/help'
     | '/tutor/messaging'
     | '/tutor/notes'
@@ -457,6 +467,7 @@ export interface FileRouteTypes {
     | '/lecturer/tutors'
     | '/lecturer/verification-queue'
     | '/student/check-in'
+    | '/tutor/earnings'
     | '/tutor/help'
     | '/tutor/messaging'
     | '/tutor/notes'
@@ -500,6 +511,7 @@ export interface FileRouteTypes {
     | '/lecturer/tutors'
     | '/lecturer/verification-queue'
     | '/student/check-in'
+    | '/tutor/earnings'
     | '/tutor/help'
     | '/tutor/messaging'
     | '/tutor/notes'
@@ -626,6 +638,13 @@ declare module '@tanstack/react-router' {
       path: '/help'
       fullPath: '/tutor/help'
       preLoaderRoute: typeof TutorHelpRouteImport
+      parentRoute: typeof TutorRouteRoute
+    }
+    '/tutor/earnings': {
+      id: '/tutor/earnings'
+      path: '/earnings'
+      fullPath: '/tutor/earnings'
+      preLoaderRoute: typeof TutorEarningsRouteImport
       parentRoute: typeof TutorRouteRoute
     }
     '/student/check-in': {
@@ -883,6 +902,7 @@ const LecturerRouteRouteWithChildren = LecturerRouteRoute._addFileChildren(
 )
 
 interface TutorRouteRouteChildren {
+  TutorEarningsRoute: typeof TutorEarningsRoute
   TutorHelpRoute: typeof TutorHelpRoute
   TutorMessagingRoute: typeof TutorMessagingRoute
   TutorNotesRoute: typeof TutorNotesRoute
@@ -895,6 +915,7 @@ interface TutorRouteRouteChildren {
 }
 
 const TutorRouteRouteChildren: TutorRouteRouteChildren = {
+  TutorEarningsRoute: TutorEarningsRoute,
   TutorHelpRoute: TutorHelpRoute,
   TutorMessagingRoute: TutorMessagingRoute,
   TutorNotesRoute: TutorNotesRoute,

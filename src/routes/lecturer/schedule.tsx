@@ -6,8 +6,10 @@ import { rangeForView } from "#/components/lecturer/schedule/schedule-range";
 import type { ScheduleCalendarView } from "#/components/lecturer/schedule/types";
 import { toast } from "#/lib/toast";
 import {
+  archiveScheduleSeriesFn,
   assignTutorToModuleFn,
   createScheduleSeriesFn,
+  deleteScheduleSeriesFn,
   getLecturerSchedulePageDataFn,
   publishScheduleSeriesFn,
   reviewScheduleChangeRequestFn,
@@ -124,6 +126,38 @@ function SchedulePage() {
     }
   };
 
+  const handleDeleteSeries = async (seriesId: string) => {
+    setFormBusy(true);
+    try {
+      await deleteScheduleSeriesFn({ data: { seriesId } });
+      toast.success("Draft series deleted.");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setFormBusy(false);
+    }
+  };
+
+  const handleArchiveSeries = async (seriesId: string) => {
+    setFormBusy(true);
+    try {
+      const { cancelledSessionCount } = await archiveScheduleSeriesFn({
+        data: { seriesId },
+      });
+      toast.success(
+        cancelledSessionCount > 0
+          ? `Series archived. ${cancelledSessionCount} upcoming session(s) cancelled.`
+          : "Series archived.",
+      );
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Archive failed");
+    } finally {
+      setFormBusy(false);
+    }
+  };
+
   const handleReviewChange = async (
     requestId: string,
     decision: "APPROVED" | "REJECTED",
@@ -162,6 +196,8 @@ function SchedulePage() {
       onReload={load}
       onCreateSeries={handleCreateSeries}
       onPublishSeries={handlePublishSeries}
+      onDeleteSeries={handleDeleteSeries}
+      onArchiveSeries={handleArchiveSeries}
       onReviewChange={handleReviewChange}
       formBusy={formBusy}
       reviewBusyId={reviewBusyId}

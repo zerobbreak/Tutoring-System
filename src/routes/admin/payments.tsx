@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { LecturerPlaceholderPage } from "#/components/lecturer/lecturer-placeholder-page";
+import { AdminPayrollView } from "#/components/admin/payroll/admin-payroll-view";
 
 export const Route = createFileRoute("/admin/payments")({
   component: AdminPaymentsPage,
 });
 
 function AdminPaymentsPage() {
-  return <LecturerPlaceholderPage title="Payment" />;
+  return <AdminPayrollView />;
 }

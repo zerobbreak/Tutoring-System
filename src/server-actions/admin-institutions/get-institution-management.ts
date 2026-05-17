@@ -21,7 +21,7 @@ export const getInstitutionManagementFn = createServerFn({ method: "GET" }).hand
       supabase
         .from("institutions")
         .select(
-          "id, name, domain, country, plan_tier, is_active, created_at",
+          "id, name, domain, country, plan_tier, is_active, created_at, default_tutor_hourly_rate_cents, rate_currency",
         )
         .eq("id", institutionId)
         .single(),
@@ -42,7 +42,7 @@ export const getInstitutionManagementFn = createServerFn({ method: "GET" }).hand
       supabase
         .from("modules")
         .select(
-          "id, institution_id, code, name, lecturer_id, academic_term_id, semester, academic_year, is_active",
+          "id, institution_id, code, name, lecturer_id, academic_term_id, semester, academic_year, is_active, tutor_hourly_rate_cents",
         )
         .eq("institution_id", institutionId)
         .order("code", { ascending: true }),
@@ -100,6 +100,8 @@ export const getInstitutionManagementFn = createServerFn({ method: "GET" }).hand
         semester: (row.semester as string | null) ?? null,
         academic_year: (row.academic_year as string | null) ?? null,
         is_active: row.is_active as boolean,
+        tutor_hourly_rate_cents:
+          (row.tutor_hourly_rate_cents as number | null) ?? null,
       }),
     );
 

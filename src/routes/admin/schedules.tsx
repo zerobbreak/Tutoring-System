@@ -7,8 +7,10 @@ import type { ScheduleCalendarView } from "#/components/lecturer/schedule/types"
 import { toast } from "#/lib/toast";
 import { useSessionUser } from "#/lib/use-session-user";
 import {
+  adminArchiveScheduleSeriesFn,
   adminAssignTutorToModuleFn,
   adminCreateScheduleSeriesFn,
+  adminDeleteScheduleSeriesFn,
   adminPublishScheduleSeriesFn,
   adminReviewScheduleChangeRequestFn,
   detectSchedulingIssuesFn,
@@ -234,6 +236,8 @@ function AdminSchedulesPage() {
       onScopeEntityChange={setScopeEntityId}
       onCreateSeries={handleCreateSeries}
       onPublishSeries={handlePublishSeries}
+      onDeleteSeries={handleDeleteSeries}
+      onArchiveSeries={handleArchiveSeries}
       onReviewChange={handleReviewChange}
       formBusy={formBusy}
       reviewBusyId={reviewBusyId}

@@ -3,6 +3,8 @@ import { z } from "zod";
 import type { ClaimStatus } from "#/lib/session-claim-display";
 import { requireAdminContext } from "#/lib/admin-server";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
+import { getSupabaseAdmin } from "#/lib/supabase-admin";
+import { snapshotClaimCompensation } from "#/lib/snapshot-claim-compensation";
 import { assertClaimNotFrozen } from "./assert-claim-not-frozen";
 import type { AdminApprovalActionKind } from "./types";
 
@@ -138,6 +140,15 @@ export const performAdminApprovalActionFn = createServerFn({ method: "POST" })
     });
 
     if (actErr) throw new Error(actErr.message);
+
+    if (data.action === "APPROVE") {
+      const admin = getSupabaseAdmin();
+      if (admin) {
+        await snapshotClaimCompensation(admin, data.claimId);
+      } else {
+        await snapshotClaimCompensation(supabase, data.claimId);
+      }
+    }
 
     return {
       ok: true as const,

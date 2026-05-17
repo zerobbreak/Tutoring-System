@@ -18,6 +18,10 @@ import { ScheduleCalendarBody } from "#/components/lecturer/schedule/schedule-ca
 import { ScheduleChangeRequestsPanel } from "#/components/lecturer/schedule/schedule-change-requests-panel";
 import { rangeForView } from "#/components/lecturer/schedule/schedule-range";
 import { ScheduleSeriesFormDialog } from "#/components/lecturer/schedule/schedule-series-form-dialog";
+import {
+  ScheduleDraftSeriesList,
+  SchedulePublishedSeriesList,
+} from "#/components/lecturer/schedule/schedule-series-lists";
 import type { SeriesFormValues } from "#/components/lecturer/schedule/schedule-series-form-dialog";
 import type { ScheduleCalendarView } from "#/components/lecturer/schedule/types";
 import { Badge } from "#/components/ui/badge";
@@ -91,6 +95,8 @@ export type AdminSchedulesViewProps = {
     },
   ) => Promise<void>;
   onPublishSeries: (seriesId: string) => Promise<void>;
+  onDeleteSeries: (seriesId: string) => Promise<void>;
+  onArchiveSeries: (seriesId: string) => Promise<void>;
   onReviewChange: (
     requestId: string,
     decision: "APPROVED" | "REJECTED",
@@ -117,6 +123,8 @@ export function AdminSchedulesView({
   onScopeEntityChange,
   onCreateSeries,
   onPublishSeries,
+  onDeleteSeries,
+  onArchiveSeries,
   onReviewChange,
   formBusy,
   reviewBusyId,
@@ -165,6 +173,9 @@ export function AdminSchedulesView({
   }, [issues, issueFilter]);
 
   const draftSeries = (data?.series ?? []).filter((s) => s.status === "DRAFT");
+  const publishedSeries = (data?.series ?? []).filter(
+    (s) => s.status === "PUBLISHED",
+  );
   const seriesNeedingClaimSync = (data?.series ?? []).filter((s) =>
     (data?.seriesIdsNeedingClaimSync ?? []).includes(s.id),
   );
@@ -369,35 +380,18 @@ export function AdminSchedulesView({
           </Card>
         ) : null}
 
-        {draftSeries.length > 0 ? (
-          <Card className="shrink-0 border-dashed border-(--lagoon-deep)/30 bg-(--lagoon-deep)/5">
-            <CardContent className="flex flex-col gap-2 p-4">
-              <p className="text-sm font-medium">Draft series</p>
-              <p className="text-xs text-muted-foreground">
-                Publish to materialize sessions across the institution calendar.
-              </p>
-              {draftSeries.map((s) => (
-                <article
-                  key={s.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-card px-3 py-2"
-                >
-                  <span className="text-sm">
-                    <span className="font-medium">{s.moduleCode}</span>
-                    <span className="text-muted-foreground"> · {s.title} · </span>
-                    {s.tutorName}
-                  </span>
-                  <Button
-                    size="sm"
-                    disabled={formBusy}
-                    onClick={() => void onPublishSeries(s.id)}
-                  >
-                    Publish
-                  </Button>
-                </article>
-              ))}
-            </CardContent>
-          </Card>
-        ) : null}
+        <ScheduleDraftSeriesList
+          series={draftSeries}
+          formBusy={formBusy}
+          onPublish={(id) => void onPublishSeries(id)}
+          onDelete={(id) => void onDeleteSeries(id)}
+        />
+
+        <SchedulePublishedSeriesList
+          series={publishedSeries}
+          formBusy={formBusy}
+          onArchive={(id) => void onArchiveSeries(id)}
+        />
 
         <Card className="shrink-0 overflow-hidden shadow-sm">
           <CardContent className="p-4 sm:p-6">

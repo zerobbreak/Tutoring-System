@@ -1,5 +1,6 @@
 export { getInstitutionManagementFn } from "./get-institution-management";
 export { updateInstitutionProfileFn } from "./update-institution-profile";
+export { updateInstitutionPayrollRateFn } from "./update-institution-payroll-rate";
 export {
   createCampusFn,
   updateCampusFn,

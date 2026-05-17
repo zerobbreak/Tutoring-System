@@ -65,6 +65,7 @@ type ModuleFormState = {
   lecturer_id: string;
   academic_term_id: string;
   is_active: boolean;
+  tutor_hourly_rate: string;
 };
 
 const emptyForm = (): ModuleFormState => ({
@@ -73,6 +74,7 @@ const emptyForm = (): ModuleFormState => ({
   lecturer_id: "",
   academic_term_id: NONE_TERM,
   is_active: true,
+  tutor_hourly_rate: "",
 });
 
 export function ModulesPanel({
@@ -104,6 +106,9 @@ export function ModulesPanel({
       lecturer_id: mod.lecturer_id,
       academic_term_id: mod.academic_term_id ?? NONE_TERM,
       is_active: mod.is_active,
+      tutor_hourly_rate: mod.tutor_hourly_rate_cents
+        ? String(mod.tutor_hourly_rate_cents / 100)
+        : "",
     });
     setDialogOpen(true);
   };
@@ -133,6 +138,7 @@ export function ModulesPanel({
         lecturer_id: form.lecturer_id,
         academic_term_id: academicTermId,
         is_active: form.is_active,
+        tutor_hourly_rate: form.tutor_hourly_rate.trim() || null,
       };
       if (editing) {
         await updateModuleFn({ data: { id: editing.id, ...payload } });
@@ -312,6 +318,21 @@ export function ModulesPanel({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="module-rate">Hourly rate override (optional)</Label>
+              <Input
+                id="module-rate"
+                value={form.tutor_hourly_rate}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, tutor_hourly_rate: e.target.value }))
+                }
+                placeholder="Institution default (225)"
+              />
+              <p className="text-xs text-muted-foreground">
+                ZAR per hour for tutor earnings on this module. Leave blank to
+                use the institution default.
+              </p>
             </div>
             <div className="flex items-center justify-between gap-4">
               <Label htmlFor="module-active">Active</Label>

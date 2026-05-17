@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { logInstitutionAudit } from "#/lib/audit-log";
 import { requireAdminContext } from "#/lib/admin-server";
+import { parseRateInputToCents } from "#/lib/money";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { assertTargetUserInInstitution } from "#/server-actions/admin-users/assert-target-user";
 import type { InstitutionModuleDTO } from "./types";
@@ -20,6 +21,12 @@ const moduleFields = {
   lecturer_id: z.string().uuid(),
   academic_term_id: z.string().uuid().nullable().optional(),
   is_active: z.boolean().optional(),
+  tutor_hourly_rate: z
+    .string()
+    .max(20)
+    .optional()
+    .nullable()
+    .transform((v) => (v?.trim() ? v.trim() : null)),
 };
 
 const createSchema = z.object(moduleFields);
@@ -67,7 +74,18 @@ function mapModule(row: Record<string, unknown>): InstitutionModuleDTO {
 }
 
 const moduleSelect =
-  "id, institution_id, code, name, lecturer_id, academic_term_id, semester, academic_year, is_active";
+  "id, institution_id, code, name, lecturer_id, academic_term_id, semester, academic_year, is_active, tutor_hourly_rate_cents";
+
+function parseModuleRateCents(
+  input: string | null | undefined,
+): number | null {
+  if (!input) return null;
+  const cents = parseRateInputToCents(input);
+  if (cents == null) {
+    throw new Error("Module hourly rate must be a positive number (e.g. 225).");
+  }
+  return cents;
+}
 
 export const createModuleFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => createSchema.parse(input))
@@ -127,6 +145,8 @@ export const updateModuleFn = createServerFn({ method: "POST" })
       data.academic_term_id,
     );
 
+    const tutorRateCents = parseModuleRateCents(data.tutor_hourly_rate);
+
     const { data: row, error } = await supabase
       .from("modules")
       .update({
@@ -135,6 +155,7 @@ export const updateModuleFn = createServerFn({ method: "POST" })
         lecturer_id: data.lecturer_id,
         academic_term_id: data.academic_term_id ?? null,
         is_active: data.is_active ?? true,
+        tutor_hourly_rate_cents: tutorRateCents,
       })
       .eq("id", data.id)
       .eq("institution_id", ctx.institutionId)

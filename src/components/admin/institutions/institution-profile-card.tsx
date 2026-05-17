@@ -18,9 +18,11 @@ import {
   SelectValue,
 } from "#/components/ui/select";
 import { Switch } from "#/components/ui/switch";
+import { formatRateFromCents } from "#/lib/money";
 import { toast } from "#/lib/toast";
 import {
   PLAN_TIERS,
+  updateInstitutionPayrollRateFn,
   updateInstitutionProfileFn,
   type InstitutionProfileDTO,
   type PlanTier,
@@ -49,6 +51,8 @@ export function InstitutionProfileCard({
   const [planTier, setPlanTier] = useState<PlanTier | "">("");
   const [isActive, setIsActive] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [hourlyRate, setHourlyRate] = useState("225");
+  const [savingRate, setSavingRate] = useState(false);
 
   useEffect(() => {
     if (!institution) return;
@@ -62,7 +66,25 @@ export function InstitutionProfileCard({
         : "",
     );
     setIsActive(institution.is_active);
+    setHourlyRate(
+      String((institution.default_tutor_hourly_rate_cents ?? 22500) / 100),
+    );
   }, [institution]);
+
+  const handleSaveRate = async () => {
+    setSavingRate(true);
+    try {
+      await updateInstitutionPayrollRateFn({ data: { hourlyRate } });
+      toast.success(
+        `Default tutor rate set to ${formatRateFromCents(Number.parseFloat(hourlyRate) * 100)} per hour.`,
+      );
+      onUpdated();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save rate");
+    } finally {
+      setSavingRate(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -172,6 +194,32 @@ export function InstitutionProfileCard({
             <Button disabled={saving} onClick={() => void handleSave()}>
               {saving ? "Saving…" : "Save profile"}
             </Button>
+
+            <div className="border-t border-border/60 pt-4">
+              <p className="text-sm font-medium">Tutor compensation rate</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Default hourly rate for expected earnings (modules can override).
+              </p>
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+                <div className="grid flex-1 gap-2">
+                  <Label htmlFor="inst-hourly-rate">Default rate (ZAR / hour)</Label>
+                  <Input
+                    id="inst-hourly-rate"
+                    value={hourlyRate}
+                    onChange={(e) => setHourlyRate(e.target.value)}
+                    placeholder="225"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={savingRate}
+                  onClick={() => void handleSaveRate()}
+                >
+                  {savingRate ? "Saving…" : "Save rate"}
+                </Button>
+              </div>
+            </div>
           </>
         )}
       </CardContent>

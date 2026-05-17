@@ -18,6 +18,10 @@ import { ScheduleCalendarBody } from "./schedule-calendar-body";
 import { rangeForView } from "./schedule-range";
 import { ScheduleChangeRequestsPanel } from "./schedule-change-requests-panel";
 import {
+  ScheduleDraftSeriesList,
+  SchedulePublishedSeriesList,
+} from "./schedule-series-lists";
+import {
   ScheduleSeriesFormDialog,
   type SeriesFormValues,
 } from "./schedule-series-form-dialog";
@@ -50,6 +54,8 @@ export function LecturerScheduleView({
   onFocusDateChange,
   onCreateSeries,
   onPublishSeries,
+  onDeleteSeries,
+  onArchiveSeries,
   onReviewChange,
   formBusy,
   reviewBusyId,
@@ -88,6 +94,9 @@ export function LecturerScheduleView({
   };
 
   const draftSeries = (data?.series ?? []).filter((s) => s.status === "DRAFT");
+  const publishedSeries = (data?.series ?? []).filter(
+    (s) => s.status === "PUBLISHED",
+  );
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-6 md:p-8">
@@ -122,35 +131,18 @@ export function LecturerScheduleView({
         />
       ) : null}
 
-      {draftSeries.length > 0 ? (
-        <Card className="border-dashed border-(--lagoon-deep)/30 bg-(--lagoon-deep)/5">
-          <CardContent className="flex flex-col gap-2 p-4">
-            <p className="text-sm font-medium text-foreground">Draft series</p>
-            <p className="text-xs text-muted-foreground">
-              Publish to generate sessions and tutor claims.
-            </p>
-            {draftSeries.map((s) => (
-              <article
-                key={s.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-card px-3 py-2"
-              >
-                <span className="text-sm">
-                  <span className="font-medium">{s.moduleCode}</span>
-                  <span className="text-muted-foreground"> · {s.title} · </span>
-                  {s.tutorName}
-                </span>
-                <Button
-                  size="sm"
-                  disabled={formBusy}
-                  onClick={() => void onPublishSeries(s.id)}
-                >
-                  Publish
-                </Button>
-              </article>
-            ))}
-          </CardContent>
-        </Card>
-      ) : null}
+      <ScheduleDraftSeriesList
+        series={draftSeries}
+        formBusy={formBusy}
+        onPublish={(id) => void onPublishSeries(id)}
+        onDelete={(id) => void onDeleteSeries(id)}
+      />
+
+      <SchedulePublishedSeriesList
+        series={publishedSeries}
+        formBusy={formBusy}
+        onArchive={(id) => void onArchiveSeries(id)}
+      />
 
       <Card className="overflow-hidden shadow-sm">
         <CardContent className="p-4 sm:p-6">

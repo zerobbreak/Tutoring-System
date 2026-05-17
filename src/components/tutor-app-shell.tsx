@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import {
   Calendar,
   ClipboardCheck,
+  Coins,
   FileSpreadsheet,
   LayoutDashboard,
   MessageSquare,
@@ -21,6 +22,7 @@ const TUTOR_NAV_GROUPS: readonly AppShellNavGroup[] = [
       { to: "/tutor", label: "Dashboard", icon: LayoutDashboard },
       { to: "/tutor/sessions", label: "Sessions", icon: Video },
       { to: "/tutor/claims", label: "Claims", icon: ClipboardCheck },
+      { to: "/tutor/earnings", label: "Earnings", icon: Coins },
     ],
   },
   {
