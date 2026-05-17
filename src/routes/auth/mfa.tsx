@@ -12,6 +12,7 @@ import {
   needsMfaVerification,
   verifyMfaTotpCode,
 } from "#/lib/mfa-auth";
+import { getAuthUserLifecycleFn } from "#/lib/auth-server";
 import { getPostAuthDashboardPath } from "#/lib/user-role";
 import { logSecurityEventFn } from "#/server-actions/settings";
 
@@ -47,7 +48,10 @@ function MfaVerify() {
 
       if (!pending) {
         const role = user.user_metadata?.role as string | undefined;
-        navigate({ to: getPostAuthDashboardPath(role), replace: true });
+        const lifecycle = await getAuthUserLifecycleFn();
+        const destination =
+          lifecycle?.destination ?? getPostAuthDashboardPath(role);
+        navigate({ to: destination, replace: true });
         return;
       }
 
@@ -88,7 +92,10 @@ function MfaVerify() {
 
       toast.success("Verification successful.");
       await router.invalidate();
-      await navigate({ to: getPostAuthDashboardPath(role) });
+      const lifecycle = await getAuthUserLifecycleFn();
+      const destination =
+        lifecycle?.destination ?? getPostAuthDashboardPath(role);
+      await navigate({ to: destination });
     } catch (err: unknown) {
       toast.error(
         err instanceof Error ? err.message : "Verification failed. Try again.",

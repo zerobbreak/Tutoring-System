@@ -4,6 +4,7 @@ import { dayKeyFromDate, indexEventsByDay } from "./schedule-calendar-utils";
 import { ScheduleEmptyState } from "./schedule-empty-state";
 import { ScheduleEventCard } from "./schedule-event-card";
 import type { ScheduleEventDTO } from "./types";
+import type { ScheduleSessionManageAction } from "./schedule-session-manage-dialog";
 
 type ScheduleDayDetailProps = {
   date: Date;
@@ -13,6 +14,13 @@ type ScheduleDayDetailProps = {
   onCreateSeries?: () => void;
   /** Sidebar title override */
   variant?: "sidebar" | "full";
+  manageRole?: "admin" | "tutor" | null;
+  onManageAction?: (
+    event: ScheduleEventDTO,
+    action: ScheduleSessionManageAction,
+  ) => void;
+  showTutorLink?: boolean;
+  monitorHrefForClaim?: (claimId: string) => { to: string; search?: Record<string, string> };
 };
 
 export function ScheduleDayDetail({
@@ -22,6 +30,10 @@ export function ScheduleDayDetail({
   onSelectEvent,
   onCreateSeries,
   variant = "full",
+  manageRole,
+  onManageAction,
+  showTutorLink,
+  monitorHrefForClaim,
 }: ScheduleDayDetailProps) {
   const key = dayKeyFromDate(date);
   const byDay = indexEventsByDay(events);
@@ -55,6 +67,14 @@ export function ScheduleDayDetail({
                   event={ev}
                   selected={selectedEventId === ev.id}
                   onSelect={onSelectEvent}
+                  manageRole={manageRole}
+                  onManageAction={onManageAction}
+                  showTutorLink={showTutorLink}
+                  monitorHref={
+                    ev.claimId && monitorHrefForClaim
+                      ? monitorHrefForClaim(ev.claimId)
+                      : undefined
+                  }
                 />
               </li>
             ))}
@@ -84,6 +104,14 @@ export function ScheduleDayDetail({
                 event={ev}
                 selected={selectedEventId === ev.id}
                 onSelect={onSelectEvent}
+                manageRole={manageRole}
+                onManageAction={onManageAction}
+                showTutorLink={showTutorLink}
+                monitorHref={
+                  ev.claimId && monitorHrefForClaim
+                    ? monitorHrefForClaim(ev.claimId)
+                    : undefined
+                }
               />
             </li>
           ))}

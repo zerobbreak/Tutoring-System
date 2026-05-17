@@ -1,7 +1,12 @@
 import { useNavigate } from "@tanstack/react-router";
 import { addWeeks, endOfDay, format, startOfDay } from "date-fns";
-import { CalendarClock, Loader2 } from "lucide-react";
+import { Ban, CalendarClock, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import {
+  ScheduleSessionManageDialog,
+  type ScheduleSessionManageAction,
+} from "#/components/lecturer/schedule/schedule-session-manage-dialog";
+import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import {
   Card,
@@ -20,7 +25,14 @@ import {
 } from "#/components/ui/dialog";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
+import {
+  isCancelledSessionStatus,
+  scheduledSessionCardClass,
+  scheduledSessionStatusLabel,
+} from "#/lib/schedule-session-status";
 import { toast } from "#/lib/toast";
+import { cn } from "#/lib/utils";
+import { tutorCancelScheduledSessionFn } from "#/server-actions/scheduled-sessions";
 import {
   listTutorAssignedScheduleFn,
   submitTutorScheduleChangeRequestFn,
@@ -38,6 +50,11 @@ export function TutorAssignedSchedulePanel() {
   const [venue, setVenue] = useState("");
   const [reason, setReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [sessionManageAction, setSessionManageAction] =
+    useState<ScheduleSessionManageAction | null>(null);
+  const [sessionManageTarget, setSessionManageTarget] =
+    useState<TutorAssignedScheduleEventDTO | null>(null);
+  const [sessionActionBusy, setSessionActionBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -102,6 +119,32 @@ export function TutorAssignedSchedulePanel() {
     }
   };
 
+  const openSessionManage = (
+    ev: TutorAssignedScheduleEventDTO,
+    action: ScheduleSessionManageAction,
+  ) => {
+    setSessionManageTarget(ev);
+    setSessionManageAction(action);
+  };
+
+  const confirmSessionManage = async (params: {
+    sessionId: string;
+    reason: string;
+  }) => {
+    if (sessionManageAction !== "cancel") return;
+    setSessionActionBusy(true);
+    try {
+      await tutorCancelScheduledSessionFn({ data: params });
+      toast.success("Session cancelled.");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Action failed");
+      throw e;
+    } finally {
+      setSessionActionBusy(false);
+    }
+  };
+
   return (
     <>
       <Card className="border-(--lagoon-deep)/20 bg-(--lagoon-deep)/5">
@@ -111,8 +154,9 @@ export function TutorAssignedSchedulePanel() {
             Lecturer-assigned schedule
           </CardTitle>
           <CardDescription>
-            Sessions published by your lecturer take priority over spreadsheet
-            imports. Request reschedule changes here for lecturer approval.
+            Sessions published by your lecturer. Cancelled sessions stay visible
+            but do not count toward hours or pay. Request reschedule changes for
+            active sessions.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -122,50 +166,90 @@ export function TutorAssignedSchedulePanel() {
             </div>
           ) : events.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No upcoming lecturer-assigned sessions in the next 8 weeks.
+              No lecturer-assigned sessions in the next 8 weeks.
             </p>
           ) : (
             <ul className="flex flex-col gap-2">
-              {events.map((ev) => (
-                <li
-                  key={ev.id}
-                  className="flex flex-col gap-2 rounded-lg border border-border/80 bg-card p-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0 text-sm">
-                    <p className="font-medium">
-                      {ev.moduleCode} · {ev.title}
-                    </p>
-                    <p className="text-muted-foreground">
-                      {format(new Date(ev.startsAt), "EEE d MMM")} ·{" "}
-                      {ev.timeLabel}
-                      {ev.venueLabel ? ` · ${ev.venueLabel}` : ""}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 gap-2">
-                    {ev.claimId ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          navigate({
-                            to: "/tutor/sessions",
-                            search: { claim: ev.claimId! },
-                          })
-                        }
-                      >
-                        Open session
-                      </Button>
-                    ) : null}
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => openChange(ev)}
-                    >
-                      Request change
-                    </Button>
-                  </div>
-                </li>
-              ))}
+              {events.map((ev) => {
+                const cancelled = isCancelledSessionStatus(ev.status);
+                return (
+                  <li
+                    key={ev.id}
+                    className={cn(
+                      "flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between",
+                      scheduledSessionCardClass(ev.status),
+                    )}
+                  >
+                    <div className="min-w-0 text-sm">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p
+                          className={cn(
+                            "font-medium",
+                            cancelled && "line-through text-muted-foreground",
+                          )}
+                        >
+                          {ev.moduleCode} · {ev.title}
+                        </p>
+                        <Badge
+                          variant={cancelled ? "destructive" : "secondary"}
+                          className="gap-1 text-[10px]"
+                        >
+                          {cancelled ? (
+                            <Ban className="size-3" aria-hidden />
+                          ) : null}
+                          {scheduledSessionStatusLabel(ev.status)}
+                        </Badge>
+                      </div>
+                      <p className="text-muted-foreground">
+                        {format(new Date(ev.startsAt), "EEE d MMM")} ·{" "}
+                        {ev.timeLabel}
+                        {ev.venueLabel ? ` · ${ev.venueLabel}` : ""}
+                      </p>
+                      {cancelled && ev.cancellationReason ? (
+                        <p className="mt-1 text-xs text-destructive">
+                          {ev.cancellationReason}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex shrink-0 flex-wrap gap-2">
+                      {ev.claimId ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            navigate({
+                              to: "/tutor/sessions",
+                              search: { claim: ev.claimId! },
+                            })
+                          }
+                        >
+                          Open session
+                        </Button>
+                      ) : null}
+                      {!cancelled ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1 text-destructive hover:text-destructive"
+                            onClick={() => openSessionManage(ev, "cancel")}
+                          >
+                            <Ban className="size-3.5" />
+                            Cancel
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => openChange(ev)}
+                          >
+                            Request change
+                          </Button>
+                        </>
+                      ) : null}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CardContent>
@@ -215,6 +299,33 @@ export function TutorAssignedSchedulePanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ScheduleSessionManageDialog
+        open={sessionManageAction != null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSessionManageAction(null);
+            setSessionManageTarget(null);
+          }
+        }}
+        action={sessionManageAction}
+        session={
+          sessionManageTarget
+            ? {
+                id: sessionManageTarget.id,
+                moduleCode: sessionManageTarget.moduleCode,
+                title: sessionManageTarget.title,
+                startsAt: sessionManageTarget.startsAt,
+                endsAt: sessionManageTarget.endsAt,
+                status: sessionManageTarget.status,
+                cancellationReason: sessionManageTarget.cancellationReason,
+              }
+            : null
+        }
+        role="tutor"
+        busy={sessionActionBusy}
+        onConfirm={confirmSessionManage}
+      />
     </>
   );
 }

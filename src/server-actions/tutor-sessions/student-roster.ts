@@ -130,27 +130,39 @@ export async function recordSessionCheckIn(
   sessionId: string,
   studentId: string,
 ): Promise<void> {
-  const { error: aErr } = await db.from("session_attendance").upsert(
-    {
-      session_id: sessionId,
-      student_id: studentId,
-      status: "PRESENT",
-      check_in_time: new Date().toISOString(),
-    },
-    { onConflict: "session_id, student_id" },
-  );
+  const now = new Date().toISOString();
+  const { data: existing, error: findErr } = await db
+    .from("session_attendance")
+    .select("id")
+    .eq("session_id", sessionId)
+    .eq("student_id", studentId)
+    .is("deleted_at", null)
+    .maybeSingle();
 
-  if (aErr) {
-    if (aErr.code === "23505") {
+  if (findErr) throw new Error(findErr.message);
+  if (existing?.id) {
+    throw new Error("You have already checked in for this session.");
+  }
+
+  const { error: insertErr } = await db.from("session_attendance").insert({
+    session_id: sessionId,
+    student_id: studentId,
+    status: "PRESENT",
+    check_in_time: now,
+  });
+
+  if (insertErr) {
+    if (insertErr.code === "23505") {
       throw new Error("You have already checked in for this session.");
     }
-    throw new Error(aErr.message);
+    throw new Error(insertErr.message);
   }
 
   const { count, error: countErr } = await db
     .from("session_attendance")
     .select("id", { count: "exact", head: true })
-    .eq("session_id", sessionId);
+    .eq("session_id", sessionId)
+    .is("deleted_at", null);
 
   if (countErr) throw new Error(countErr.message);
 

@@ -98,19 +98,36 @@ export function buildSubmittedByClaim(
 
 const ONBOARDING_LABELS: Record<string, string> = {
   pending_documents: "Pending documents",
-  pending_review: "Pending review",
-  approved: "Approved",
+  pending_review: "Pending approval",
+  active: "Active",
+  suspended: "Suspended",
   rejected: "Rejected",
 };
 
+function onboardingBucket(row: {
+  user_status: string;
+  onboarding_step: string | null;
+}): string {
+  if (row.user_status === "ACTIVE") return "active";
+  if (row.user_status === "SUSPENDED") return "suspended";
+  if (row.user_status === "REJECTED") return "rejected";
+  if (row.onboarding_step === "ready_for_review") return "pending_review";
+  return "pending_documents";
+}
+
 export function mapOnboardingCounts(
-  rows: { approval_status: string; role: string }[],
+  rows: {
+    user_status: string;
+    onboarding_step: string | null;
+    role: string;
+  }[],
   role: "TUTOR" | "LECTURER",
 ): { status: string; label: string; count: number }[] {
   const order = [
     "pending_documents",
     "pending_review",
-    "approved",
+    "active",
+    "suspended",
     "rejected",
   ];
   const counts = new Map<string, number>();
@@ -119,8 +136,8 @@ export function mapOnboardingCounts(
   }
   for (const row of rows) {
     if (row.role !== role) continue;
-    const s = row.approval_status;
-    counts.set(s, (counts.get(s) ?? 0) + 1);
+    const bucket = onboardingBucket(row);
+    counts.set(bucket, (counts.get(bucket) ?? 0) + 1);
   }
   return order.map((status) => ({
     status,

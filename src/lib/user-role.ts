@@ -1,3 +1,9 @@
+import {
+  hasPlatformAccess,
+  isAccountBlocked,
+  type UserStatus,
+} from "#/lib/user-status";
+
 /** Matches Postgres `CREATE TYPE user_role AS ENUM (...)` */
 export const USER_ROLES = [
   "TUTOR",
@@ -32,6 +38,27 @@ export function getPostAuthDashboardPath(
   if (isLecturerDashboardRole(role)) return "/lecturer";
   if (isTutorDashboardRole(role)) return "/tutor";
   return "/settings";
+}
+
+export type PostAuthDestination =
+  | "/admin"
+  | "/lecturer"
+  | "/tutor"
+  | "/settings"
+  | "/auth/account-blocked";
+
+/** Route after sign-in based on role and account lifecycle. */
+export function getPostAuthDestination(
+  role: string | undefined,
+  userStatus: UserStatus | string | null | undefined,
+): PostAuthDestination {
+  if (userStatus && isAccountBlocked(userStatus)) {
+    return "/auth/account-blocked";
+  }
+  if (userStatus && !hasPlatformAccess(userStatus)) {
+    return "/settings";
+  }
+  return getPostAuthDashboardPath(role);
 }
 
 /** e.g. SUPER_ADMIN → Super Admin, TUTOR → Tutor */

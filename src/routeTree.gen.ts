@@ -38,6 +38,7 @@ import { Route as AuthRecoverPasswordRouteImport } from './routes/auth/recover-p
 import { Route as AuthMfaRouteImport } from './routes/auth/mfa'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
+import { Route as AuthAccountBlockedRouteImport } from './routes/auth/account-blocked'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminSessionsRouteImport } from './routes/admin/sessions'
@@ -198,6 +199,11 @@ const AuthForgotPasswordRoute = AuthForgotPasswordRouteImport.update({
   path: '/auth/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthAccountBlockedRoute = AuthAccountBlockedRouteImport.update({
+  id: '/auth/account-blocked',
+  path: '/auth/account-blocked',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -280,6 +286,7 @@ export interface FileRoutesByFullPath {
   '/admin/sessions': typeof AdminSessionsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/auth/account-blocked': typeof AuthAccountBlockedRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/mfa': typeof AuthMfaRoute
@@ -321,6 +328,7 @@ export interface FileRoutesByTo {
   '/admin/sessions': typeof AdminSessionsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/auth/account-blocked': typeof AuthAccountBlockedRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/mfa': typeof AuthMfaRoute
@@ -366,6 +374,7 @@ export interface FileRoutesById {
   '/admin/sessions': typeof AdminSessionsRoute
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/auth/account-blocked': typeof AuthAccountBlockedRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
   '/auth/mfa': typeof AuthMfaRoute
@@ -412,6 +421,7 @@ export interface FileRouteTypes {
     | '/admin/sessions'
     | '/admin/settings'
     | '/admin/users'
+    | '/auth/account-blocked'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/mfa'
@@ -453,6 +463,7 @@ export interface FileRouteTypes {
     | '/admin/sessions'
     | '/admin/settings'
     | '/admin/users'
+    | '/auth/account-blocked'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/mfa'
@@ -497,6 +508,7 @@ export interface FileRouteTypes {
     | '/admin/sessions'
     | '/admin/settings'
     | '/admin/users'
+    | '/auth/account-blocked'
     | '/auth/forgot-password'
     | '/auth/login'
     | '/auth/mfa'
@@ -531,6 +543,7 @@ export interface RootRouteChildren {
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   LecturerRouteRoute: typeof LecturerRouteRouteWithChildren
   TutorRouteRoute: typeof TutorRouteRouteWithChildren
+  AuthAccountBlockedRoute: typeof AuthAccountBlockedRoute
   AuthForgotPasswordRoute: typeof AuthForgotPasswordRoute
   AuthLoginRoute: typeof AuthLoginRoute
   AuthMfaRoute: typeof AuthMfaRoute
@@ -745,6 +758,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/account-blocked': {
+      id: '/auth/account-blocked'
+      path: '/auth/account-blocked'
+      fullPath: '/auth/account-blocked'
+      preLoaderRoute: typeof AuthAccountBlockedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/users': {
       id: '/admin/users'
       path: '/users'
@@ -936,6 +956,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRouteRoute: AdminRouteRouteWithChildren,
   LecturerRouteRoute: LecturerRouteRouteWithChildren,
   TutorRouteRoute: TutorRouteRouteWithChildren,
+  AuthAccountBlockedRoute: AuthAccountBlockedRoute,
   AuthForgotPasswordRoute: AuthForgotPasswordRoute,
   AuthLoginRoute: AuthLoginRoute,
   AuthMfaRoute: AuthMfaRoute,

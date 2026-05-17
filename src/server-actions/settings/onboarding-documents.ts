@@ -7,6 +7,11 @@ import {
 } from "#/lib/onboarding-documents";
 import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
+import {
+  hasPlatformAccess,
+  PENDING_REVIEW_LIFECYCLE,
+  type UserStatus,
+} from "#/lib/user-status";
 
 async function requireUserId(
   supabase: ReturnType<typeof createSupabaseServerClient>,
@@ -27,6 +32,9 @@ export type OnboardingDocumentDTO = {
 };
 
 export type OnboardingStatusDTO = {
+  user_status: UserStatus;
+  onboarding_step: string | null;
+  /** @deprecated Derived from user_status */
   approval_status: string;
   institution_id: string | null;
   documents: OnboardingDocumentDTO[];
@@ -43,7 +51,9 @@ export const getOnboardingStatusFn = createServerFn({ method: "GET" }).handler(
     const [userRes, docsRes] = await Promise.all([
       supabase
         .from("users")
-        .select("approval_status, institution_id")
+        .select(
+          "user_status, onboarding_step, approval_status, institution_id",
+        )
         .eq("id", userId)
         .single(),
       supabase
@@ -63,8 +73,14 @@ export const getOnboardingStatusFn = createServerFn({ method: "GET" }).handler(
       (k) => !submittedKinds.has(k),
     );
 
+    const user_status =
+      (userRes.data?.user_status as UserStatus) ?? "PENDING_APPROVAL";
+
     return {
-      approval_status: (userRes.data?.approval_status as string) ?? "pending_documents",
+      user_status,
+      onboarding_step: (userRes.data?.onboarding_step as string | null) ?? null,
+      approval_status:
+        (userRes.data?.approval_status as string) ?? "pending_documents",
       institution_id: (userRes.data?.institution_id as string | null) ?? null,
       documents,
       required_kinds: [...ONBOARDING_DOCUMENT_KINDS],
@@ -89,7 +105,7 @@ export const uploadOnboardingDocumentFn = createServerFn({ method: "POST" })
 
     const { data: userRow, error: userErr } = await supabase
       .from("users")
-      .select("institution_id, approval_status")
+      .select("institution_id, user_status, approval_status")
       .eq("id", userId)
       .single();
 
@@ -101,13 +117,18 @@ export const uploadOnboardingDocumentFn = createServerFn({ method: "POST" })
       );
     }
 
-    const status = userRow?.approval_status as string;
-    if (status === "approved") {
+    const userStatus = userRow?.user_status as UserStatus | undefined;
+    if (userStatus && hasPlatformAccess(userStatus)) {
       throw new Error("Your account is already approved.");
     }
-    if (status === "rejected") {
+    if (userStatus === "REJECTED") {
       throw new Error(
         "Your application was rejected. Contact your institution administrator.",
+      );
+    }
+    if (userStatus === "SUSPENDED") {
+      throw new Error(
+        "Your account is suspended. Contact your institution administrator.",
       );
     }
 
@@ -156,7 +177,7 @@ export const uploadOnboardingDocumentFn = createServerFn({ method: "POST" })
       const statusDb = admin ?? supabase;
       const { error: statusErr } = await statusDb
         .from("users")
-        .update({ approval_status: "pending_review" })
+        .update(PENDING_REVIEW_LIFECYCLE)
         .eq("id", userId);
       if (statusErr) throw new Error(statusErr.message);
     }

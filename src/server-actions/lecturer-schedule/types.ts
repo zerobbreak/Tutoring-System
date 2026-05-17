@@ -36,6 +36,8 @@ export type ScheduleEventDTO = {
   status: string;
   sessionKind: string;
   claimId: string | null;
+  cancelledAt: string | null;
+  cancellationReason: string | null;
 };
 
 export type ScheduleSeriesDTO = {

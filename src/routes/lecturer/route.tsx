@@ -5,7 +5,7 @@ import { LecturerAppShell } from "#/components/lecturer-app-shell";
 import type { AppShellUser } from "#/components/app-shell";
 import { gateAuthenticatedSession } from "#/lib/mfa-auth";
 import { isLecturerDashboardRole } from "#/lib/user-role";
-import { fetchUserApprovalAllowed } from "#/lib/user-approval-gate";
+import { applyPlatformGate } from "#/lib/apply-platform-gate";
 
 export const Route = createFileRoute("/lecturer")({
   component: LecturerLayout,
@@ -33,9 +33,9 @@ function LecturerLayout() {
         navigate({ to: "/auth/login" });
         return;
       }
-      const allowed = await fetchUserApprovalAllowed();
-      if (!allowed) {
-        navigate({ to: "/settings" });
+      const gateResult = await applyPlatformGate();
+      if (!gateResult.allowed) {
+        navigate({ to: gateResult.redirect });
         return;
       }
       setUser(u);

@@ -4,6 +4,11 @@ import { logInstitutionAudit } from "#/lib/audit-log";
 import { requireAdminContext } from "#/lib/admin-server";
 import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
+import {
+  ACTIVE_LIFECYCLE,
+  REJECTED_LIFECYCLE,
+  type UserStatus,
+} from "#/lib/user-status";
 import { assertTargetUserInInstitution } from "./assert-target-user";
 
 const schema = z.object({
@@ -20,19 +25,19 @@ export const reviewOnboardingFn = createServerFn({ method: "POST" })
     await assertTargetUserInInstitution(supabase, ctx, data.userId);
 
     const now = new Date().toISOString();
-    const approval_status =
-      data.decision === "approve" ? "approved" : "rejected";
+    const lifecycle =
+      data.decision === "approve" ? ACTIVE_LIFECYCLE : REJECTED_LIFECYCLE;
+    const user_status = lifecycle.user_status as UserStatus;
 
     const admin = getSupabaseAdmin() ?? supabase;
 
     const { error: userErr } = await admin
       .from("users")
       .update({
-        approval_status,
+        ...lifecycle,
         approval_reviewed_at: now,
         approval_reviewed_by: ctx.userId,
         approval_note: data.note?.trim() || null,
-        is_active: data.decision === "approve",
       })
       .eq("id", data.userId)
       .eq("institution_id", ctx.institutionId);
@@ -53,8 +58,12 @@ export const reviewOnboardingFn = createServerFn({ method: "POST" })
       entityType: "USER",
       entityId: data.userId,
       event: "USER_ONBOARDING_REVIEWED",
-      payload: { decision: data.decision, note: data.note ?? null },
+      payload: {
+        decision: data.decision,
+        note: data.note ?? null,
+        user_status,
+      },
     });
 
-    return { ok: true as const, approval_status };
+    return { ok: true as const, user_status };
   });

@@ -19,6 +19,8 @@ export type TutorAssignedScheduleEventDTO = {
   venueLabel: string | null;
   status: string;
   claimId: string | null;
+  cancelledAt: string | null;
+  cancellationReason: string | null;
 };
 
 export const listTutorAssignedScheduleFn = createServerFn({ method: "GET" })
@@ -40,6 +42,8 @@ export const listTutorAssignedScheduleFn = createServerFn({ method: "GET" })
         ends_at,
         venue_text,
         status,
+        cancelled_at,
+        cancellation_reason,
         venue:venues ( name ),
         module:modules ( code ),
         series:schedule_series ( title )
@@ -101,6 +105,8 @@ export const listTutorAssignedScheduleFn = createServerFn({ method: "GET" })
         venueLabel,
         status: row.status as string,
         claimId,
+        cancelledAt: (row.cancelled_at as string | null) ?? null,
+        cancellationReason: (row.cancellation_reason as string | null) ?? null,
       });
     }
 

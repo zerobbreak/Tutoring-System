@@ -54,6 +54,7 @@ export const getTutorEarningsFn = createServerFn({ method: "GET" }).handler(
         status,
         submitted_at,
         attendance_present_count,
+        source_scheduled_session_id,
         module:modules ( code, name, tutor_hourly_rate_cents ),
         compensation:claim_compensation ( amount_cents, paid_at )
       `,
@@ -65,6 +66,23 @@ export const getTutorEarningsFn = createServerFn({ method: "GET" }).handler(
 
     const claimRows = claims ?? [];
     const claimIds = claimRows.map((c) => c.id as string);
+
+    const linkedSessionIds = claimRows
+      .map((c) => c.source_scheduled_session_id as string | null)
+      .filter((id): id is string => Boolean(id));
+
+    const cancelledSessionIds = new Set<string>();
+    if (linkedSessionIds.length) {
+      const { data: cancelledSessions, error: cancelledErr } = await supabase
+        .from("scheduled_sessions")
+        .select("id")
+        .in("id", linkedSessionIds)
+        .eq("status", "CANCELLED");
+      if (cancelledErr) throw new Error(cancelledErr.message);
+      for (const s of cancelledSessions ?? []) {
+        cancelledSessionIds.add(s.id as string);
+      }
+    }
 
     const exportByClaimId = new Map<
       string,
@@ -176,11 +194,16 @@ export const getTutorEarningsFn = createServerFn({ method: "GET" }).handler(
         }).amountCents;
       }
 
-      if (status === "APPROVED" && !exportInfo && amountCents != null) {
+      if (
+        !cancelledSession &&
+        status === "APPROVED" &&
+        !exportInfo &&
+        amountCents != null
+      ) {
         awaitingExportHours += hours;
         expectedEarningsCents += amountCents;
       }
-      if (exportInfo && amountCents != null) {
+      if (!cancelledSession && exportInfo && amountCents != null) {
         includedInPayrollCents += amountCents;
       }
 

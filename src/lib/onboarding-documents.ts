@@ -11,6 +11,15 @@ export const ONBOARDING_DOCUMENT_LABELS: Record<OnboardingDocumentKind, string> 
     employment_confirmation: "Employment confirmation",
   };
 
+import {
+  formatUserStatus,
+  hasPlatformAccess,
+  isPendingApproval,
+  type OnboardingStep,
+  type UserStatus,
+} from "#/lib/user-status";
+
+/** @deprecated Legacy DB enum; prefer `UserStatus`. */
 export const USER_APPROVAL_STATUSES = [
   "pending_documents",
   "pending_review",
@@ -20,7 +29,18 @@ export const USER_APPROVAL_STATUSES = [
 
 export type UserApprovalStatus = (typeof USER_APPROVAL_STATUSES)[number];
 
-export function formatApprovalStatus(status: UserApprovalStatus | string): string {
+export function formatApprovalStatus(
+  status: UserApprovalStatus | UserStatus | string,
+  onboardingStep?: OnboardingStep | string | null,
+): string {
+  if (
+    status === "PENDING_APPROVAL" ||
+    status === "ACTIVE" ||
+    status === "SUSPENDED" ||
+    status === "REJECTED"
+  ) {
+    return formatUserStatus(status, onboardingStep);
+  }
   switch (status) {
     case "pending_documents":
       return "Pending documents";
@@ -35,8 +55,18 @@ export function formatApprovalStatus(status: UserApprovalStatus | string): strin
   }
 }
 
+/** @deprecated Use `hasPlatformAccess(user_status)`. */
 export function isUserFullyApproved(
-  status: UserApprovalStatus | string | null | undefined,
+  status: UserApprovalStatus | UserStatus | string | null | undefined,
 ): boolean {
+  if (status === "ACTIVE") return true;
   return status === "approved";
 }
+
+export function canReviewOnboarding(
+  userStatus: UserStatus | string,
+): boolean {
+  return isPendingApproval(userStatus);
+}
+
+export { hasPlatformAccess, isPendingApproval };

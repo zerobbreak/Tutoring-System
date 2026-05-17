@@ -21,29 +21,26 @@ export const listAdminUsersFn = createServerFn({ method: "GET" })
     let query = supabase
       .from("users")
       .select(
-        "id, full_name, email, role, institution_id, last_login_at, approval_status, mfa_enabled, is_active, created_at, institutions(name)",
+        "id, full_name, email, role, institution_id, last_login_at, user_status, onboarding_step, approval_status, mfa_enabled, is_active, created_at, institutions(name)",
       )
       .eq("institution_id", institutionId)
       .order("full_name", { ascending: true });
 
     switch (category) {
       case "tutors":
-        query = query.eq("role", "TUTOR").eq("is_active", true);
+        query = query.eq("role", "TUTOR").eq("user_status", "ACTIVE");
         break;
       case "lecturers":
-        query = query.eq("role", "LECTURER").eq("is_active", true);
+        query = query.eq("role", "LECTURER").eq("user_status", "ACTIVE");
         break;
       case "admins":
         query = query.in("role", ["ADMIN", "SUPER_ADMIN"]);
         break;
       case "pending":
-        query = query.in("approval_status", [
-          "pending_documents",
-          "pending_review",
-        ]);
+        query = query.eq("user_status", "PENDING_APPROVAL");
         break;
       case "disabled":
-        query = query.eq("is_active", false);
+        query = query.in("user_status", ["SUSPENDED", "REJECTED"]);
         break;
       default:
         break;
@@ -72,6 +69,8 @@ export const listAdminUsersFn = createServerFn({ method: "GET" })
         institution_id: row.institution_id as string | null,
         institution_name: institutionName,
         last_login_at: row.last_login_at as string | null,
+        user_status: row.user_status as string,
+        onboarding_step: (row.onboarding_step as string | null) ?? null,
         approval_status: row.approval_status as string,
         mfa_enabled: Boolean(row.mfa_enabled),
         is_active: Boolean(row.is_active),

@@ -55,12 +55,19 @@ export function ScheduleMonthGrid({
           const today = isToday(cell.date);
 
           return (
-            <button
+            <div
               key={cell.key}
-              type="button"
+              role="button"
+              tabIndex={0}
               onClick={() => onSelectDate(cell.date)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelectDate(cell.date);
+                }
+              }}
               className={cn(
-                "flex min-h-[5.5rem] flex-col border-b border-r border-border/50 p-1.5 text-left transition-colors hover:bg-muted/40",
+                "flex min-h-[5.5rem] cursor-pointer flex-col border-b border-r border-border/50 p-1.5 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--lagoon-deep)/40",
                 !cell.inCurrentMonth && "bg-muted/15 text-muted-foreground/70",
                 selected &&
                   "bg-(--lagoon-deep)/6 ring-1 ring-inset ring-(--lagoon-deep)/25",
@@ -93,7 +100,7 @@ export function ScheduleMonthGrid({
                   </span>
                 ) : null}
               </span>
-            </button>
+            </div>
           );
         })}
       </div>

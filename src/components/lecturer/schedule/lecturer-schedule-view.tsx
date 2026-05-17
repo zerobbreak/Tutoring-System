@@ -163,6 +163,7 @@ export function LecturerScheduleView({
             }
             onSelectEvent={(e) => setSelectedEventId(e.id)}
             onCreateSeries={() => setSeriesOpen(true)}
+            showTutorLink
           />
         </CardContent>
       </Card>

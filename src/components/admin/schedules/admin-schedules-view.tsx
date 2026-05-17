@@ -15,6 +15,17 @@ import {
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { ScheduleCalendarBody } from "#/components/lecturer/schedule/schedule-calendar-body";
+import {
+  ScheduleSessionManageDialog,
+  type ScheduleSessionManageAction,
+} from "#/components/lecturer/schedule/schedule-session-manage-dialog";
+import { toast } from "#/lib/toast";
+import {
+  adminCancelScheduledSessionFn,
+  adminDeleteScheduledSessionFn,
+  adminRestoreScheduledSessionFn,
+} from "#/server-actions/scheduled-sessions";
+import type { ScheduleEventDTO } from "#/server-actions/lecturer-schedule";
 import { ScheduleChangeRequestsPanel } from "#/components/lecturer/schedule/schedule-change-requests-panel";
 import { rangeForView } from "#/components/lecturer/schedule/schedule-range";
 import { ScheduleSeriesFormDialog } from "#/components/lecturer/schedule/schedule-series-form-dialog";
@@ -103,6 +114,7 @@ export type AdminSchedulesViewProps = {
   ) => Promise<void>;
   formBusy: boolean;
   reviewBusyId: string | null;
+  onReload: () => Promise<void>;
 };
 
 export function AdminSchedulesView({
@@ -128,9 +140,52 @@ export function AdminSchedulesView({
   onReviewChange,
   formBusy,
   reviewBusyId,
+  onReload,
 }: AdminSchedulesViewProps) {
   const [seriesOpen, setSeriesOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
+  const [sessionManageAction, setSessionManageAction] =
+    useState<ScheduleSessionManageAction | null>(null);
+  const [sessionManageTarget, setSessionManageTarget] =
+    useState<ScheduleEventDTO | null>(null);
+  const [sessionActionBusy, setSessionActionBusy] = useState(false);
+
+  const openSessionManage = (
+    event: ScheduleEventDTO,
+    action: ScheduleSessionManageAction,
+  ) => {
+    setSessionManageTarget(event);
+    setSessionManageAction(action);
+  };
+
+  const confirmSessionManage = async (params: {
+    sessionId: string;
+    reason: string;
+  }) => {
+    if (!sessionManageAction) return;
+    setSessionActionBusy(true);
+    try {
+      if (sessionManageAction === "cancel") {
+        await adminCancelScheduledSessionFn({ data: params });
+        toast.success("Session cancelled.");
+      } else if (sessionManageAction === "delete") {
+        await adminDeleteScheduledSessionFn({ data: params });
+        toast.success("Session deleted.");
+        if (selectedEventId === params.sessionId) setSelectedEventId(null);
+      } else {
+        await adminRestoreScheduledSessionFn({
+          data: { sessionId: params.sessionId },
+        });
+        toast.success("Session restored.");
+      }
+      await onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Action failed");
+      throw e;
+    } finally {
+      setSessionActionBusy(false);
+    }
+  };
   const [issueFilter, setIssueFilter] = useState<SchedulingIssue["kind"] | "all">(
     "all",
   );
@@ -412,6 +467,12 @@ export function AdminSchedulesView({
               }
               onSelectEvent={(e) => setSelectedEventId(e.id)}
               onCreateSeries={() => setSeriesOpen(true)}
+              manageRole="admin"
+              onManageAction={openSessionManage}
+              monitorHrefForClaim={(claimId) => ({
+                to: "/admin/sessions",
+                search: { claim: claimId },
+              })}
             />
           </CardContent>
         </Card>
@@ -483,6 +544,33 @@ export function AdminSchedulesView({
           venues={data?.venues ?? []}
           busy={formBusy}
           onSubmit={handleCreate}
+        />
+
+        <ScheduleSessionManageDialog
+          open={sessionManageAction != null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSessionManageAction(null);
+              setSessionManageTarget(null);
+            }
+          }}
+          action={sessionManageAction}
+          session={
+            sessionManageTarget
+              ? {
+                  id: sessionManageTarget.id,
+                  moduleCode: sessionManageTarget.moduleCode,
+                  title: sessionManageTarget.title,
+                  startsAt: sessionManageTarget.startsAt,
+                  endsAt: sessionManageTarget.endsAt,
+                  status: sessionManageTarget.status,
+                  cancellationReason: sessionManageTarget.cancellationReason,
+                }
+              : null
+          }
+          role="admin"
+          busy={sessionActionBusy}
+          onConfirm={confirmSessionManage}
         />
       </div>
     </div>

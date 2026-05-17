@@ -98,7 +98,6 @@ export async function ensurePublicUserProfile(
       patch?.institution_id !== undefined
         ? patch.institution_id
         : (existing?.institution_id as string | null) ?? null,
-    is_active: true,
   };
 
   if (!VALID_ROLES.has(row.role)) {

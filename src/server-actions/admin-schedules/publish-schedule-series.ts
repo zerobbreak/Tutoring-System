@@ -13,7 +13,8 @@ async function countSeriesSessions(
   const { count, error } = await supabase
     .from("scheduled_sessions")
     .select("id", { count: "exact", head: true })
-    .eq("series_id", seriesId);
+    .eq("series_id", seriesId)
+    .is("deleted_at", null);
 
   if (error) throw new Error(error.message);
   return count ?? 0;
@@ -29,6 +30,7 @@ export const adminPublishScheduleSeriesFn = createServerFn({ method: "POST" })
       .from("schedule_series")
       .select("id, status, module_id, title")
       .eq("id", data.seriesId)
+      .is("deleted_at", null)
       .single();
 
     if (seriesErr) throw new Error(seriesErr.message);
@@ -51,12 +53,13 @@ export const adminPublishScheduleSeriesFn = createServerFn({ method: "POST" })
 
     const sessionCount = alreadyPublished
       ? await countSeriesSessions(supabase, data.seriesId)
-      : await materializeSeriesSessions(supabase, data.seriesId);
+      : await materializeSeriesSessions(supabase, data.seriesId, userId);
 
     const { data: sessions, error: sessErr } = await supabase
       .from("scheduled_sessions")
       .select("id")
-      .eq("series_id", data.seriesId);
+      .eq("series_id", data.seriesId)
+      .is("deleted_at", null);
 
     if (sessErr) throw new Error(sessErr.message);
 

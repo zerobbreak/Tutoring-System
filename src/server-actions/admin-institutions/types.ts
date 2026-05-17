@@ -79,6 +79,8 @@ export type InstitutionDashboardDTO = {
 
 export type InstitutionManagementDTO = {
   institution: InstitutionProfileDTO;
+  /** False when DB is missing compensation columns; rates show defaults only. */
+  compensation_rates_available: boolean;
   campuses: CampusDTO[];
   academicTerms: AcademicTermDTO[];
   modules: InstitutionModuleDTO[];

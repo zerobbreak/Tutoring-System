@@ -4,7 +4,7 @@ import { IncomingMessagesListener } from "#/components/messaging/incoming-messag
 import { AdminAppShell } from "#/components/admin-app-shell";
 import { gateAuthenticatedSession } from "#/lib/mfa-auth";
 import { isAdminDashboardRole } from "#/lib/user-role";
-import { fetchUserApprovalAllowed } from "#/lib/user-approval-gate";
+import { applyPlatformGate } from "#/lib/apply-platform-gate";
 import type { AppShellUser } from "#/components/app-shell";
 
 export const Route = createFileRoute("/admin")({
@@ -33,9 +33,9 @@ function AdminLayout() {
         navigate({ to: "/auth/login" });
         return;
       }
-      const allowed = await fetchUserApprovalAllowed();
-      if (!allowed) {
-        navigate({ to: "/settings" });
+      const gateResult = await applyPlatformGate();
+      if (!gateResult.allowed) {
+        navigate({ to: gateResult.redirect });
         return;
       }
       setUser(u);

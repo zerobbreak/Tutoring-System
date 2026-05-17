@@ -11,6 +11,7 @@ import {
   TableRow,
 } from "#/components/ui/table";
 import { formatApprovalStatus } from "#/lib/onboarding-documents";
+import type { UserStatus } from "#/lib/user-status";
 import { formatRoleLabel } from "#/lib/user-role";
 import type { AdminUserRowDTO } from "#/server-actions/admin-users";
 
@@ -83,14 +84,19 @@ export function AdminUsersTable({
               <TableCell>
                 <Badge
                   variant={
-                    user.approval_status === "approved"
+                    user.user_status === "ACTIVE"
                       ? "secondary"
-                      : user.approval_status === "rejected"
+                      : user.user_status === "REJECTED"
                         ? "destructive"
-                        : "outline"
+                        : user.user_status === "SUSPENDED"
+                          ? "destructive"
+                          : "outline"
                   }
                 >
-                  {formatApprovalStatus(user.approval_status)}
+                  {formatApprovalStatus(
+                    user.user_status as UserStatus,
+                    user.onboarding_step,
+                  )}
                 </Badge>
               </TableCell>
               <TableCell>

@@ -15,6 +15,8 @@ type SessionRow = {
   venue_id: string | null;
   venue_text: string | null;
   status: string;
+  cancelled_at?: string | null;
+  cancellation_reason?: string | null;
   module: { id: string; code: string; name: string } | null;
   tutor: { id: string; full_name: string } | null;
   series: { id: string; title: string; session_kind: string } | null;
@@ -43,6 +45,8 @@ export function mapScheduleEventRow(
     status: row.status,
     sessionKind: row.series?.session_kind ?? "tutorial",
     claimId: claimIdBySession.get(row.id) ?? null,
+    cancelledAt: row.cancelled_at ?? null,
+    cancellationReason: row.cancellation_reason ?? null,
   };
 }
 

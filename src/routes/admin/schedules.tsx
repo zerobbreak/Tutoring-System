@@ -190,6 +190,40 @@ function AdminSchedulesPage() {
     }
   };
 
+  const handleDeleteSeries = async (seriesId: string) => {
+    setFormBusy(true);
+    try {
+      await adminDeleteScheduleSeriesFn({ data: { seriesId } });
+      toast.success("Draft series deleted.");
+      await load();
+      await loadIssues();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setFormBusy(false);
+    }
+  };
+
+  const handleArchiveSeries = async (seriesId: string) => {
+    setFormBusy(true);
+    try {
+      const { cancelledSessionCount } = await adminArchiveScheduleSeriesFn({
+        data: { seriesId },
+      });
+      toast.success(
+        cancelledSessionCount > 0
+          ? `Series archived. ${cancelledSessionCount} upcoming session(s) cancelled.`
+          : "Series archived.",
+      );
+      await load();
+      await loadIssues();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Archive failed");
+    } finally {
+      setFormBusy(false);
+    }
+  };
+
   const handleReviewChange = async (
     requestId: string,
     decision: "APPROVED" | "REJECTED",
@@ -241,6 +275,10 @@ function AdminSchedulesPage() {
       onReviewChange={handleReviewChange}
       formBusy={formBusy}
       reviewBusyId={reviewBusyId}
+      onReload={async () => {
+        await load();
+        await loadIssues();
+      }}
     />
   );
 }

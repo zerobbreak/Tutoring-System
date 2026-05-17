@@ -4,7 +4,7 @@ import { IncomingMessagesListener } from "#/components/messaging/incoming-messag
 import { TutorAppShell } from "#/components/tutor-app-shell"
 import { gateAuthenticatedSession } from "#/lib/mfa-auth"
 import { isTutorDashboardRole } from "#/lib/user-role"
-import { fetchUserApprovalAllowed } from "#/lib/user-approval-gate"
+import { applyPlatformGate } from "#/lib/apply-platform-gate"
 
 export const Route = createFileRoute("/tutor")({
   component: TutorLayout,
@@ -35,9 +35,9 @@ function TutorLayout() {
         navigate({ to: "/auth/login" })
         return
       }
-      const allowed = await fetchUserApprovalAllowed()
-      if (!allowed) {
-        navigate({ to: "/settings" })
+      const gateResult = await applyPlatformGate()
+      if (!gateResult.allowed) {
+        navigate({ to: gateResult.redirect })
         return
       }
       setUser(u)

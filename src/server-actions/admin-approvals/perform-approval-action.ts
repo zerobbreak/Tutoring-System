@@ -142,8 +142,13 @@ export const performAdminApprovalActionFn = createServerFn({ method: "POST" })
     if (actErr) throw new Error(actErr.message);
 
     if (data.action === "APPROVE") {
+      const { assertScheduledSessionActiveForPayroll } = await import(
+        "#/server-actions/scheduled-sessions/session-lifecycle"
+      );
+      await assertScheduledSessionActiveForPayroll(supabase, data.claimId);
       const admin = getSupabaseAdmin();
       if (admin) {
+        await assertScheduledSessionActiveForPayroll(admin, data.claimId);
         await snapshotClaimCompensation(admin, data.claimId);
       } else {
         await snapshotClaimCompensation(supabase, data.claimId);

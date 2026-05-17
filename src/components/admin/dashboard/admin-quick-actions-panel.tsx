@@ -18,7 +18,7 @@ export function AdminQuickActionsPanel() {
       </CardHeader>
       <CardContent className="flex flex-wrap gap-2">
         {ADMIN_QUICK_ACTIONS.map((action) => (
-          <Button key={action.to} variant="outline" size="sm" asChild>
+          <Button key={action.label} variant="outline" size="sm" asChild>
             <Link to={action.to}>
               <action.icon className="mr-1.5 size-4" />
               {action.label}

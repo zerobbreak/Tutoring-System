@@ -8,6 +8,8 @@ export const SCHEDULED_SESSION_SELECT = `
   venue_id,
   venue_text,
   status,
+  cancelled_at,
+  cancellation_reason,
   module:modules!scheduled_sessions_module_id_fkey (
     id,
     code,

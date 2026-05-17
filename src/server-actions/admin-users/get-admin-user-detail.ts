@@ -27,7 +27,7 @@ export const getAdminUserDetailFn = createServerFn({ method: "GET" })
       db
         .from("users")
         .select(
-          "id, full_name, email, role, institution_id, last_login_at, approval_status, mfa_enabled, is_active, created_at, institutions(name)",
+          "id, full_name, email, role, institution_id, last_login_at, user_status, onboarding_step, approval_status, mfa_enabled, is_active, created_at, institutions(name)",
         )
         .eq("id", data.userId)
         .single(),
@@ -67,6 +67,8 @@ export const getAdminUserDetailFn = createServerFn({ method: "GET" })
       institution_id: row.institution_id as string | null,
       institution_name: institutionName,
       last_login_at: row.last_login_at as string | null,
+      user_status: row.user_status as string,
+      onboarding_step: (row.onboarding_step as string | null) ?? null,
       approval_status: row.approval_status as string,
       mfa_enabled: Boolean(row.mfa_enabled),
       is_active: Boolean(row.is_active),

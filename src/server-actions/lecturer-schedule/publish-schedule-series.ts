@@ -13,12 +13,13 @@ export const publishScheduleSeriesFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => publishSchema.parse(input))
   .handler(async ({ data }): Promise<{ sessionCount: number }> => {
     const supabase = createSupabaseServerClient();
-    await requireLecturerId(supabase);
+    const lecturerId = await requireLecturerId(supabase);
 
     const { data: series, error: seriesErr } = await supabase
       .from("schedule_series")
       .select("id, status, module_id")
       .eq("id", data.seriesId)
+      .is("deleted_at", null)
       .single();
 
     if (seriesErr) throw new Error(seriesErr.message);
@@ -26,12 +27,17 @@ export const publishScheduleSeriesFn = createServerFn({ method: "POST" })
       throw new Error("Cannot publish an archived series.");
     }
 
-    const sessionCount = await materializeSeriesSessions(supabase, data.seriesId);
+    const sessionCount = await materializeSeriesSessions(
+      supabase,
+      data.seriesId,
+      lecturerId,
+    );
 
     const { data: sessions, error: sessErr } = await supabase
       .from("scheduled_sessions")
       .select("id")
-      .eq("series_id", data.seriesId);
+      .eq("series_id", data.seriesId)
+      .is("deleted_at", null);
 
     if (sessErr) throw new Error(sessErr.message);
 

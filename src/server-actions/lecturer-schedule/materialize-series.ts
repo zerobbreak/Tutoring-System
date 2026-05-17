@@ -3,6 +3,7 @@ import {
   materializeWeeklyOccurrences,
   parseRecurrenceJson,
 } from "#/lib/schedule-recurrence";
+import { softDeleteScheduledSessionsForRematerialize } from "#/lib/soft-delete";
 
 type SeriesRow = {
   id: string;
@@ -13,18 +14,21 @@ type SeriesRow = {
   dtstart: string;
   duration_minutes: number;
   recurrence_json: unknown;
+  created_by: string;
 };
 
 export async function materializeSeriesSessions(
   supabase: ReturnType<typeof createSupabaseServerClient>,
   seriesId: string,
+  actorId: string,
 ): Promise<number> {
   const { data: series, error: seriesErr } = await supabase
     .from("schedule_series")
     .select(
-      "id, module_id, tutor_id, venue_id, venue_text, dtstart, duration_minutes, recurrence_json",
+      "id, module_id, tutor_id, venue_id, venue_text, dtstart, duration_minutes, recurrence_json, created_by",
     )
     .eq("id", seriesId)
+    .is("deleted_at", null)
     .single();
 
   if (seriesErr) throw new Error(seriesErr.message);
@@ -37,12 +41,11 @@ export async function materializeSeriesSessions(
     recurrence,
   });
 
-  const { error: delErr } = await supabase
-    .from("scheduled_sessions")
-    .delete()
-    .eq("series_id", seriesId);
-
-  if (delErr) throw new Error(delErr.message);
+  await softDeleteScheduledSessionsForRematerialize(
+    supabase,
+    seriesId,
+    actorId || s.created_by,
+  );
 
   if (!occurrences.length) return 0;
 
