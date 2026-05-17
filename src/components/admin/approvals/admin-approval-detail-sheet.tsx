@@ -34,6 +34,7 @@ import {
 } from "#/lib/session-claim-display";
 import { toast } from "#/lib/toast";
 import { cn } from "#/lib/utils";
+import { StepUpMfaDialog } from "#/components/workflow/step-up-mfa-dialog";
 import {
   getApprovalClaimFn,
   performAdminApprovalActionFn,
@@ -115,6 +116,9 @@ export function AdminApprovalDetailSheet({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [comment, setComment] = useState("");
+  const [stepUpOpen, setStepUpOpen] = useState(false);
+  const [pendingAction, setPendingAction] =
+    useState<AdminApprovalActionKind | null>(null);
 
   const loadClaim = useCallback(async () => {
     if (!claimId) return;
@@ -139,18 +143,26 @@ export function AdminApprovalDetailSheet({
     }
   }, [open, claimId, loadClaim]);
 
-  const runAction = async (action: AdminApprovalActionKind) => {
-    if (!claimId) return;
+  const requestAction = (action: AdminApprovalActionKind) => {
+    setPendingAction(action);
+    setStepUpOpen(true);
+  };
+
+  const runActionWithMfa = async (stepUpCode: string) => {
+    if (!claimId || !pendingAction) return;
     setSubmitting(true);
     try {
       await performAdminApprovalActionFn({
         data: {
           claimId,
-          action,
+          action: pendingAction,
           comment: comment.trim() || undefined,
+          stepUpCode,
         },
       });
       toast.success("Action recorded.");
+      setStepUpOpen(false);
+      setPendingAction(null);
       onActionComplete();
       onOpenChange(false);
     } catch (e) {
@@ -400,7 +412,7 @@ export function AdminApprovalDetailSheet({
                       <Button
                         disabled={submitting}
                         className="bg-emerald-600 hover:bg-emerald-700"
-                        onClick={() => void runAction("APPROVE")}
+                        onClick={() => requestAction("APPROVE")}
                       >
                         <CheckCircle2 className="mr-2 size-4" />
                         Approve
@@ -410,7 +422,7 @@ export function AdminApprovalDetailSheet({
                       <Button
                         disabled={submitting}
                         variant="outline"
-                        onClick={() => void runAction("REQUEST_CLARIFICATION")}
+                        onClick={() => requestAction("REQUEST_CLARIFICATION")}
                       >
                         <MessageSquare className="mr-2 size-4" />
                         Request clarification
@@ -420,7 +432,7 @@ export function AdminApprovalDetailSheet({
                       <Button
                         disabled={submitting}
                         variant="outline"
-                        onClick={() => void runAction("ESCALATE")}
+                        onClick={() => requestAction("ESCALATE")}
                       >
                         <AlertTriangle className="mr-2 size-4" />
                         Escalate dispute
@@ -430,7 +442,7 @@ export function AdminApprovalDetailSheet({
                       <Button
                         disabled={submitting}
                         variant="secondary"
-                        onClick={() => void runAction("FREEZE")}
+                        onClick={() => requestAction("FREEZE")}
                       >
                         <Snowflake className="mr-2 size-4" />
                         Freeze submission
@@ -441,7 +453,7 @@ export function AdminApprovalDetailSheet({
                         disabled={submitting}
                         variant="destructive"
                         className="sm:col-span-2"
-                        onClick={() => void runAction("REJECT")}
+                        onClick={() => requestAction("REJECT")}
                       >
                         <XCircle className="mr-2 size-4" />
                         Reject
@@ -454,6 +466,16 @@ export function AdminApprovalDetailSheet({
           </>
         )}
       </SheetContent>
+
+      <StepUpMfaDialog
+        open={stepUpOpen}
+        onOpenChange={setStepUpOpen}
+        title="Confirm admin action"
+        description="Enter your authenticator code to record this institutional approval decision."
+        confirmLabel="Confirm action"
+        submitting={submitting}
+        onConfirm={runActionWithMfa}
+      />
     </Sheet>
   );
 }

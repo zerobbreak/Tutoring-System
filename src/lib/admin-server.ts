@@ -5,6 +5,7 @@ import { isAdminDashboardRole } from "#/lib/user-role";
 export type AdminContext = {
   userId: string;
   institutionId: string;
+  role: string;
 };
 
 export async function requireAdminContext(
@@ -38,5 +39,5 @@ export async function requireAdminContext(
     );
   }
 
-  return { userId: user.id, institutionId };
+  return { userId: user.id, institutionId, role: role ?? "ADMIN" };
 }

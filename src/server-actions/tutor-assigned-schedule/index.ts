@@ -52,7 +52,7 @@ export const listTutorAssignedScheduleFn = createServerFn({ method: "GET" })
       .eq("tutor_id", user.id)
       .gte("starts_at", data.from)
       .lte("starts_at", data.to)
-      .neq("status", "CANCELLED")
+      .is("deleted_at", null)
       .order("starts_at");
 
     if (sessErr) throw new Error(sessErr.message);

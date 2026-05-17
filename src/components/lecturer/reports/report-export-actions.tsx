@@ -1,7 +1,7 @@
 import { FileJson, FileSpreadsheet, FileText, Table2 } from "lucide-react";
 import { Button } from "#/components/ui/button";
 import { exportReport, type ReportExportFormat } from "#/lib/report-export";
-import type { ReportResultDTO } from "#/server-actions/lecturer-reports";
+import type { ReportResultDTO } from "#/lib/report-types";
 import { toast } from "sonner";
 
 type ReportExportActionsProps = {

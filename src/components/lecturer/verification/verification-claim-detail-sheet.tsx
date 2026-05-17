@@ -10,7 +10,6 @@ import {
   Loader2,
   MapPin,
   MessageSquare,
-  PenLine,
   XCircle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -26,6 +25,7 @@ import {
   SheetTitle,
 } from "#/components/ui/sheet";
 import { WorkflowMessageButton } from "#/components/messaging/workflow-message-button";
+import { StepUpMfaDialog } from "#/components/workflow/step-up-mfa-dialog";
 import {
   claimBadgeLabel,
   claimBadgeVariant,
@@ -127,7 +127,9 @@ export function VerificationClaimDetailSheet({
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [comment, setComment] = useState("");
-  const [signatureConfirmed, setSignatureConfirmed] = useState(false);
+  const [stepUpOpen, setStepUpOpen] = useState(false);
+  const [pendingAction, setPendingAction] =
+    useState<VerificationActionKind | null>(null);
 
   const loadClaim = useCallback(async () => {
     if (!claimId) return;
@@ -146,27 +148,33 @@ export function VerificationClaimDetailSheet({
   useEffect(() => {
     if (open && claimId) {
       setComment("");
-      setSignatureConfirmed(false);
+      setPendingAction(null);
       void loadClaim();
     } else {
       setClaim(null);
     }
   }, [open, claimId, loadClaim]);
 
-  const runAction = async (action: VerificationActionKind) => {
-    if (!claimId) return;
+  const requestAction = (action: VerificationActionKind) => {
+    setPendingAction(action);
+    setStepUpOpen(true);
+  };
+
+  const runActionWithMfa = async (stepUpCode: string) => {
+    if (!claimId || !pendingAction) return;
     setSubmitting(true);
     try {
       await performVerificationActionFn({
         data: {
           claimId,
-          action,
+          action: pendingAction,
           comment: comment.trim() || undefined,
-          signatureConfirmed:
-            action === "SIGN_AND_APPROVE" ? signatureConfirmed : undefined,
+          stepUpCode,
         },
       });
       toast.success("Verification action recorded.");
+      setStepUpOpen(false);
+      setPendingAction(null);
       onActionComplete();
       onOpenChange(false);
     } catch (e) {
@@ -410,8 +418,8 @@ export function VerificationClaimDetailSheet({
                 <section className="rounded-xl border border-border/80 bg-card p-4 shadow-sm">
                   <h3 className="text-sm font-semibold">Your decision</h3>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Add an optional comment. Sign & approve requires the
-                    confirmation below.
+                    Add an optional comment (required for reject or dispute).
+                    You will confirm with your authenticator app.
                   </p>
 
                   <div className="mt-4 space-y-4">
@@ -428,44 +436,19 @@ export function VerificationClaimDetailSheet({
                         className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
                       />
                     </div>
-
-                    <div className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/20 p-3">
-                      <input
-                        id="digital-sign"
-                        type="checkbox"
-                        checked={signatureConfirmed}
-                        onChange={(e) => setSignatureConfirmed(e.target.checked)}
-                        className="mt-1 size-4 rounded border-input"
-                      />
-                      <Label
-                        htmlFor="digital-sign"
-                        className="text-sm leading-snug font-normal text-foreground"
-                      >
-                        I digitally sign this verification — session hours and
-                        attendance are authentic to the best of my knowledge.
-                      </Label>
-                    </div>
-
                     <div className="grid gap-2 sm:grid-cols-2">
                       <Button
                         disabled={submitting}
                         className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600"
-                        onClick={() => void runAction("APPROVE")}
+                        onClick={() => requestAction("APPROVE")}
                       >
                         <CheckCircle2 className="size-4" />
-                        Approve
-                      </Button>
-                      <Button
-                        disabled={submitting || !signatureConfirmed}
-                        onClick={() => void runAction("SIGN_AND_APPROVE")}
-                      >
-                        <PenLine className="size-4" />
-                        Sign & approve
+                        Verify
                       </Button>
                       <Button
                         disabled={submitting}
                         variant="outline"
-                        onClick={() => void runAction("REQUEST_CLARIFICATION")}
+                        onClick={() => requestAction("REQUEST_CLARIFICATION")}
                       >
                         <MessageSquare className="size-4" />
                         Request clarification
@@ -473,7 +456,7 @@ export function VerificationClaimDetailSheet({
                       <Button
                         disabled={submitting}
                         variant="outline"
-                        onClick={() => void runAction("DISPUTE")}
+                        onClick={() => requestAction("DISPUTE")}
                       >
                         <AlertTriangle className="size-4" />
                         Dispute
@@ -482,7 +465,7 @@ export function VerificationClaimDetailSheet({
                         disabled={submitting}
                         variant="destructive"
                         className="sm:col-span-2"
-                        onClick={() => void runAction("REJECT")}
+                        onClick={() => requestAction("REJECT")}
                       >
                         <XCircle className="size-4" />
                         Reject submission
@@ -495,6 +478,16 @@ export function VerificationClaimDetailSheet({
           </>
         )}
       </SheetContent>
+
+      <StepUpMfaDialog
+        open={stepUpOpen}
+        onOpenChange={setStepUpOpen}
+        title="Confirm verification"
+        description="Enter your authenticator code to record this verification decision."
+        confirmLabel="Confirm decision"
+        submitting={submitting}
+        onConfirm={runActionWithMfa}
+      />
     </Sheet>
   );
 }

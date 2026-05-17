@@ -65,9 +65,15 @@ export const createSeriesExceptionFn = createServerFn({ method: "POST" })
     if (!session) return { ok: true };
 
     if (data.action === "CANCEL") {
+      const now = new Date().toISOString();
       await supabase
         .from("scheduled_sessions")
-        .update({ status: "CANCELLED" })
+        .update({
+          status: "CANCELLED",
+          cancelled_at: now,
+          cancelled_by: user.id,
+          cancellation_reason: "Cancelled via series exception",
+        })
         .eq("id", session.id);
       return { ok: true };
     }

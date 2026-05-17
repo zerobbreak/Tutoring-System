@@ -35,8 +35,11 @@ import {
 } from "#/lib/session-claim-display";
 import { toast } from "#/lib/toast";
 import { cn } from "#/lib/utils";
+import { StepUpMfaDialog } from "#/components/workflow/step-up-mfa-dialog";
+import { canTutorReopenClaim } from "#/lib/claim-workflow/tutor-editable";
 import {
   getClaimDetailsFn,
+  reopenSessionClaimFn,
   submitSessionClaimFn,
   type ClaimDetailsDTO,
 } from "#/server-actions/tutor-sessions";
@@ -68,6 +71,8 @@ export function ClaimDetailsView({ claimId }: ClaimDetailsViewProps) {
   const [claim, setClaim] = useState<ClaimDetailsDTO | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [stepUpOpen, setStepUpOpen] = useState(false);
+  const [stepUpMode, setStepUpMode] = useState<"submit" | "reopen" | null>(null);
 
   const reload = useCallback(async () => {
     setIsLoading(true);
@@ -87,14 +92,27 @@ export function ClaimDetailsView({ claimId }: ClaimDetailsViewProps) {
     void reload();
   }, [reload]);
 
-  const handleSubmitForVerification = async () => {
+  const openStepUp = (mode: "submit" | "reopen") => {
+    setStepUpMode(mode);
+    setStepUpOpen(true);
+  };
+
+  const handleStepUpConfirm = async (stepUpCode: string) => {
+    if (!stepUpMode) return;
     setSubmitting(true);
     try {
-      await submitSessionClaimFn({ data: { claimId } });
-      toast.success("Claim submitted for verification");
+      if (stepUpMode === "submit") {
+        await submitSessionClaimFn({ data: { claimId, stepUpCode } });
+        toast.success("Claim submitted for verification");
+      } else {
+        await reopenSessionClaimFn({ data: { claimId, stepUpCode } });
+        toast.success("Claim reopened for correction");
+      }
+      setStepUpOpen(false);
+      setStepUpMode(null);
       await reload();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not submit claim");
+      toast.error(e instanceof Error ? e.message : "Action failed");
     } finally {
       setSubmitting(false);
     }
@@ -160,7 +178,7 @@ export function ClaimDetailsView({ claimId }: ClaimDetailsViewProps) {
             <Button
               className="bg-lagoon-deep hover:bg-lagoon-deep/90"
               disabled={submitting}
-              onClick={() => void handleSubmitForVerification()}
+              onClick={() => openStepUp("submit")}
             >
               {submitting ? (
                 <Loader2 className="size-4 animate-spin" />
@@ -168,6 +186,14 @@ export function ClaimDetailsView({ claimId }: ClaimDetailsViewProps) {
                 <Send className="size-4" />
               )}
               Submit for verification
+            </Button>
+          ) : canTutorReopenClaim(claim.status as ClaimStatus, null) ? (
+            <Button
+              variant="outline"
+              disabled={submitting}
+              onClick={() => openStepUp("reopen")}
+            >
+              Correct & resubmit
             </Button>
           ) : null}
         </div>
@@ -412,6 +438,23 @@ export function ClaimDetailsView({ claimId }: ClaimDetailsViewProps) {
           </Card>
         </div>
       </div>
+      <StepUpMfaDialog
+        open={stepUpOpen}
+        onOpenChange={setStepUpOpen}
+        title={
+          stepUpMode === "reopen"
+            ? "Confirm reopen"
+            : "Confirm submission"
+        }
+        description={
+          stepUpMode === "reopen"
+            ? "Enter your authenticator code to reopen this claim for correction."
+            : "Enter your authenticator code to submit this claim for verification."
+        }
+        confirmLabel={stepUpMode === "reopen" ? "Reopen claim" : "Submit claim"}
+        submitting={submitting}
+        onConfirm={handleStepUpConfirm}
+      />
     </ScrollArea>
   );
 }

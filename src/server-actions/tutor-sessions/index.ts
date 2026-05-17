@@ -2,7 +2,9 @@ import { createServerFn } from "@tanstack/react-start";
 import { parse } from "date-fns";
 import * as z from "zod";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
-import { assertClaimNotFrozen } from "#/server-actions/admin-approvals/assert-claim-not-frozen";
+import { executeClaimTransition } from "#/lib/claim-workflow/execute-transition";
+import { assertTutorCanEditClaim } from "#/lib/claim-workflow/guards";
+import { createStepUpMfaLogger } from "#/lib/claim-workflow/log-step-up-mfa";
 import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import {
   assertValidQrSession,
@@ -36,6 +38,12 @@ const updateSchedulingSchema = z.object({
 
 const submitClaimSchema = z.object({
   claimId: z.string().uuid(),
+  stepUpCode: z.string().min(6).max(12),
+});
+
+const reopenClaimSchema = z.object({
+  claimId: z.string().uuid(),
+  stepUpCode: z.string().min(6).max(12),
 });
 
 const createClaimSchema = z.object({
@@ -261,13 +269,18 @@ export const updateSessionClaimSchedulingFn = createServerFn({
 
     const { data: row, error: selErr } = await supabase
       .from("session_claims")
-      .select("id")
+      .select("id, status, frozen_at")
       .eq("id", data.claimId)
       .eq("tutor_id", tutorId)
       .maybeSingle();
 
     if (selErr) throw new Error(selErr.message);
     if (!row) throw new Error("Session not found.");
+    assertTutorCanEditClaim(
+      row.status as ClaimStatus,
+      row.frozen_at as string | null,
+      "reschedule this session",
+    );
 
     const { error: upErr } = await supabase
       .from("session_claims")
@@ -288,28 +301,50 @@ export const submitSessionClaimFn = createServerFn({ method: "POST" })
 
     const { data: row, error: selErr } = await supabase
       .from("session_claims")
-      .select("id, status, frozen_at")
+      .select("id")
       .eq("id", data.claimId)
       .eq("tutor_id", tutorId)
       .maybeSingle();
 
     if (selErr) throw new Error(selErr.message);
     if (!row) throw new Error("Session not found.");
-    if (row.status !== "DRAFT") {
-      throw new Error("Only draft claims can be submitted.");
-    }
-    assertClaimNotFrozen(row.frozen_at as string | null, "submit this session");
 
-    const { error: upErr } = await supabase
+    await executeClaimTransition(supabase, {
+      claimId: data.claimId,
+      action: "SUBMIT",
+      actor: { userId: tutorId, role: "TUTOR" },
+      stepUpCode: data.stepUpCode,
+      logStepUpMfa: createStepUpMfaLogger(supabase, tutorId),
+    });
+
+    return { ok: true as const };
+  });
+
+/** Reopen a rejected or disputed claim for correction (returns to draft). */
+export const reopenSessionClaimFn = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => reopenClaimSchema.parse(input))
+  .handler(async ({ data }) => {
+    const supabase = createSupabaseServerClient();
+    const tutorId = await requireUserId(supabase);
+
+    const { data: row, error: selErr } = await supabase
       .from("session_claims")
-      .update({
-        status: "PENDING_VERIFICATION",
-        submitted_at: new Date().toISOString(),
-      })
+      .select("id")
       .eq("id", data.claimId)
-      .eq("tutor_id", tutorId);
+      .eq("tutor_id", tutorId)
+      .maybeSingle();
 
-    if (upErr) throw new Error(upErr.message);
+    if (selErr) throw new Error(selErr.message);
+    if (!row) throw new Error("Session not found.");
+
+    await executeClaimTransition(supabase, {
+      claimId: data.claimId,
+      action: "REOPEN",
+      actor: { userId: tutorId, role: "TUTOR" },
+      stepUpCode: data.stepUpCode,
+      logStepUpMfa: createStepUpMfaLogger(supabase, tutorId),
+    });
+
     return { ok: true as const };
   });
 
@@ -396,14 +431,18 @@ export const upsertAttendanceCountsFn = createServerFn({ method: "POST" })
 
     const { data: claimRow, error: cErr } = await supabase
       .from("session_claims")
-      .select("frozen_at")
+      .select("status, frozen_at")
       .eq("id", data.claimId)
       .eq("tutor_id", tutorId)
       .maybeSingle();
 
     if (cErr) throw new Error(cErr.message);
     if (!claimRow) throw new Error("Session not found.");
-    assertClaimNotFrozen(claimRow.frozen_at as string | null);
+    assertTutorCanEditClaim(
+      claimRow.status as ClaimStatus,
+      claimRow.frozen_at as string | null,
+      "update attendance for this session",
+    );
 
     const { error } = await supabase
       .from("session_claims")
@@ -497,13 +536,18 @@ export const registerAttendanceEvidenceFn = createServerFn({
 
     const { data: claim, error: cErr } = await supabase
       .from("session_claims")
-      .select("id")
+      .select("id, status, frozen_at")
       .eq("id", data.claimId)
       .eq("tutor_id", tutorId)
       .maybeSingle();
 
     if (cErr) throw new Error(cErr.message);
     if (!claim) throw new Error("Session not found.");
+    assertTutorCanEditClaim(
+      claim.status as ClaimStatus,
+      claim.frozen_at as string | null,
+      "upload evidence for this session",
+    );
 
     const safeName = data.fileName.replace(/[^\w.\-()+ ]/g, "_").slice(0, 200);
     const objectPath = `${tutorId}/${data.claimId}/${crypto.randomUUID()}_${safeName}`;
@@ -580,6 +624,21 @@ export const generateSessionTokenFn = createServerFn({ method: "POST" })
 
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + data.expiresInMinutes);
+
+    const { data: claimRow, error: cErr } = await supabase
+      .from("session_claims")
+      .select("status, frozen_at")
+      .eq("id", data.claimId)
+      .eq("tutor_id", tutorId)
+      .maybeSingle();
+
+    if (cErr) throw new Error(cErr.message);
+    if (!claimRow) throw new Error("Session not found.");
+    assertTutorCanEditClaim(
+      claimRow.status as ClaimStatus,
+      claimRow.frozen_at as string | null,
+      "generate a QR code for this session",
+    );
 
     const qr_token = crypto.randomUUID();
 

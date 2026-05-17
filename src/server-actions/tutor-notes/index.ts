@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import * as z from "zod";
 import type { ClaimStatus } from "#/lib/session-claim-display";
+import { assertTutorCanEditClaim } from "#/lib/claim-workflow/guards";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 
 async function requireUserId(
@@ -101,6 +102,21 @@ export const updateSessionNotesFn = createServerFn({ method: "POST" })
     }
 
     const trim = (s: string) => (s.trim() === "" ? null : s.trim());
+
+    const { data: existing, error: loadErr } = await supabase
+      .from("session_claims")
+      .select("status, frozen_at")
+      .eq("id", data.claimId)
+      .eq("tutor_id", uid)
+      .maybeSingle();
+
+    if (loadErr) throw new Error(loadErr.message);
+    if (!existing) throw new Error("Session not found.");
+    assertTutorCanEditClaim(
+      existing.status as ClaimStatus,
+      existing.frozen_at as string | null,
+      "edit notes for this session",
+    );
 
     const { data: updated, error } = await supabase
       .from("session_claims")

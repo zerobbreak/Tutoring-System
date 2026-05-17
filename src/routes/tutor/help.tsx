@@ -78,7 +78,7 @@ const HELP_TOPICS: HelpTopic[] = [
       {
         question: "I cannot edit a claim",
         answer:
-          "Verified or approved claims are read-only. For disputed claims, fix the issues noted by the reviewer and resubmit from the Sessions workspace or claim detail view.",
+          "Verified or approved claims are read-only. For rejected or disputed claims, use Correct & resubmit (authenticator required) to return the claim to draft, make your changes, then submit again for verification.",
       },
     ],
   },

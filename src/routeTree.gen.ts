@@ -40,7 +40,6 @@ import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
 import { Route as AuthAccountBlockedRouteImport } from './routes/auth/account-blocked'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
-import { Route as AdminSettingsRouteImport } from './routes/admin/settings'
 import { Route as AdminSessionsRouteImport } from './routes/admin/sessions'
 import { Route as AdminSchedulesRouteImport } from './routes/admin/schedules'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
@@ -209,11 +208,6 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   path: '/users',
   getParentRoute: () => AdminRouteRoute,
 } as any)
-const AdminSettingsRoute = AdminSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AdminRouteRoute,
-} as any)
 const AdminSessionsRoute = AdminSessionsRouteImport.update({
   id: '/sessions',
   path: '/sessions',
@@ -284,7 +278,6 @@ export interface FileRoutesByFullPath {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/schedules': typeof AdminSchedulesRoute
   '/admin/sessions': typeof AdminSessionsRoute
-  '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/account-blocked': typeof AuthAccountBlockedRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
@@ -326,7 +319,6 @@ export interface FileRoutesByTo {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/schedules': typeof AdminSchedulesRoute
   '/admin/sessions': typeof AdminSessionsRoute
-  '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/account-blocked': typeof AuthAccountBlockedRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
@@ -372,7 +364,6 @@ export interface FileRoutesById {
   '/admin/reports': typeof AdminReportsRoute
   '/admin/schedules': typeof AdminSchedulesRoute
   '/admin/sessions': typeof AdminSessionsRoute
-  '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/auth/account-blocked': typeof AuthAccountBlockedRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
@@ -419,7 +410,6 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/schedules'
     | '/admin/sessions'
-    | '/admin/settings'
     | '/admin/users'
     | '/auth/account-blocked'
     | '/auth/forgot-password'
@@ -461,7 +451,6 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/schedules'
     | '/admin/sessions'
-    | '/admin/settings'
     | '/admin/users'
     | '/auth/account-blocked'
     | '/auth/forgot-password'
@@ -506,7 +495,6 @@ export interface FileRouteTypes {
     | '/admin/reports'
     | '/admin/schedules'
     | '/admin/sessions'
-    | '/admin/settings'
     | '/admin/users'
     | '/auth/account-blocked'
     | '/auth/forgot-password'
@@ -772,13 +760,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRouteRoute
     }
-    '/admin/settings': {
-      id: '/admin/settings'
-      path: '/settings'
-      fullPath: '/admin/settings'
-      preLoaderRoute: typeof AdminSettingsRouteImport
-      parentRoute: typeof AdminRouteRoute
-    }
     '/admin/sessions': {
       id: '/admin/sessions'
       path: '/sessions'
@@ -869,7 +850,6 @@ interface AdminRouteRouteChildren {
   AdminReportsRoute: typeof AdminReportsRoute
   AdminSchedulesRoute: typeof AdminSchedulesRoute
   AdminSessionsRoute: typeof AdminSessionsRoute
-  AdminSettingsRoute: typeof AdminSettingsRoute
   AdminUsersRoute: typeof AdminUsersRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
@@ -884,7 +864,6 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminReportsRoute: AdminReportsRoute,
   AdminSchedulesRoute: AdminSchedulesRoute,
   AdminSessionsRoute: AdminSessionsRoute,
-  AdminSettingsRoute: AdminSettingsRoute,
   AdminUsersRoute: AdminUsersRoute,
   AdminIndexRoute: AdminIndexRoute,
 }

@@ -130,6 +130,7 @@ export const getAdminSchedulePageDataFn = createServerFn({ method: "GET" })
         .in("module_id", moduleIds)
         .gte("starts_at", data.from)
         .lte("starts_at", data.to)
+        .is("deleted_at", null)
         .order("starts_at");
 
       if (scope === "tutor" && scopeEntityId) {

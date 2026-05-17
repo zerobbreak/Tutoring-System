@@ -19,6 +19,7 @@ Staff sign in at `/auth/login`. New staff accounts are created by admins (provis
 |----------|----------|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, routing map, features by dashboard, server-action layout |
 | [docs/DATABASE.md](docs/DATABASE.md) | Postgres schema, enums, RLS, storage buckets, migrations |
+| [docs/USER_TESTING.md](docs/USER_TESTING.md) | User testing sessions, E2E workflows, per-feature checklists, bug template |
 
 ---
 

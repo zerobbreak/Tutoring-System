@@ -88,6 +88,8 @@ import {
   claimBadgeVariant,
   formatClock,
 } from "#/lib/session-claim-display";
+import { StepUpMfaDialog } from "#/components/workflow/step-up-mfa-dialog";
+import { canTutorReopenClaim } from "#/lib/claim-workflow/tutor-editable";
 import { toast } from "#/lib/toast";
 import { cn } from "#/lib/utils";
 import {
@@ -96,6 +98,7 @@ import {
   listTutorModuleAssignmentsFn,
   listTutorSessionClaimsFn,
   registerAttendanceEvidenceFn,
+  reopenSessionClaimFn,
   submitSessionClaimFn,
   updateSessionClaimSchedulingFn,
   type TutorSessionClaimDTO,
@@ -344,6 +347,7 @@ function DraggableSessionCard({
   onUpload,
   onAttendance,
   onSubmit,
+  onReopen,
   onWorkspace,
   now,
 }: {
@@ -354,6 +358,7 @@ function DraggableSessionCard({
   onUpload: () => void;
   onAttendance: () => void;
   onSubmit: () => void;
+  onReopen: () => void;
   onWorkspace: () => void;
   now: Date;
 }) {
@@ -503,6 +508,11 @@ function DraggableSessionCard({
                     Submit claim
                   </DropdownMenuItem>
                 ) : null}
+                {canTutorReopenClaim(claim.status, null) ? (
+                  <DropdownMenuItem onSelect={onReopen}>
+                    Correct & resubmit
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link
@@ -642,6 +652,11 @@ export function TutorSessionsWorkspace({
     null,
   );
   const [submitBusy, setSubmitBusy] = useState(false);
+  const [reopenClaim, setReopenClaim] = useState<TutorSessionClaimDTO | null>(
+    null,
+  );
+  const [reopenOpen, setReopenOpen] = useState(false);
+  const [reopenBusy, setReopenBusy] = useState(false);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [modules, setModules] = useState<
@@ -1167,6 +1182,10 @@ export function TutorSessionsWorkspace({
                                       setSubmitClaim(c);
                                       setSubmitOpen(true);
                                     }}
+                                    onReopen={() => {
+                                      setReopenClaim(c);
+                                      setReopenOpen(true);
+                                    }}
                                     onWorkspace={() => openWorkspace(c)}
                                   />
                                 ))
@@ -1472,49 +1491,69 @@ export function TutorSessionsWorkspace({
             </DialogContent>
           </Dialog>
 
-          <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Submit claim</DialogTitle>
-                <DialogDescription>
-                  Sends this session to pending verification with a timestamp.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="gap-2">
-                <Button variant="outline" onClick={() => setSubmitOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  disabled={submitBusy}
-                  onClick={async () => {
-                    if (!submitClaim) return;
-                    setSubmitBusy(true);
-                    try {
-                      await submitSessionClaimFn({
-                        data: { claimId: submitClaim.id },
-                      });
-                      toast.success("Claim submitted");
-                      setSubmitOpen(false);
-                      await reload();
-                    } catch (e) {
-                      toast.error(
-                        e instanceof Error ? e.message : "Submit failed",
-                      );
-                    } finally {
-                      setSubmitBusy(false);
-                    }
-                  }}
-                >
-                  {submitBusy ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="size-4" />
-                  )}
-                  Confirm submit
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <StepUpMfaDialog
+            open={submitOpen}
+            onOpenChange={(open) => {
+              setSubmitOpen(open);
+              if (!open) setSubmitClaim(null);
+            }}
+            title="Submit claim"
+            description="Enter your authenticator code to submit this session for lecturer verification."
+            confirmLabel="Submit claim"
+            submitting={submitBusy}
+            onConfirm={async (stepUpCode) => {
+              if (!submitClaim) return;
+              setSubmitBusy(true);
+              try {
+                await submitSessionClaimFn({
+                  data: { claimId: submitClaim.id, stepUpCode },
+                });
+                toast.success("Claim submitted");
+                setSubmitOpen(false);
+                setSubmitClaim(null);
+                await reload();
+              } catch (e) {
+                toast.error(
+                  e instanceof Error ? e.message : "Submit failed",
+                );
+                throw e;
+              } finally {
+                setSubmitBusy(false);
+              }
+            }}
+          />
+
+          <StepUpMfaDialog
+            open={reopenOpen}
+            onOpenChange={(open) => {
+              setReopenOpen(open);
+              if (!open) setReopenClaim(null);
+            }}
+            title="Reopen claim"
+            description="Enter your authenticator code to move this claim back to draft so you can correct and resubmit."
+            confirmLabel="Reopen claim"
+            submitting={reopenBusy}
+            onConfirm={async (stepUpCode) => {
+              if (!reopenClaim) return;
+              setReopenBusy(true);
+              try {
+                await reopenSessionClaimFn({
+                  data: { claimId: reopenClaim.id, stepUpCode },
+                });
+                toast.success("Claim reopened for correction");
+                setReopenOpen(false);
+                setReopenClaim(null);
+                await reload();
+              } catch (e) {
+                toast.error(
+                  e instanceof Error ? e.message : "Reopen failed",
+                );
+                throw e;
+              } finally {
+                setReopenBusy(false);
+              }
+            }}
+          />
 
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogContent>

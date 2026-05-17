@@ -404,13 +404,13 @@ Display helpers: `src/lib/session-claim-display.ts`. Tutor Kanban columns: `src/
 | `/admin/messaging` | `admin/messaging.tsx` | `admin-messaging-view.tsx` | Institution messaging and notices |
 | `/admin/analytics` | `admin/analytics.tsx` | `admin-analytics-view.tsx` | Institution-wide analytics tables and summaries |
 | `/admin/audit-logs` | `admin/audit-logs.tsx` | `admin-audit-logs-view.tsx` | Filterable audit feed |
-| `/admin/payments` | `admin/payments.tsx` | Placeholder | **Not implemented** |
-| `/admin/reports` | `admin/reports.tsx` | Placeholder | **Not implemented** |
-| `/admin/settings` | `admin/settings.tsx` | Placeholder | **Not implemented** |
+| `/admin/payments` | `admin/payments.tsx` | `admin-payroll-view.tsx` | Payroll summary, create export batch, batch history |
+| `/admin/reports` | `admin/reports.tsx` | `admin-reports-view.tsx` | Report catalog, filters, preview, PDF/CSV/XLSX/JSON export |
+| `/admin/settings` | `admin/settings.tsx` | Placeholder | **Not implemented** (use `/settings`) |
 
 #### Server actions
 
-`admin-dashboard/`, `admin-approvals/`, `admin-institutions/`, `admin-users/`, `admin-schedules/`, `admin-sessions/`, `admin-analytics/`, `admin-audit-logs/`, plus `messaging/admin-messaging.ts`.
+`admin-dashboard/`, `admin-approvals/`, `admin-institutions/`, `admin-users/`, `admin-schedules/`, `admin-sessions/`, `admin-analytics/`, `admin-audit-logs/`, `admin-payroll/`, `admin-reports/`, plus `messaging/admin-messaging.ts`.
 
 ---
 
@@ -590,5 +590,6 @@ npm run test     # Vitest
 ## Related documentation
 
 - [DATABASE.md](./DATABASE.md) — Postgres schema, enums, RLS, storage, migrations
+- [USER_TESTING.md](./USER_TESTING.md) — User testing playbooks and per-feature checklists
 - Code maintenance conventions: `.cursor/rules/codebase-maintenance.mdc`
 - Avoid premature abstraction: `.cursor/rules/avoid-premature-abstraction.mdc`

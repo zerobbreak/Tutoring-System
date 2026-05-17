@@ -25,7 +25,7 @@ export const adminDeleteScheduleSeriesFn = createServerFn({ method: "POST" })
       institutionId,
     );
 
-    await deleteDraftScheduleSeries(supabase, data.seriesId);
+    await deleteDraftScheduleSeries(supabase, data.seriesId, userId);
 
     await logInstitutionAudit(supabase, {
       institutionId,
