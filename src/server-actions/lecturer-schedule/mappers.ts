@@ -81,11 +81,14 @@ export function mapSeriesRow(row: {
     timezone: row.timezone,
     dtstart: row.dtstart,
     durationMinutes: row.duration_minutes,
-    recurrence: {
-      frequency: "weekly",
-      byWeekday: recurrence.byWeekday,
-      until: recurrence.until,
-    },
+    recurrence:
+      recurrence.frequency === "explicit_dates"
+        ? { frequency: "explicit_dates", dates: recurrence.dates }
+        : {
+            frequency: "weekly",
+            byWeekday: recurrence.byWeekday,
+            until: recurrence.until,
+          },
     status: row.status,
     publishedAt: row.published_at,
   };

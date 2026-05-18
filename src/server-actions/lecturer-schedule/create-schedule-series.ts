@@ -1,13 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireLecturerId } from "#/lib/lecturer-server";
+import { recurrenceSchema } from "#/lib/schedule-recurrence-schema";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
-
-const recurrenceSchema = z.object({
-  frequency: z.literal("weekly"),
-  byWeekday: z.array(z.number().int().min(0).max(6)).min(1),
-  until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
-});
 
 const createSeriesSchema = z.object({
   moduleId: z.string().uuid(),

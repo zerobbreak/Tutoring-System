@@ -53,11 +53,16 @@ export type ScheduleSeriesDTO = {
   timezone: string;
   dtstart: string;
   durationMinutes: number;
-  recurrence: {
-    frequency: "weekly";
-    byWeekday: number[];
-    until: string | null;
-  };
+  recurrence:
+    | {
+        frequency: "weekly";
+        byWeekday: number[];
+        until: string | null;
+      }
+    | {
+        frequency: "explicit_dates";
+        dates: string[];
+      };
   status: string;
   publishedAt: string | null;
 };

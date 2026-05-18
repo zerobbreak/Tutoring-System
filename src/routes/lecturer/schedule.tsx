@@ -5,6 +5,7 @@ import { LecturerScheduleView } from "#/components/lecturer/schedule/lecturer-sc
 import { rangeForView } from "#/components/lecturer/schedule/schedule-range";
 import type { ScheduleCalendarView } from "#/components/lecturer/schedule/types";
 import { toast } from "#/lib/toast";
+import { buildDtstartFromDateAndTime } from "#/lib/schedule-recurrence";
 import {
   archiveScheduleSeriesFn,
   assignTutorToModuleFn,
@@ -71,14 +72,14 @@ function SchedulePage() {
     tutorId: string;
     venueId: string | null;
     venueText: string;
-    dtstart: string;
+    sessionDates: string[];
+    sessionTime: string;
     durationMinutes: number;
-    byWeekday: number[];
-    until: string | null;
   }) => {
     setFormBusy(true);
     try {
       const today = new Date().toISOString().slice(0, 10);
+      const dates = [...values.sessionDates].sort();
       await assignTutorToModuleFn({
         data: {
           moduleId: values.moduleId,
@@ -93,12 +94,11 @@ function SchedulePage() {
           tutorId: values.tutorId,
           venueId: values.venueId,
           venueText: values.venueText || null,
-          dtstart: values.dtstart,
+          dtstart: buildDtstartFromDateAndTime(dates[0], values.sessionTime),
           durationMinutes: values.durationMinutes,
           recurrence: {
-            frequency: "weekly",
-            byWeekday: values.byWeekday,
-            until: values.until,
+            frequency: "explicit_dates",
+            dates,
           },
         },
       });

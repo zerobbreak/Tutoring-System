@@ -17,9 +17,7 @@ export type LecturerScheduleViewProps = {
   onViewChange: (view: ScheduleCalendarView) => void;
   onFocusDateChange: (date: Date) => void;
   onReload: () => void;
-  onCreateSeries: (
-    values: SeriesFormValues & { dtstart: string; until: string | null },
-  ) => Promise<void>;
+  onCreateSeries: (values: SeriesFormValues) => Promise<void>;
   onCreateOneOff: (values: OneOffFormValues) => Promise<void>;
   onPublishSeries: (seriesId: string) => Promise<void>;
   onDeleteSeries: (seriesId: string) => Promise<void>;

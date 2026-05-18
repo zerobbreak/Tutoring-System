@@ -1,3 +1,5 @@
+import { format } from "date-fns";
+import { Plus, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "#/components/ui/button";
 import {
@@ -24,16 +26,6 @@ import type {
 } from "#/server-actions/lecturer-schedule";
 import { toast } from "#/lib/toast";
 
-const WEEKDAYS: { value: number; label: string }[] = [
-  { value: 0, label: "Sun" },
-  { value: 1, label: "Mon" },
-  { value: 2, label: "Tue" },
-  { value: 3, label: "Wed" },
-  { value: 4, label: "Thu" },
-  { value: 5, label: "Fri" },
-  { value: 6, label: "Sat" },
-];
-
 /** Keeps dropdown menus above the dialog overlay (z-50). */
 const selectContentProps = {
   position: "popper" as const,
@@ -49,10 +41,9 @@ export type SeriesFormValues = {
   tutorId: string;
   venueId: string | null;
   venueText: string;
-  dtstartLocal: string;
+  sessionDates: string[];
+  sessionTime: string;
   durationMinutes: number;
-  byWeekday: number[];
-  until: string;
 };
 
 type ScheduleSeriesFormDialogProps = {
@@ -66,12 +57,12 @@ type ScheduleSeriesFormDialogProps = {
   onSubmit: (values: SeriesFormValues) => Promise<void>;
 };
 
-function defaultDtstartLocal(): string {
-  const d = new Date();
-  d.setMinutes(0, 0, 0);
-  d.setHours(14);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+function defaultSessionTime(): string {
+  return "14:00";
+}
+
+function defaultSessionDate(): string {
+  return format(new Date(), "yyyy-MM-dd");
 }
 
 function initialFormState(modules: ScheduleModuleOptionDTO[]) {
@@ -83,10 +74,9 @@ function initialFormState(modules: ScheduleModuleOptionDTO[]) {
     tutorId: "",
     venueId: "",
     venueText: "",
-    dtstartLocal: defaultDtstartLocal(),
+    sessionDates: [defaultSessionDate()],
+    sessionTime: defaultSessionTime(),
     durationMinutes: 120,
-    byWeekday: [1] as number[],
-    until: "",
   };
 }
 
@@ -129,12 +119,27 @@ export function ScheduleSeriesFormDialog({
     }
   }, [form.moduleId, modules, selectableTutors]);
 
-  const toggleWeekday = (day: number) => {
+  const addSessionDate = () => {
     setForm((f) => ({
       ...f,
-      byWeekday: f.byWeekday.includes(day)
-        ? f.byWeekday.filter((d) => d !== day)
-        : [...f.byWeekday, day].sort(),
+      sessionDates: [...f.sessionDates, defaultSessionDate()],
+    }));
+  };
+
+  const updateSessionDate = (index: number, value: string) => {
+    setForm((f) => ({
+      ...f,
+      sessionDates: f.sessionDates.map((d, i) => (i === index ? value : d)),
+    }));
+  };
+
+  const removeSessionDate = (index: number) => {
+    setForm((f) => ({
+      ...f,
+      sessionDates:
+        f.sessionDates.length <= 1
+          ? f.sessionDates
+          : f.sessionDates.filter((_, i) => i !== index),
     }));
   };
 
@@ -147,18 +152,20 @@ export function ScheduleSeriesFormDialog({
     if (!form.tutorId) {
       toast.error(
         tutors.length
-          ? "Select a tutor for this series."
+          ? "Select a tutor for this schedule."
           : "No tutors in your institution. Add a tutor before creating a schedule.",
       );
       return;
     }
-    if (!form.byWeekday.length) {
-      toast.error("Select at least one weekday.");
+    const dates = [
+      ...new Set(form.sessionDates.filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))),
+    ].sort();
+    if (!dates.length) {
+      toast.error("Add at least one session date.");
       return;
     }
-    const dtstart = new Date(form.dtstartLocal);
-    if (Number.isNaN(dtstart.getTime())) {
-      toast.error("Invalid start date/time.");
+    if (!form.sessionTime) {
+      toast.error("Set a session time.");
       return;
     }
     await onSubmit({
@@ -167,10 +174,9 @@ export function ScheduleSeriesFormDialog({
       tutorId: form.tutorId,
       venueId: form.venueId || null,
       venueText: form.venueText,
-      dtstartLocal: form.dtstartLocal,
+      sessionDates: dates,
+      sessionTime: form.sessionTime,
       durationMinutes: form.durationMinutes,
-      byWeekday: form.byWeekday,
-      until: form.until,
     });
   };
 
@@ -181,8 +187,8 @@ export function ScheduleSeriesFormDialog({
           <DialogHeader className="shrink-0 border-b border-border/60 px-6 pt-6 pb-4">
             <DialogTitle>Create tutorial schedule</DialogTitle>
             <DialogDescription>
-              Define a recurring tutorial series. Publish to generate sessions and
-              notify the assigned tutor.
+              Pick the exact dates for this tutorial block. Publish to generate
+              sessions and notify the assigned tutor.
             </DialogDescription>
           </DialogHeader>
 
@@ -293,13 +299,13 @@ export function ScheduleSeriesFormDialog({
                 />
               </Field>
 
-              <Field label="First session start" htmlFor="dtstart">
+              <Field label="Session time" htmlFor="session-time">
                 <Input
-                  id="dtstart"
-                  type="datetime-local"
-                  value={form.dtstartLocal}
+                  id="session-time"
+                  type="time"
+                  value={form.sessionTime}
                   onChange={(e) =>
-                    setForm((f) => ({ ...f, dtstartLocal: e.target.value }))
+                    setForm((f) => ({ ...f, sessionTime: e.target.value }))
                   }
                 />
               </Field>
@@ -320,33 +326,44 @@ export function ScheduleSeriesFormDialog({
                 />
               </Field>
 
-              <Field label="Repeats on">
-                <div className="flex flex-wrap gap-2">
-                  {WEEKDAYS.map((d) => (
-                    <Button
-                      key={d.value}
-                      type="button"
-                      size="sm"
-                      variant={
-                        form.byWeekday.includes(d.value) ? "default" : "outline"
-                      }
-                      onClick={() => toggleWeekday(d.value)}
-                    >
-                      {d.label}
-                    </Button>
+              <Field label="Session dates">
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Add each day this tutorial runs. All sessions use the time
+                    above.
+                  </p>
+                  {form.sessionDates.map((date, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <Input
+                        type="date"
+                        value={date}
+                        className="flex-1"
+                        onChange={(e) => updateSessionDate(index, e.target.value)}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="shrink-0"
+                        disabled={form.sessionDates.length <= 1}
+                        aria-label="Remove date"
+                        onClick={() => removeSessionDate(index)}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </div>
                   ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={addSessionDate}
+                  >
+                    <Plus className="size-4" />
+                    Add date
+                  </Button>
                 </div>
-              </Field>
-
-              <Field label="Repeat until (optional)" htmlFor="until">
-                <Input
-                  id="until"
-                  type="date"
-                  value={form.until}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, until: e.target.value }))
-                  }
-                />
               </Field>
             </div>
           </div>

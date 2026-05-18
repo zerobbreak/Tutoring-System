@@ -99,12 +99,7 @@ export type AdminSchedulesViewProps = {
   onAcademicTermChange: (termId: string | null) => void;
   onScopeChange: (scope: AdminScheduleCalendarScope) => void;
   onScopeEntityChange: (entityId: string | null) => void;
-  onCreateSeries: (
-    values: Omit<SeriesFormValues, "until" | "dtstartLocal"> & {
-      dtstart: string;
-      until: string | null;
-    },
-  ) => Promise<void>;
+  onCreateSeries: (values: SeriesFormValues) => Promise<void>;
   onPublishSeries: (seriesId: string) => Promise<void>;
   onDeleteSeries: (seriesId: string) => Promise<void>;
   onArchiveSeries: (seriesId: string) => Promise<void>;
@@ -244,13 +239,7 @@ export function AdminSchedulesView({
   }, [data, scope]);
 
   const handleCreate = async (values: SeriesFormValues) => {
-    const dtstart = new Date(values.dtstartLocal).toISOString();
-    const { until, dtstartLocal: _dt, ...rest } = values;
-    await onCreateSeries({
-      ...rest,
-      dtstart,
-      until: until.trim() ? until : null,
-    });
+    await onCreateSeries(values);
     setSeriesOpen(false);
   };
 

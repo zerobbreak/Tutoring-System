@@ -90,12 +90,7 @@ export function LecturerScheduleView({
   }, [view, focusDate]);
 
   const handleCreate = async (values: SeriesFormValues) => {
-    const dtstart = new Date(values.dtstartLocal).toISOString();
-    await onCreateSeries({
-      ...values,
-      dtstart,
-      until: values.until || null,
-    });
+    await onCreateSeries(values);
     setSeriesOpen(false);
   };
 

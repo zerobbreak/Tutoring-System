@@ -5,7 +5,10 @@ import {
   needsHorizonExtension,
 } from "#/lib/schedule-materialize";
 import type { ExistingScheduledRow } from "#/lib/schedule-materialize";
-import { materializeWeeklyOccurrences } from "#/lib/schedule-recurrence";
+import {
+  materializeExplicitDatesOccurrences,
+  materializeWeeklyOccurrences,
+} from "#/lib/schedule-recurrence";
 
 describe("planMaterializeActions", () => {
   const now = new Date("2026-06-01T12:00:00.000Z");
@@ -76,6 +79,24 @@ describe("planMaterializeActions", () => {
   it("stable occurrence keys", () => {
     const d = new Date("2026-06-10T14:00:00.000Z");
     expect(occurrenceKey(d)).toBe(d.toISOString());
+  });
+});
+
+describe("materializeExplicitDatesOccurrences", () => {
+  it("creates one occurrence per listed date at dtstart time", () => {
+    const dtstart = new Date(2026, 4, 18, 14, 0, 0);
+    const occurrences = materializeExplicitDatesOccurrences({
+      dtstart,
+      durationMinutes: 120,
+      recurrence: {
+        frequency: "explicit_dates",
+        dates: ["2026-05-20", "2026-05-27"],
+      },
+    });
+    expect(occurrences).toHaveLength(2);
+    expect(occurrences[0].startsAt.getHours()).toBe(14);
+    expect(occurrences[0].startsAt.getDate()).toBe(20);
+    expect(occurrences[1].startsAt.getDate()).toBe(27);
   });
 });
 

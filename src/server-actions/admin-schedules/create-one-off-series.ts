@@ -33,8 +33,7 @@ export const adminCreateOneOffScheduleSeriesFn = createServerFn({ method: "POST"
     if (!mod) throw new Error("Module not found or access denied.");
 
     const start = new Date(data.dtstart);
-    const until = format(start, "yyyy-MM-dd");
-    const byWeekday = [start.getDay()];
+    const sessionDate = format(start, "yyyy-MM-dd");
 
     const { data: assignment, error: assignErr } = await supabase
       .from("tutor_assignments")
@@ -63,9 +62,8 @@ export const adminCreateOneOffScheduleSeriesFn = createServerFn({ method: "POST"
         dtstart: data.dtstart,
         duration_minutes: data.durationMinutes,
         recurrence_json: {
-          frequency: "weekly",
-          byWeekday,
-          until,
+          frequency: "explicit_dates",
+          dates: [sessionDate],
         },
         status: "DRAFT",
         institution_id: institutionId,

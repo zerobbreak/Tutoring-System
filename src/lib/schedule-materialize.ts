@@ -3,10 +3,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { restoreSoftDeleteFields } from "#/lib/soft-delete";
 import {
   DEFAULT_PUBLISH_HORIZON_WEEKS,
-  materializeWeeklyOccurrences,
+  isExplicitDatesRecurrence,
+  materializeOccurrences,
   parseRecurrenceJson,
   type MaterializedOccurrence,
-  type ScheduleRecurrenceJson,
 } from "#/lib/schedule-recurrence";
 
 export const ROLLING_EXTEND_HORIZON_DAYS = 30;
@@ -56,7 +56,7 @@ export function computeSeriesOccurrences(
   const dtstart = new Date(series.dtstart);
   const scanFrom = options?.scanFrom ?? dtstart;
   const effectiveStart = isAfter(dtstart, scanFrom) ? dtstart : scanFrom;
-  return materializeWeeklyOccurrences({
+  return materializeOccurrences({
     dtstart: effectiveStart,
     durationMinutes: series.duration_minutes,
     recurrence,
@@ -273,6 +273,11 @@ export async function extendSeriesHorizon(
   options?: { horizonWeeks?: number },
 ): Promise<MaterializeSeriesResult | null> {
   const series = await loadSeries(db, seriesId);
+  const recurrence = parseRecurrenceJson(series.recurrence_json);
+  if (isExplicitDatesRecurrence(recurrence)) {
+    return null;
+  }
+
   const now = new Date();
 
   if (!series.materialized_until) {
@@ -291,8 +296,7 @@ export async function extendSeriesHorizon(
     ? maxDate([now, new Date(series.materialized_until)])
     : new Date(series.dtstart);
 
-  const recurrence = parseRecurrenceJson(series.recurrence_json);
-  const occurrences = materializeWeeklyOccurrences({
+  const occurrences = materializeOccurrences({
     dtstart: scanFrom,
     durationMinutes: series.duration_minutes,
     recurrence,
