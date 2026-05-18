@@ -1,15 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
-import { safeExternalHref } from "#/lib/safe-external-href";
 import { parse } from "date-fns";
 import * as z from "zod";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
-import { executeClaimTransition } from "#/lib/claim-workflow/execute-transition";
-import { assertTutorCanEditClaim } from "#/lib/claim-workflow/guards";
-import { createStepUpMfaLogger } from "#/lib/claim-workflow/log-step-up-mfa";
+import { assertClaimNotFrozen } from "#/server-actions/admin-approvals/assert-claim-not-frozen";
 import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import {
   assertValidQrSession,
-  ensureQrTokenForClaim,
   findOrCreateStudent,
   getSessionInstitutionId,
   recordSessionCheckIn,
@@ -19,6 +15,17 @@ import {
   type ClaimStatus,
   type TimeKanbanColumnId,
 } from "#/lib/session-kanban-column";
+import {
+  appendClaimWorkflowEvent,
+  buildClaimWorkflowTimeline,
+  CLAIM_WORKFLOW_ACTION,
+  type WorkflowTimelineEntry,
+} from "#/lib/claim-workflow-timeline";
+import {
+  isTutorManualSessionClaim,
+  isTutorSessionClaimVisible,
+  TUTOR_VISIBLE_SESSION_CLAIMS_OR_FILTER,
+} from "#/lib/tutor-manual-session-claim";
 
 async function requireUserId(
   supabase: ReturnType<typeof createSupabaseServerClient>,
@@ -40,12 +47,16 @@ const updateSchedulingSchema = z.object({
 
 const submitClaimSchema = z.object({
   claimId: z.string().uuid(),
-  stepUpCode: z.string().min(6).max(12),
 });
 
-const reopenClaimSchema = z.object({
+const deleteDraftClaimSchema = z.object({
   claimId: z.string().uuid(),
-  stepUpCode: z.string().min(6).max(12),
+});
+
+const DELETE_DRAFT_CLAIMS_BATCH = 100;
+
+const deleteDraftClaimsSchema = z.object({
+  claimIds: z.array(z.string().uuid()).min(1).max(1000),
 });
 
 const createClaimSchema = z.object({
@@ -89,11 +100,6 @@ export type TutorSessionClaimDTO = {
   coverage_validated_at: string | null;
   submitted_at: string | null;
   session_kind: string | null;
-  creation_source?: string | null;
-  scheduled_session_id?: string | null;
-  scheduled_starts_at?: string | null;
-  scheduled_ends_at?: string | null;
-  attendance_locked_at?: string | null;
   attendance_present_count: number | null;
   attendance_expected_count: number | null;
   qr_token: string | null;
@@ -135,9 +141,24 @@ export type ClaimEvidenceDTO = {
   uploaded_at: string;
 };
 
+export type AttendanceRecordDTO = {
+  id: string;
+  student_id: string;
+  status: "PRESENT" | "LATE" | "ABSENT" | "EXCUSED";
+  check_in_time: string | null;
+  is_verified: boolean;
+  notes: string | null;
+  student: {
+    full_name: string;
+    email: string | null;
+    student_reference: string | null;
+  };
+};
+
 export type ClaimDetailsDTO = TutorSessionClaimDTO & {
   evidence: ClaimEvidenceDTO[];
-  history: VerificationActionDTO[];
+  attendance_records: AttendanceRecordDTO[];
+  history: WorkflowTimelineEntry[];
 };
 
 type LecturerRow = { id: string; full_name: string; email: string };
@@ -201,7 +222,7 @@ function mapClaimRow(r: RawClaim, evidenceCount: number): TutorSessionClaimDTO {
 
 /** Load session claims for the signed-in tutor (nested module + lecturer). */
 export const listTutorSessionClaimsFn = createServerFn({
-  method: "GET",
+  method: "POST",
 }).handler(async (): Promise<TutorSessionClaimDTO[]> => {
   const supabase = createSupabaseServerClient();
   const tutorId = await requireUserId(supabase);
@@ -237,6 +258,7 @@ export const listTutorSessionClaimsFn = createServerFn({
       `,
     )
     .eq("tutor_id", tutorId)
+    .or(TUTOR_VISIBLE_SESSION_CLAIMS_OR_FILTER)
     .order("session_date", { ascending: true })
     .order("start_time", { ascending: true });
 
@@ -276,18 +298,20 @@ export const updateSessionClaimSchedulingFn = createServerFn({
 
     const { data: row, error: selErr } = await supabase
       .from("session_claims")
-      .select("id, status, frozen_at")
+      .select(
+        "id, source_scheduled_session_id, source_schedule_import_id, admin_creation_approved_at",
+      )
       .eq("id", data.claimId)
       .eq("tutor_id", tutorId)
       .maybeSingle();
 
     if (selErr) throw new Error(selErr.message);
     if (!row) throw new Error("Session not found.");
-    assertTutorCanEditClaim(
-      row.status as ClaimStatus,
-      row.frozen_at as string | null,
-      "reschedule this session",
-    );
+    if (!isTutorSessionClaimVisible(row)) {
+      throw new Error(
+        "This session is awaiting admin approval before you can reschedule it.",
+      );
+    }
 
     const { error: upErr } = await supabase
       .from("session_claims")
@@ -308,51 +332,120 @@ export const submitSessionClaimFn = createServerFn({ method: "POST" })
 
     const { data: row, error: selErr } = await supabase
       .from("session_claims")
-      .select("id")
+      .select(
+        "id, status, frozen_at, source_scheduled_session_id, source_schedule_import_id, admin_creation_approved_at",
+      )
       .eq("id", data.claimId)
       .eq("tutor_id", tutorId)
       .maybeSingle();
 
     if (selErr) throw new Error(selErr.message);
     if (!row) throw new Error("Session not found.");
+    if (!isTutorSessionClaimVisible(row)) {
+      throw new Error(
+        "This session is awaiting admin approval before you can work on it.",
+      );
+    }
+    if (row.status !== "DRAFT") {
+      throw new Error("Only draft claims can be submitted.");
+    }
+    assertClaimNotFrozen(row.frozen_at as string | null, "submit this session");
 
-    await executeClaimTransition(supabase, {
+    const submittedAt = new Date().toISOString();
+    const { error: upErr } = await supabase
+      .from("session_claims")
+      .update({
+        status: "PENDING_VERIFICATION",
+        submitted_at: submittedAt,
+      })
+      .eq("id", data.claimId)
+      .eq("tutor_id", tutorId);
+
+    if (upErr) throw new Error(upErr.message);
+
+    await appendClaimWorkflowEvent(supabase, {
       claimId: data.claimId,
-      action: "SUBMIT",
-      actor: { userId: tutorId, role: "TUTOR" },
-      stepUpCode: data.stepUpCode,
-      logStepUpMfa: createStepUpMfaLogger(supabase, tutorId),
+      actorId: tutorId,
+      actionType: CLAIM_WORKFLOW_ACTION.TUTOR_SUBMITTED,
+      fromStatus: "DRAFT",
+      toStatus: "PENDING_VERIFICATION",
     });
 
     return { ok: true as const };
   });
 
-/** Reopen a rejected or disputed claim for correction (returns to draft). */
-export const reopenSessionClaimFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => reopenClaimSchema.parse(input))
+/** Permanently remove a draft claim (tutor-owned only). */
+export const deleteDraftSessionClaimFn = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => deleteDraftClaimSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const tutorId = await requireUserId(supabase);
 
     const { data: row, error: selErr } = await supabase
       .from("session_claims")
-      .select("id")
+      .select("id, status")
       .eq("id", data.claimId)
       .eq("tutor_id", tutorId)
       .maybeSingle();
 
     if (selErr) throw new Error(selErr.message);
     if (!row) throw new Error("Session not found.");
+    if (row.status !== "DRAFT") {
+      throw new Error("Only draft sessions can be discarded.");
+    }
 
-    await executeClaimTransition(supabase, {
-      claimId: data.claimId,
-      action: "REOPEN",
-      actor: { userId: tutorId, role: "TUTOR" },
-      stepUpCode: data.stepUpCode,
-      logStepUpMfa: createStepUpMfaLogger(supabase, tutorId),
-    });
+    const { error: delErr } = await supabase
+      .from("session_claims")
+      .delete()
+      .eq("id", data.claimId)
+      .eq("tutor_id", tutorId)
+      .eq("status", "DRAFT");
 
+    if (delErr) throw new Error(delErr.message);
     return { ok: true as const };
+  });
+
+/** Permanently remove multiple draft claims (tutor-owned only). */
+export const deleteDraftSessionClaimsFn = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => deleteDraftClaimsSchema.parse(input))
+  .handler(async ({ data }) => {
+    const supabase = createSupabaseServerClient();
+    const tutorId = await requireUserId(supabase);
+    const uniqueIds = [...new Set(data.claimIds)];
+
+    const rows: { id: string; status: string }[] = [];
+    for (let i = 0; i < uniqueIds.length; i += DELETE_DRAFT_CLAIMS_BATCH) {
+      const batch = uniqueIds.slice(i, i + DELETE_DRAFT_CLAIMS_BATCH);
+      const { data: batchRows, error: selErr } = await supabase
+        .from("session_claims")
+        .select("id, status")
+        .eq("tutor_id", tutorId)
+        .in("id", batch);
+
+      if (selErr) throw new Error(selErr.message);
+      rows.push(...(batchRows ?? []));
+    }
+
+    const drafts = rows.filter((r) => r.status === "DRAFT");
+    if (drafts.length !== uniqueIds.length) {
+      throw new Error(
+        "Only draft sessions can be discarded, and each must belong to you.",
+      );
+    }
+
+    for (let i = 0; i < uniqueIds.length; i += DELETE_DRAFT_CLAIMS_BATCH) {
+      const batch = uniqueIds.slice(i, i + DELETE_DRAFT_CLAIMS_BATCH);
+      const { error: delErr } = await supabase
+        .from("session_claims")
+        .delete()
+        .eq("tutor_id", tutorId)
+        .eq("status", "DRAFT")
+        .in("id", batch);
+
+      if (delErr) throw new Error(delErr.message);
+    }
+
+    return { ok: true as const, deletedCount: uniqueIds.length };
   });
 
 /** Create a manual session claim (draft). */
@@ -417,8 +510,7 @@ export const createSessionClaimFn = createServerFn({ method: "POST" })
       status: "DRAFT" as const,
       source_schedule_import_id: null as string | null,
       source_event_fingerprint: "",
-      session_kind: "ad_hoc",
-      creation_source: "TUTOR_MANUAL" as const,
+      session_kind: "manual" as string | null,
     };
 
     const { data: inserted, error: insErr } = await supabase
@@ -428,7 +520,10 @@ export const createSessionClaimFn = createServerFn({ method: "POST" })
       .single();
 
     if (insErr) throw new Error(insErr.message);
-    return { claimId: inserted!.id as string };
+    return {
+      claimId: inserted!.id as string,
+      pendingAdminApproval: true as const,
+    };
   });
 
 export const upsertAttendanceCountsFn = createServerFn({ method: "POST" })
@@ -439,18 +534,14 @@ export const upsertAttendanceCountsFn = createServerFn({ method: "POST" })
 
     const { data: claimRow, error: cErr } = await supabase
       .from("session_claims")
-      .select("status, frozen_at")
+      .select("frozen_at")
       .eq("id", data.claimId)
       .eq("tutor_id", tutorId)
       .maybeSingle();
 
     if (cErr) throw new Error(cErr.message);
     if (!claimRow) throw new Error("Session not found.");
-    assertTutorCanEditClaim(
-      claimRow.status as ClaimStatus,
-      claimRow.frozen_at as string | null,
-      "update attendance for this session",
-    );
+    assertClaimNotFrozen(claimRow.frozen_at as string | null);
 
     const { error } = await supabase
       .from("session_claims")
@@ -511,11 +602,9 @@ export const listAttendanceEvidenceFn = createServerFn({ method: "POST" })
         const { data: signed, error: sErr } = await supabase.storage
           .from(BUCKET)
           .createSignedUrl(path, 3600);
-        if (!sErr && signed?.signedUrl) {
-          signedUrl = safeExternalHref(signed.signedUrl);
-        }
+        if (!sErr && signed?.signedUrl) signedUrl = signed.signedUrl;
       } else {
-        signedUrl = safeExternalHref(url);
+        signedUrl = url;
       }
       out.push({
         id: r.id as string,
@@ -546,18 +635,13 @@ export const registerAttendanceEvidenceFn = createServerFn({
 
     const { data: claim, error: cErr } = await supabase
       .from("session_claims")
-      .select("id, status, frozen_at")
+      .select("id")
       .eq("id", data.claimId)
       .eq("tutor_id", tutorId)
       .maybeSingle();
 
     if (cErr) throw new Error(cErr.message);
     if (!claim) throw new Error("Session not found.");
-    assertTutorCanEditClaim(
-      claim.status as ClaimStatus,
-      claim.frozen_at as string | null,
-      "upload evidence for this session",
-    );
 
     const safeName = data.fileName.replace(/[^\w.\-()+ ]/g, "_").slice(0, 200);
     const objectPath = `${tutorId}/${data.claimId}/${crypto.randomUUID()}_${safeName}`;
@@ -632,27 +716,9 @@ export const generateSessionTokenFn = createServerFn({ method: "POST" })
     const supabase = createSupabaseServerClient();
     const tutorId = await requireUserId(supabase);
 
-    const { data: claimRow, error: cErr } = await supabase
-      .from("session_claims")
-      .select("status, frozen_at, source_scheduled_session_id")
-      .eq("id", data.claimId)
-      .eq("tutor_id", tutorId)
-      .maybeSingle();
-
-    if (cErr) throw new Error(cErr.message);
-    if (!claimRow) throw new Error("Session not found.");
-    assertTutorCanEditClaim(
-      claimRow.status as ClaimStatus,
-      claimRow.frozen_at as string | null,
-      "generate a QR code for this session",
-    );
-
-    if (claimRow.source_scheduled_session_id) {
-      return ensureQrTokenForClaim(supabase, data.claimId);
-    }
-
     const expiresAt = new Date();
     expiresAt.setMinutes(expiresAt.getMinutes() + data.expiresInMinutes);
+
     const qr_token = crypto.randomUUID();
 
     const { error } = await supabase
@@ -668,41 +734,14 @@ export const generateSessionTokenFn = createServerFn({ method: "POST" })
     return { qr_token, qr_expires_at: expiresAt.toISOString() };
   });
 
-export type AttendanceRecordDTO = {
-  id: string;
-  student_id: string;
-  status: "PRESENT" | "LATE" | "ABSENT" | "EXCUSED";
-  check_in_time: string | null;
-  is_verified: boolean;
-  notes: string | null;
-  student: {
-    full_name: string;
-    email: string | null;
-    student_reference: string | null;
-  };
-};
-
-/** Get the detailed attendance roster for a session. */
-export const getAttendanceDataFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => z.object({ claimId: z.string().uuid() }).parse(input))
-  .handler(async ({ data }): Promise<AttendanceRecordDTO[]> => {
-    const supabase = createSupabaseServerClient();
-    const tutorId = await requireUserId(supabase);
-
-    // Verify ownership
-    const { data: claim, error: cErr } = await supabase
-      .from("session_claims")
-      .select("id")
-      .eq("id", data.claimId)
-      .eq("tutor_id", tutorId)
-      .maybeSingle();
-
-    if (cErr) throw new Error(cErr.message);
-    if (!claim) throw new Error("Session not found.");
-
-    const { data: rows, error } = await supabase
-      .from("session_attendance")
-      .select(`
+async function loadSessionAttendanceRecords(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  claimId: string,
+): Promise<AttendanceRecordDTO[]> {
+  const { data: rows, error } = await supabase
+    .from("session_attendance")
+    .select(
+      `
         id,
         student_id,
         status,
@@ -714,16 +753,46 @@ export const getAttendanceDataFn = createServerFn({ method: "POST" })
           email,
           student_reference
         )
-      `)
-      .eq("session_id", data.claimId)
-      .order("check_in_time", { ascending: false });
+      `,
+    )
+    .eq("session_id", claimId)
+    .order("check_in_time", { ascending: false });
 
-    if (error) throw new Error(error.message);
+  if (error) throw new Error(error.message);
 
-    return (rows ?? []).map((r: any) => ({
-      ...r,
-      student: Array.isArray(r.student) ? r.student[0] : r.student,
-    }));
+  return (rows ?? []).map((r) => {
+    const studentRaw = r.student;
+    const student = Array.isArray(studentRaw) ? studentRaw[0] : studentRaw;
+    return {
+      id: r.id as string,
+      student_id: r.student_id as string,
+      status: r.status as AttendanceRecordDTO["status"],
+      check_in_time: r.check_in_time as string | null,
+      is_verified: Boolean(r.is_verified),
+      notes: r.notes as string | null,
+      student: student as AttendanceRecordDTO["student"],
+    };
+  });
+}
+
+/** Get the detailed attendance roster for a session. */
+export const getAttendanceDataFn = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => z.object({ claimId: z.string().uuid() }).parse(input))
+  .handler(async ({ data }): Promise<AttendanceRecordDTO[]> => {
+    const supabase = createSupabaseServerClient();
+    const tutorId = await requireUserId(supabase);
+
+    const { data: claim, error: cErr } = await supabase
+      .from("session_claims")
+      .select("id")
+      .eq("id", data.claimId)
+      .eq("tutor_id", tutorId)
+      .maybeSingle();
+
+    if (cErr) throw new Error(cErr.message);
+    if (!claim) throw new Error("Session not found.");
+
+    return loadSessionAttendanceRecords(supabase, data.claimId);
   });
 
 /** Get aggregate attendance trends. */
@@ -869,11 +938,21 @@ export const getClaimDetailsFn = createServerFn({
         topics_covered,
         coverage_validated_at,
         submitted_at,
+        source_scheduled_session_id,
+        source_schedule_import_id,
+        admin_creation_approved_at,
+        admin_creation_approved_by,
         session_kind,
         attendance_present_count,
         attendance_expected_count,
         qr_token,
         qr_expires_at,
+        tutor:users!session_claims_tutor_id_fkey ( id, full_name, email ),
+        approver:users!session_claims_admin_creation_approved_by_fkey (
+          id,
+          full_name,
+          email
+        ),
         module:modules (
           id,
           code,
@@ -936,27 +1015,92 @@ export const getClaimDetailsFn = createServerFn({
 
     if (hErr) throw new Error(hErr.message);
 
-    const history: VerificationActionDTO[] = (historyRows ?? []).map(
-      (r: any) => ({
-        id: r.id,
-        claim_id: r.claim_id,
-        actor_id: r.actor_id,
-        action_type: r.action_type,
-        from_status: r.from_status,
-        to_status: r.to_status,
-        comment: r.comment,
-        acted_at: r.acted_at,
-        actor: Array.isArray(r.actor) ? r.actor[0] : r.actor,
-      }),
+    const storedHistory: WorkflowTimelineEntry[] = (historyRows ?? []).map(
+      (r: {
+        id: string;
+        claim_id: string;
+        actor_id: string;
+        action_type: string;
+        from_status: string | null;
+        to_status: string | null;
+        comment: string | null;
+        acted_at: string;
+        actor: VerificationActionDTO["actor"] | VerificationActionDTO["actor"][];
+      }) => {
+        const actor = Array.isArray(r.actor) ? r.actor[0] : r.actor;
+        return {
+          id: r.id,
+          claim_id: r.claim_id,
+          actor_id: r.actor_id,
+          actor,
+          action_type: r.action_type,
+          from_status: r.from_status as ClaimStatus,
+          to_status: r.to_status as ClaimStatus,
+          comment: r.comment,
+          acted_at: r.acted_at,
+        };
+      },
     );
 
-    const mapped = mapClaimRow(claimRow as any, evidence.length);
+    const row = claimRow as {
+      submitted_at: string | null;
+      admin_creation_approved_at: string | null;
+      source_scheduled_session_id: string | null;
+      source_schedule_import_id: string | null;
+      tutor:
+        | { id: string; full_name: string; email: string }
+        | { id: string; full_name: string; email: string }[]
+        | null;
+      approver:
+        | { id: string; full_name: string; email: string }
+        | { id: string; full_name: string; email: string }[]
+        | null;
+    };
+
+    const tutorRaw = row.tutor;
+    const tutorActor = Array.isArray(tutorRaw) ? tutorRaw[0] : tutorRaw;
+    const approverRaw = row.approver;
+    const approverActor = Array.isArray(approverRaw)
+      ? approverRaw[0]
+      : approverRaw;
+
+    const history = buildClaimWorkflowTimeline({
+      claimId: data.claimId,
+      tutorId,
+      tutorActor: tutorActor
+        ? {
+            id: tutorActor.id,
+            full_name: tutorActor.full_name,
+            email: tutorActor.email,
+          }
+        : null,
+      submittedAt: row.submitted_at,
+      adminCreationApprovedAt: row.admin_creation_approved_at,
+      adminCreationApprover: approverActor
+        ? {
+            id: approverActor.id,
+            full_name: approverActor.full_name,
+            email: approverActor.email,
+          }
+        : null,
+      isManualSession: isTutorManualSessionClaim({
+        source_scheduled_session_id: row.source_scheduled_session_id,
+        source_schedule_import_id: row.source_schedule_import_id,
+      }),
+      stored: storedHistory,
+    });
+
+    const attendance_records = await loadSessionAttendanceRecords(
+      supabase,
+      data.claimId,
+    );
+
+    const mapped = mapClaimRow(claimRow as RawClaim, evidence.length);
 
     return {
       ...mapped,
       evidence,
+      attendance_records,
       history,
     };
   });
-
-export { listTutorOperationalSessionsFn } from "./list-operational-sessions";
