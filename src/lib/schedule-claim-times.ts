@@ -34,3 +34,33 @@ export function scheduleClaimTimesFromTimestamps(
 } {
   return scheduleClaimTimesFromIso(startsAt.toISOString(), endsAt.toISOString());
 }
+
+/** Prefer linked schedule timestamps when present (kanban, live/urgent). */
+export function claimEffectiveTimes(claim: {
+  session_date: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  scheduled_starts_at?: string | null;
+  scheduled_ends_at?: string | null;
+}): { session_date: string; start: string; end: string } {
+  if (claim.scheduled_starts_at && claim.scheduled_ends_at) {
+    try {
+      const t = scheduleClaimTimesFromIso(
+        claim.scheduled_starts_at,
+        claim.scheduled_ends_at,
+      );
+      return {
+        session_date: t.session_date,
+        start: t.start_time,
+        end: t.end_time,
+      };
+    } catch {
+      /* use claim columns */
+    }
+  }
+  return {
+    session_date: claim.session_date,
+    start: claim.start_time ?? "09:00",
+    end: claim.end_time ?? "10:00",
+  };
+}

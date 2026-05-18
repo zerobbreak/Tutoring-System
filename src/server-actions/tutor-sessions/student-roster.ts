@@ -1,5 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isAfter, parseISO } from "date-fns";
+import {
+  isAttendanceLocked,
+  isWithinQrWindow,
+  qrWindowForScheduledSession,
+} from "#/lib/session-qr-window";
 
 export type StudentRosterInput = {
   fullName: string;
@@ -181,17 +186,116 @@ export async function assertValidQrSession(
 ): Promise<void> {
   const { data: claim, error } = await db
     .from("session_claims")
-    .select("id, qr_token, qr_expires_at")
+    .select(
+      `
+      id,
+      qr_token,
+      qr_expires_at,
+      attendance_locked_at,
+      session_date,
+      start_time,
+      end_time,
+      source_scheduled_session_id,
+      scheduled:scheduled_sessions ( starts_at, ends_at, status )
+    `,
+    )
     .eq("id", sessionId)
+    .is("deleted_at", null)
     .maybeSingle();
 
   if (error) throw new Error(error.message);
   if (!claim) throw new Error("Session not found.");
+
+  if (claim.attendance_locked_at) {
+    throw new Error("Attendance is locked for this session.");
+  }
+
+  const scheduled = claim.scheduled as {
+    starts_at: string;
+    ends_at: string;
+    status: string;
+  } | null;
+
+  if (scheduled?.status === "CANCELLED") {
+    throw new Error("This session was cancelled.");
+  }
+
+  let bounds: { startsAt: string; endsAt: string } | null = null;
+  if (scheduled?.starts_at && scheduled?.ends_at) {
+    bounds = { startsAt: scheduled.starts_at, endsAt: scheduled.ends_at };
+  } else if (claim.session_date && claim.start_time && claim.end_time) {
+    bounds = {
+      startsAt: `${claim.session_date}T${claim.start_time}`,
+      endsAt: `${claim.session_date}T${claim.end_time}`,
+    };
+  }
+
+  if (bounds && isAttendanceLocked(bounds)) {
+    throw new Error("Attendance is locked for this session.");
+  }
+
   if (claim.qr_token !== token) throw new Error("Invalid QR token.");
+
+  if (bounds) {
+    if (!isWithinQrWindow(bounds)) {
+      throw new Error("QR check-in is not open for this session.");
+    }
+    return;
+  }
+
   if (
     claim.qr_expires_at &&
     isAfter(new Date(), parseISO(claim.qr_expires_at as string))
   ) {
     throw new Error("QR token has expired.");
   }
+}
+
+/** Ensure QR token exists with expiry aligned to scheduled session window. */
+export async function ensureQrTokenForClaim(
+  db: SupabaseClient,
+  claimId: string,
+): Promise<{ qr_token: string; qr_expires_at: string }> {
+  const { data: claim, error } = await db
+    .from("session_claims")
+    .select(
+      `
+      id,
+      qr_token,
+      qr_expires_at,
+      source_scheduled_session_id,
+      session_date,
+      start_time,
+      end_time,
+      scheduled:scheduled_sessions ( starts_at, ends_at )
+    `,
+    )
+    .eq("id", claimId)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!claim) throw new Error("Session not found.");
+
+  const scheduled = claim.scheduled as { starts_at: string; ends_at: string } | null;
+  let expiresAt: Date;
+  if (scheduled?.starts_at && scheduled?.ends_at) {
+    expiresAt = qrWindowForScheduledSession({
+      startsAt: scheduled.starts_at,
+      endsAt: scheduled.ends_at,
+    }).validUntil;
+  } else {
+    expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 30);
+  }
+
+  const qr_token = (claim.qr_token as string | null) ?? crypto.randomUUID();
+  const qr_expires_at = expiresAt.toISOString();
+
+  const { error: upErr } = await db
+    .from("session_claims")
+    .update({ qr_token, qr_expires_at })
+    .eq("id", claimId);
+
+  if (upErr) throw new Error(upErr.message);
+  return { qr_token, qr_expires_at };
 }

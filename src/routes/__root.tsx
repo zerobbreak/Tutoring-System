@@ -6,9 +6,7 @@ import {
   useLocation,
   useRouter,
 } from "@tanstack/react-router";
-import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
-import { TanStackDevtools } from "@tanstack/react-devtools";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { UserNav } from "../components/user-nav";
 import { Toaster } from "../components/ui/sonner";
@@ -16,6 +14,14 @@ import { Toaster } from "../components/ui/sonner";
 import appCss from "../styles.css?url";
 
 import { getCurrentUserFn } from "../lib/auth-server";
+
+const AppDevtools = import.meta.env.DEV
+  ? lazy(() =>
+      import("#/components/app-devtools").then((m) => ({
+        default: m.AppDevtools,
+      })),
+    )
+  : null;
 import { getPostAuthDashboardPath } from "../lib/user-role";
 
 export const Route = createRootRoute({
@@ -152,17 +158,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           {children}
         </main>
         <Toaster richColors closeButton />
-        <TanStackDevtools
-          config={{
-            position: "bottom-right",
-          }}
-          plugins={[
-            {
-              name: "Tanstack Router",
-              render: <TanStackRouterDevtoolsPanel />,
-            },
-          ]}
-        />
+        {AppDevtools ? (
+          <Suspense fallback={null}>
+            <AppDevtools />
+          </Suspense>
+        ) : null}
         <Scripts />
       </body>
     </html>

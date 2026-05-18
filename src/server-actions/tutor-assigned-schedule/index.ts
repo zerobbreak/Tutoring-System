@@ -2,6 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { formatTimeRange } from "#/lib/schedule-display";
+import {
+  extendSeriesHorizon,
+  needsHorizonExtension,
+} from "#/lib/schedule-materialize";
 import { ensureClaimForScheduledSession } from "#/server-actions/lecturer-schedule/ensure-claim-for-session";
 
 const rangeSchema = z.object({
@@ -32,6 +36,24 @@ export const listTutorAssignedScheduleFn = createServerFn({ method: "GET" })
       error: authErr,
     } = await supabase.auth.getUser();
     if (authErr || !user) throw new Error("Unauthorized");
+
+    const { data: tutorSeries, error: seriesErr } = await supabase
+      .from("schedule_series")
+      .select("id, materialized_until")
+      .eq("tutor_id", user.id)
+      .eq("status", "PUBLISHED")
+      .is("deleted_at", null);
+
+    if (seriesErr) throw new Error(seriesErr.message);
+    for (const s of tutorSeries ?? []) {
+      if (needsHorizonExtension(s.materialized_until as string | null)) {
+        try {
+          await extendSeriesHorizon(supabase, s.id as string);
+        } catch {
+          /* best-effort horizon extend */
+        }
+      }
+    }
 
     const { data: sessions, error: sessErr } = await supabase
       .from("scheduled_sessions")
@@ -64,7 +86,8 @@ export const listTutorAssignedScheduleFn = createServerFn({ method: "GET" })
       const { data: claims, error: claimErr } = await supabase
         .from("session_claims")
         .select("id, source_scheduled_session_id")
-        .in("source_scheduled_session_id", sessionIds);
+        .in("source_scheduled_session_id", sessionIds)
+        .is("deleted_at", null);
 
       if (claimErr) throw new Error(claimErr.message);
       for (const c of claims ?? []) {

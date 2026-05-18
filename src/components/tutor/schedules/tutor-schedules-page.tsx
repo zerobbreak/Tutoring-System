@@ -2,13 +2,10 @@ import { useNavigate } from "@tanstack/react-router";
 import type { ModifiersClassNames } from "react-day-picker";
 import {
   Calendar as CalendarIcon,
-  Download,
-  FileSpreadsheet,
+  ClipboardList,
   Info,
   Loader2,
-  NotebookPen,
   Plus,
-  Upload,
   X,
 } from "lucide-react";
 import { cn } from "#/lib/utils";
@@ -43,6 +40,7 @@ import {
 import { supabase } from "#/lib/supabase";
 import { toast } from "#/lib/toast";
 import { TutorAssignedSchedulePanel } from "#/components/tutor/schedules/tutor-assigned-schedule-panel";
+import { TutorScheduleUploadZone } from "#/components/tutor/schedules/tutor-schedule-upload-zone";
 
 const SAMPLE_CSV = `Title,Start,End,Module code,Room,Type
 Meridian hour,2026-02-16T12:00:00,2026-02-16T12:50:00,,LR 07,Other
@@ -207,14 +205,14 @@ export function TutorSchedulesPage() {
   const scheduleEventRowKey = (ev: ScheduleParsedEvent, idx: number) =>
     `${ev.importSourceId ?? ""}-${ev.start}-${ev.title}-${idx}`;
 
-  const openSessionNotes = useCallback(
+  const openSessionWorkspace = useCallback(
     async (ev: ScheduleParsedEvent, idx: number) => {
       if (!ev.importSourceId) {
         toast.error("This row is not linked to a saved import.");
         return;
       }
       if (!ev.moduleCode?.trim()) {
-        toast.error("Add a module code for this row to open session notes.");
+        toast.error("Add a module code to manage this session.");
         return;
       }
       const key = scheduleEventRowKey(ev, idx);
@@ -232,12 +230,12 @@ export function TutorSchedulesPage() {
           },
         });
         navigate({
-          to: "/tutor/notes",
-          search: { claim: claimId, focus: Date.now() },
+          to: "/tutor/sessions",
+          search: { claim: claimId },
         });
       } catch (e) {
         toast.error(
-          e instanceof Error ? e.message : "Could not open session notes",
+          e instanceof Error ? e.message : "Could not open session",
         );
       } finally {
         setLinkingRowKey(null);
@@ -356,64 +354,28 @@ export function TutorSchedulesPage() {
 
   if (!showResults) {
     return (
-      <div className="flex flex-1 items-center justify-center p-6 md:p-12">
-        <input
-          ref={inputRef}
-          type="file"
-          accept=".csv,.xlsx,.xls"
-          className="sr-only"
-          onChange={onPickFile}
-        />
-        <div className="w-full max-w-2xl text-center">
-          <div className="mb-8 flex justify-center">
-            <div className="relative">
-              <div className="absolute inset-0 animate-pulse rounded-full bg-(--lagoon)/20 blur-2xl" />
-              <div className="relative flex size-24 items-center justify-center rounded-3xl border-2 border-dashed border-(--lagoon) bg-white/50 shadow-inner backdrop-blur-sm">
-                {loadingSaved || busy ? (
-                  <Loader2 className="size-12 animate-spin text-(--lagoon-deep)" />
-                ) : (
-                  <FileSpreadsheet className="size-12 text-(--lagoon-deep)" />
-                )}
-              </div>
-            </div>
-          </div>
-          <h1 className="display-title mb-3 text-4xl font-bold tracking-tight text-(--sea-ink)">
-            Upload Your Schedule
+      <div className="flex flex-1 flex-col gap-8 overflow-y-auto p-6 md:p-10">
+        <div className="mx-auto w-full max-w-2xl space-y-3 text-center">
+          <h1 className="display-title text-3xl font-bold tracking-tight text-(--sea-ink) md:text-4xl">
+            Timetable & sessions
           </h1>
-          <p className="mx-auto mb-10 max-w-md text-lg text-(--sea-ink-soft)">
-            Import your tutorial timetable from a spreadsheet. You can add more
-            files later — each import merges into the same calendar so multiple
-            modules or campuses stay in one view. Successful imports are{" "}
-            <span className="font-medium text-(--sea-ink)">
-              saved to your account
-            </span>{" "}
-            so they reappear when you return.
+          <p className="mx-auto max-w-lg text-base text-(--sea-ink-soft)">
+            Import your tutorial timetable, then manage attendance and claims
+            from{" "}
+            <span className="font-medium text-(--sea-ink)">Sessions</span>.
+            Imports are saved to your account and merge into one calendar.
           </p>
-          <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-            <Button
-              size="lg"
-              className="h-14 min-w-50 gap-3 rounded-2xl text-lg shadow-lg"
-              disabled={busy || loadingSaved}
-              onClick={() => inputRef.current?.click()}
-            >
-              <Upload className="size-5" />
-              {loadingSaved
-                ? "Loading…"
-                : busy
-                  ? "Parsing…"
-                  : "Select Spreadsheet"}
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="h-14 min-w-50 gap-3 rounded-2xl border-border/60 bg-white/50 backdrop-blur-sm"
-              disabled={busy || loadingSaved}
-              onClick={downloadSample}
-            >
-              <Download className="size-5" />
-              Sample CSV
-            </Button>
-          </div>
+        </div>
+        <div className="mx-auto flex w-full max-w-2xl justify-center">
+          <TutorScheduleUploadZone
+            busy={busy}
+            loadingSaved={loadingSaved}
+            onFile={(f) => void runParse(f)}
+            onSampleDownload={downloadSample}
+          />
+        </div>
+        <div className="mx-auto w-full max-w-3xl">
+          <TutorAssignedSchedulePanel />
         </div>
       </div>
     );
@@ -653,7 +615,7 @@ export function TutorSchedulesPage() {
             <ul className="list-none space-y-8">
               {selectedDayEvents.map((ev: ScheduleParsedEvent, idx: number) => {
                 const rowKey = scheduleEventRowKey(ev, idx);
-                const canNotes =
+                const canManage =
                   !!ev.importSourceId?.trim() && !!ev.moduleCode?.trim();
                 return (
                   <li key={rowKey}>
@@ -667,15 +629,15 @@ export function TutorSchedulesPage() {
                           variant="ghost"
                           size="sm"
                           className="h-7 shrink-0 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
-                          disabled={!canNotes || linkingRowKey === rowKey}
+                          disabled={!canManage || linkingRowKey === rowKey}
                           title={
-                            canNotes
-                              ? "Open session notes for this slot"
+                            canManage
+                              ? "Open session workspace"
                               : !ev.moduleCode?.trim()
                                 ? "Module code required"
                                 : "Save import required"
                           }
-                          onClick={() => void openSessionNotes(ev, idx)}
+                          onClick={() => void openSessionWorkspace(ev, idx)}
                         >
                           {linkingRowKey === rowKey ? (
                             <Loader2
@@ -683,9 +645,9 @@ export function TutorSchedulesPage() {
                               aria-hidden
                             />
                           ) : (
-                            <NotebookPen className="size-3.5" aria-hidden />
+                            <ClipboardList className="size-3.5" aria-hidden />
                           )}
-                          <span className="hidden sm:inline">Notes</span>
+                          <span className="hidden sm:inline">Manage</span>
                         </Button>
                         <time className="shrink-0 text-xs tabular-nums text-muted-foreground md:text-sm">
                           {formatTimeRange(ev.start, ev.end)}

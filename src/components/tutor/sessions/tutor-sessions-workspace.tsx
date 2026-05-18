@@ -24,6 +24,7 @@ import {
   ChevronRight,
   CircleDot,
   ClipboardList,
+  FileSpreadsheet,
   GripVertical,
   LayoutGrid,
   Loader2,
@@ -76,12 +77,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "#/components/ui/tooltip";
+import { claimSourceLabel } from "#/lib/claim-session-source-label";
+import { claimEffectiveTimes } from "#/lib/schedule-claim-times";
 import {
   sessionBoundsLocal,
   sessionKanbanColumn,
   type ClaimStatus,
   type SessionKanbanColumnId,
 } from "#/lib/session-kanban-column";
+import { TutorOfficialSessionsStrip } from "#/components/tutor/sessions/tutor-official-sessions-strip";
 import { fileToBase64 } from "#/lib/file-base64";
 import {
   claimBadgeLabel,
@@ -91,12 +95,13 @@ import {
 import { StepUpMfaDialog } from "#/components/workflow/step-up-mfa-dialog";
 import { canTutorReopenClaim } from "#/lib/claim-workflow/tutor-editable";
 import { toast } from "#/lib/toast";
+import { safeExternalHref } from "#/lib/safe-external-href";
 import { cn } from "#/lib/utils";
 import {
   createSessionClaimFn,
   listAttendanceEvidenceFn,
   listTutorModuleAssignmentsFn,
-  listTutorSessionClaimsFn,
+  listTutorOperationalSessionsFn,
   registerAttendanceEvidenceFn,
   reopenSessionClaimFn,
   submitSessionClaimFn,
@@ -105,6 +110,14 @@ import {
 } from "#/server-actions/tutor-sessions";
 
 const DROP_PREFIX = "kanban-drop:";
+
+const DEFAULT_STATUS_FILTERS: ClaimStatus[] = [
+  "DRAFT",
+  "PENDING_VERIFICATION",
+  "VERIFIED",
+  "DISPUTED",
+  "REJECTED",
+];
 
 const ALL_STATUSES: ClaimStatus[] = [
   "DRAFT",
@@ -212,16 +225,14 @@ function claimStatusRail(status: ClaimStatus): string {
 }
 
 function claimTimes(claim: TutorSessionClaimDTO) {
-  return {
-    start: claim.start_time ?? "09:00",
-    end: claim.end_time ?? "10:00",
-  };
+  const t = claimEffectiveTimes(claim);
+  return { start: t.start, end: t.end, session_date: t.session_date };
 }
 
 function isSessionLive(claim: TutorSessionClaimDTO, now: Date): boolean {
   const times = claimTimes(claim);
   const { start, end } = sessionBoundsLocal(
-    claim.session_date,
+    times.session_date,
     times.start,
     times.end,
   );
@@ -232,7 +243,7 @@ function isSessionUrgent(claim: TutorSessionClaimDTO, now: Date): boolean {
   if (claim.status === "DISPUTED" || claim.status === "REJECTED") return true;
   const times = claimTimes(claim);
   const { start } = sessionBoundsLocal(
-    claim.session_date,
+    times.session_date,
     times.start,
     times.end,
   );
@@ -405,6 +416,8 @@ function DraggableSessionCard({
   const progressPct = Math.round(progressRatio * 100);
   const live = isSessionLive(claim, now);
   const urgent = isSessionUrgent(claim, now);
+  const sourceLabel = claimSourceLabel(claim);
+  const times = claimTimes(claim);
 
   return (
     <motion.div
@@ -466,16 +479,21 @@ function DraggableSessionCard({
                     {mod.code}
                   </span>
                 ) : null}
+                {sourceLabel ? (
+                  <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                    {sourceLabel}
+                  </Badge>
+                ) : null}
               </div>
               <CardTitle className="line-clamp-2 text-sm leading-snug font-semibold">
                 {mod?.name ?? "Unknown module"}
               </CardTitle>
               <p className="mt-1 text-xs text-muted-foreground">
                 <span className="font-medium text-foreground/80">
-                  {format(parseISO(`${claim.session_date}T12:00:00`), "EEE d MMM")}
+                  {format(parseISO(`${times.session_date}T12:00:00`), "EEE d MMM")}
                 </span>
                 {" · "}
-                {formatClock(claim.start_time)}–{formatClock(claim.end_time)}
+                {formatClock(times.start)}–{formatClock(times.end)}
                 {claim.venue ? (
                   <span className="text-muted-foreground"> · {claim.venue}</span>
                 ) : null}
@@ -626,7 +644,7 @@ export function TutorSessionsWorkspace({
   const [datePickOpen, setDatePickOpen] = useState(false);
   const [datePickTemp, setDatePickTemp] = useState<Date | undefined>(undefined);
   const [statusFilters, setStatusFilters] = useState<Set<ClaimStatus>>(
-    () => new Set(ALL_STATUSES),
+    () => new Set(DEFAULT_STATUS_FILTERS),
   );
   const [calendarMonth, setCalendarMonth] = useState(() => startOfDay(new Date()));
 
@@ -691,7 +709,7 @@ export function TutorSessionsWorkspace({
   const reload = useCallback(async () => {
     setLoading(true);
     try {
-      const rows = await listTutorSessionClaimsFn();
+      const rows = await listTutorOperationalSessionsFn();
       setClaims(rows);
     } catch (e) {
       toast.error(
@@ -742,7 +760,10 @@ export function TutorSessionsWorkspace({
     return claims.filter((c) => {
       if (!statusFilters.has(c.status)) return false;
       if (moduleFilter !== "all" && c.module_id !== moduleFilter) return false;
-      if (dateFilter && c.session_date !== format(dateFilter, "yyyy-MM-dd"))
+      if (
+        dateFilter &&
+        claimEffectiveTimes(c).session_date !== format(dateFilter, "yyyy-MM-dd")
+      )
         return false;
       if (!q) return true;
       const blob = [
@@ -769,7 +790,7 @@ export function TutorSessionsWorkspace({
       const times = claimTimes(c);
       const col = sessionKanbanColumn(
         now,
-        c.session_date,
+        times.session_date,
         times.start,
         times.end,
         c.status,
@@ -777,8 +798,10 @@ export function TutorSessionsWorkspace({
       buckets[col].push(c);
     }
     const sortFn = (a: TutorSessionClaimDTO, b: TutorSessionClaimDTO) => {
-      const da = `${a.session_date}T${formatClock(a.start_time)}:00`;
-      const db = `${b.session_date}T${formatClock(b.start_time)}:00`;
+      const ta = claimTimes(a);
+      const tb = claimTimes(b);
+      const da = `${ta.session_date}T${formatClock(ta.start)}:00`;
+      const db = `${tb.session_date}T${formatClock(tb.start)}:00`;
       return da.localeCompare(db);
     };
     for (const k of Object.keys(buckets) as SessionKanbanColumnId[]) {
@@ -801,7 +824,7 @@ export function TutorSessionsWorkspace({
           const times = claimTimes(c);
           return sessionKanbanColumn(
             now,
-            c.session_date,
+            times.session_date,
             times.start,
             times.end,
             c.status,
@@ -893,16 +916,26 @@ export function TutorSessionsWorkspace({
                 <Video className="size-7 text-lagoon-deep" aria-hidden />
                 <div>
                   <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-                    Sessions workspace
+                    Sessions
                   </h1>
                   <p className="max-w-2xl text-sm text-muted-foreground">
-                    Operational hub for live teaching: attendance, claims, registers,
-                    and quick hand-offs to notes or messaging.
+                    One place for official timetable slots, imports, and ad-hoc
+                    tutorials: attendance, registers, claims, and notes.
                   </p>
                 </div>
               </div>
             </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" className="gap-1.5" asChild>
+                <Link to="/tutor/schedules">
+                  <FileSpreadsheet className="size-4" />
+                  Import timetable
+                </Link>
+              </Button>
+            </div>
           </header>
+
+          <TutorOfficialSessionsStrip />
 
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="relative max-w-md flex-1">
@@ -1179,6 +1212,14 @@ export function TutorSessionsWorkspace({
                                       }
                                     }}
                                     onSubmit={() => {
+                                      const hasAttendance =
+                                        (c.attendance_present_count ?? 0) > 0;
+                                      if (!hasAttendance && c.evidenceCount === 0) {
+                                        toast.error(
+                                          "Add attendance or upload a register before submitting.",
+                                        );
+                                        return;
+                                      }
                                       setSubmitClaim(c);
                                       setSubmitOpen(true);
                                     }}
@@ -1235,7 +1276,7 @@ export function TutorSessionsWorkspace({
                     </CardTitle>
                     <CardDescription>
                       {dateFilter
-                        ? `${filteredClaims.filter((c) => c.session_date === format(dateFilter, "yyyy-MM-dd")).length} session(s) match filters.`
+                        ? `${filteredClaims.filter((c) => claimEffectiveTimes(c).session_date === format(dateFilter, "yyyy-MM-dd")).length} session(s) match filters.`
                         : "Select a date on the calendar."}
                     </CardDescription>
                   </CardHeader>
@@ -1244,9 +1285,12 @@ export function TutorSessionsWorkspace({
                       filteredClaims
                         .filter(
                           (c) =>
-                            c.session_date === format(dateFilter, "yyyy-MM-dd"),
+                            claimEffectiveTimes(c).session_date ===
+                            format(dateFilter, "yyyy-MM-dd"),
                         )
-                        .map((c) => (
+                        .map((c) => {
+                          const times = claimTimes(c);
+                          return (
                           <button
                             key={c.id}
                             type="button"
@@ -1254,13 +1298,14 @@ export function TutorSessionsWorkspace({
                             className="flex w-full items-center justify-between rounded-lg border border-border/60 bg-card/80 px-3 py-2 text-left text-sm shadow-xs transition hover:bg-muted/40"
                           >
                             <span className="font-medium">
-                              {c.module?.code} · {formatClock(c.start_time)}
+                              {c.module?.code} · {formatClock(times.start)}
                             </span>
                             <Badge variant={claimBadgeVariant(c.status)}>
                               {claimBadgeLabel(c.status)}
                             </Badge>
                           </button>
-                        ))
+                          );
+                        })
                     ) : (
                       <p className="text-sm text-muted-foreground">
                         Choose a day to list sessions.
@@ -1271,6 +1316,25 @@ export function TutorSessionsWorkspace({
               </div>
             </TabsContent>
           </Tabs>
+
+          {!loading && filteredClaims.length === 0 ? (
+            <Card className="border-dashed bg-muted/20">
+              <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No sessions match your filters. Import a timetable or create an
+                  ad-hoc session to get started.
+                </p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/tutor/schedules">Import timetable</Link>
+                  </Button>
+                  <Button size="sm" onClick={() => setCreateOpen(true)}>
+                    Create session
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : null}
 
           <Button
             type="button"
@@ -1468,21 +1532,28 @@ export function TutorSessionsWorkspace({
               <ScrollArea className="max-h-64 pr-4">
                 <div className="space-y-2 text-sm">
                 {attendanceRows?.length ? (
-                  attendanceRows.map((r) => (
+                  attendanceRows.map((r) => {
+                    const evidenceHref = safeExternalHref(r.signedUrl);
+                    return (
                     <div
                       key={r.id}
                       className="flex items-center justify-between gap-2 rounded-md border px-2 py-1.5"
                     >
                       <span className="truncate">{r.original_filename}</span>
-                      {r.signedUrl ? (
+                      {evidenceHref ? (
                         <Button variant="link" size="sm" asChild>
-                          <a href={r.signedUrl} target="_blank" rel="noreferrer">
+                          <a
+                            href={evidenceHref}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
                             Open
                           </a>
                         </Button>
                       ) : null}
                     </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <p className="text-muted-foreground">No files uploaded yet.</p>
                 )}

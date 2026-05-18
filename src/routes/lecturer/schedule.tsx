@@ -8,6 +8,7 @@ import { toast } from "#/lib/toast";
 import {
   archiveScheduleSeriesFn,
   assignTutorToModuleFn,
+  createOneOffScheduleSeriesFn,
   createScheduleSeriesFn,
   deleteScheduleSeriesFn,
   getLecturerSchedulePageDataFn,
@@ -111,6 +112,48 @@ function SchedulePage() {
     }
   };
 
+  const handleCreateOneOff = async (values: {
+    moduleId: string;
+    title: string;
+    tutorId: string;
+    venueId: string | null;
+    venueText: string;
+    dtstartLocal: string;
+    durationMinutes: number;
+    sessionKind: string;
+  }) => {
+    setFormBusy(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      await assignTutorToModuleFn({
+        data: {
+          moduleId: values.moduleId,
+          tutorId: values.tutorId,
+          startDate: today,
+        },
+      });
+      const { sessionCount } = await createOneOffScheduleSeriesFn({
+        data: {
+          moduleId: values.moduleId,
+          title: values.title,
+          tutorId: values.tutorId,
+          venueId: values.venueId,
+          venueText: values.venueText || null,
+          dtstart: new Date(values.dtstartLocal).toISOString(),
+          durationMinutes: values.durationMinutes,
+          sessionKind: values.sessionKind,
+        },
+      });
+      toast.success(`Published one-off session (${sessionCount} occurrence).`);
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not create session");
+      throw e;
+    } finally {
+      setFormBusy(false);
+    }
+  };
+
   const handlePublishSeries = async (seriesId: string) => {
     setFormBusy(true);
     try {
@@ -195,6 +238,7 @@ function SchedulePage() {
       onFocusDateChange={setFocusDate}
       onReload={load}
       onCreateSeries={handleCreateSeries}
+      onCreateOneOff={handleCreateOneOff}
       onPublishSeries={handlePublishSeries}
       onDeleteSeries={handleDeleteSeries}
       onArchiveSeries={handleArchiveSeries}

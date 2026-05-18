@@ -833,19 +833,22 @@ async function buildScheduleUtilization(
     return scheduleUtilizationColumns([]);
   }
 
+  const rangeStart = `${ctx.dateFrom}T00:00:00.000Z`;
+  const rangeEnd = `${ctx.dateTo}T23:59:59.999Z`;
+
   const { data: sessions, error } = await supabase
     .from("scheduled_sessions")
     .select(
       `
       id,
-      session_date,
+      starts_at,
       status,
       module:modules ( code )
     `,
     )
     .in("module_id", ctx.moduleIds)
-    .gte("session_date", ctx.dateFrom)
-    .lte("session_date", ctx.dateTo);
+    .gte("starts_at", rangeStart)
+    .lte("starts_at", rangeEnd);
 
   if (error) throw new Error(error.message);
 
@@ -925,17 +928,28 @@ async function buildAttendanceIntegrity(
       evidenceClaimIds.add(e.claim_id as string);
     }
 
-    const { data: attendance } = await supabase
-      .from("session_attendance")
-      .select("session_id, status")
-      .in("session_id", claimIds);
+    const [{ data: attendance }, { data: unverifiedRows }] = await Promise.all([
+      supabase
+        .from("session_attendance")
+        .select("session_id")
+        .in("session_id", claimIds)
+        .is("deleted_at", null),
+      supabase
+        .from("session_attendance")
+        .select("session_id")
+        .in("session_id", claimIds)
+        .eq("is_verified", false)
+        .is("deleted_at", null),
+    ]);
 
     for (const row of attendance ?? []) {
       const cid = row.session_id as string;
       scanCountByClaim.set(cid, (scanCountByClaim.get(cid) ?? 0) + 1);
-      if (row.status === "PENDING") {
-        unverifiedByClaim.set(cid, (unverifiedByClaim.get(cid) ?? 0) + 1);
-      }
+    }
+
+    for (const row of unverifiedRows ?? []) {
+      const cid = row.session_id as string;
+      unverifiedByClaim.set(cid, (unverifiedByClaim.get(cid) ?? 0) + 1);
     }
   }
 

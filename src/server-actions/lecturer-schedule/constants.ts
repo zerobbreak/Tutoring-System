@@ -44,6 +44,7 @@ export const SERIES_SELECT = `
   recurrence_json,
   status,
   published_at,
+  materialized_until,
   module:modules!schedule_series_module_id_fkey (
     code
   ),

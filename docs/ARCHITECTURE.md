@@ -309,10 +309,12 @@ erDiagram
 ### Official schedule (lecturer / admin)
 
 1. **`schedule_series`** — Recurring rule (`recurrence_json`), tutor, venue, status: `DRAFT` → `PUBLISHED` → `ARCHIVED`.
-2. **`scheduled_sessions`** — Materialized occurrences (`SCHEDULED`, `CANCELLED`, `RESCHEDULED`).
-3. **`session_claims`** — Linked via `source_scheduled_session_id` when a tutor runs a session.
+2. **`scheduled_sessions`** — Materialized occurrences (`SCHEDULED`, `CANCELLED`, `RESCHEDULED`). Incremental upsert via `src/lib/schedule-materialize.ts` (no delete-and-reinsert on republish).
+3. **`session_claims`** — Linked via `source_scheduled_session_id`; auto-created in **DRAFT** on publish (`ensureClaimForScheduledSession`).
 
-Lifecycle helpers: `src/server-actions/lecturer-schedule/series-lifecycle.ts` (delete draft, archive published + cancel upcoming sessions).
+`schedule_series.materialized_until` tracks the rolling horizon. Lazy extend on schedule loaders; optional cron via `runSessionAutomationCronFn` (`CRON_SECRET`).
+
+Lifecycle helpers: `src/server-actions/lecturer-schedule/series-lifecycle.ts` (delete draft, archive published + cancel upcoming sessions). Lecturer **one-off** sessions: `createOneOffScheduleSeriesFn`.
 
 ### Tutor timetable import
 
@@ -360,7 +362,9 @@ stateDiagram-v2
 | `APPROVED` | — | Included in `payroll_exports` |
 | `DISPUTED` / `REJECTED` | Lecturer / tutor | Resolution via verification and messaging |
 
-Display helpers: `src/lib/session-claim-display.ts`. Tutor Kanban columns: `src/lib/session-kanban-column.ts`.
+Display helpers: `src/lib/session-claim-display.ts`. Tutor operational list: `listTutorOperationalSessionsFn` (schedule + claims). Tutor Kanban columns: `src/lib/session-kanban-column.ts`.
+
+Claims record `creation_source` (`SCHEDULE`, `TUTOR_MANUAL`, `IMPORT`, `LECTURER_ONE_OFF`). Optional institution `auto_submit_claims`; reminders and attendance lock via `src/server-actions/session-automation/`.
 
 ---
 

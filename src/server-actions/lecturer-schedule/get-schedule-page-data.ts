@@ -1,6 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireLecturerId } from "#/lib/lecturer-server";
+import {
+  extendSeriesHorizon,
+  needsHorizonExtension,
+} from "#/lib/schedule-materialize";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { SCHEDULED_SESSION_SELECT, SERIES_SELECT } from "./constants";
 import { mapChangeRequestRow, mapScheduleEventRow, mapSeriesRow } from "./mappers";
@@ -105,6 +109,19 @@ export const getLecturerSchedulePageDataFn = createServerFn({ method: "GET" })
 
       if (seriesErr) throw new Error(seriesErr.message);
       seriesRows = (rows ?? []) as Parameters<typeof mapSeriesRow>[0][];
+
+      for (const s of rows ?? []) {
+        if (
+          s.status === "PUBLISHED" &&
+          needsHorizonExtension(s.materialized_until as string | null)
+        ) {
+          try {
+            await extendSeriesHorizon(supabase, s.id as string);
+          } catch {
+            /* best-effort */
+          }
+        }
+      }
     }
 
     let pendingChangeRequests: LecturerSchedulePageDataDTO["pendingChangeRequests"] =

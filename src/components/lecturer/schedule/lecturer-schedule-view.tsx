@@ -22,6 +22,10 @@ import {
   SchedulePublishedSeriesList,
 } from "./schedule-series-lists";
 import {
+  ScheduleOneOffDialog,
+  type OneOffFormValues,
+} from "./schedule-one-off-dialog";
+import {
   ScheduleSeriesFormDialog,
   type SeriesFormValues,
 } from "./schedule-series-form-dialog";
@@ -53,6 +57,7 @@ export function LecturerScheduleView({
   onViewChange,
   onFocusDateChange,
   onCreateSeries,
+  onCreateOneOff,
   onPublishSeries,
   onDeleteSeries,
   onArchiveSeries,
@@ -61,6 +66,7 @@ export function LecturerScheduleView({
   reviewBusyId,
 }: LecturerScheduleViewProps) {
   const [seriesOpen, setSeriesOpen] = useState(false);
+  const [oneOffOpen, setOneOffOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   const events = data?.events ?? [];
@@ -93,6 +99,11 @@ export function LecturerScheduleView({
     setSeriesOpen(false);
   };
 
+  const handleOneOff = async (values: OneOffFormValues) => {
+    await onCreateOneOff(values);
+    setOneOffOpen(false);
+  };
+
   const draftSeries = (data?.series ?? []).filter((s) => s.status === "DRAFT");
   const publishedSeries = (data?.series ?? []).filter(
     (s) => s.status === "PUBLISHED",
@@ -111,10 +122,15 @@ export function LecturerScheduleView({
             schedule change requests.
           </p>
         </div>
-        <Button onClick={() => setSeriesOpen(true)} className="shrink-0">
-          <Plus className="mr-2 size-4" />
-          New tutorial series
-        </Button>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setOneOffOpen(true)}>
+            One-off session
+          </Button>
+          <Button onClick={() => setSeriesOpen(true)}>
+            <Plus className="mr-2 size-4" />
+            New tutorial series
+          </Button>
+        </div>
       </header>
 
       {loadError ? (
@@ -177,6 +193,17 @@ export function LecturerScheduleView({
         venues={data?.venues ?? []}
         busy={formBusy}
         onSubmit={handleCreate}
+      />
+
+      <ScheduleOneOffDialog
+        open={oneOffOpen}
+        onOpenChange={setOneOffOpen}
+        modules={data?.modules ?? []}
+        tutors={data?.tutors ?? []}
+        tutorIdsByModule={data?.tutorIdsByModule ?? {}}
+        venues={data?.venues ?? []}
+        busy={formBusy}
+        onSubmit={handleOneOff}
       />
     </div>
   );

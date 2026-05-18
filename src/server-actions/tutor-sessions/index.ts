@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { safeExternalHref } from "#/lib/safe-external-href";
 import { parse } from "date-fns";
 import * as z from "zod";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
@@ -8,6 +9,7 @@ import { createStepUpMfaLogger } from "#/lib/claim-workflow/log-step-up-mfa";
 import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import {
   assertValidQrSession,
+  ensureQrTokenForClaim,
   findOrCreateStudent,
   getSessionInstitutionId,
   recordSessionCheckIn,
@@ -87,6 +89,11 @@ export type TutorSessionClaimDTO = {
   coverage_validated_at: string | null;
   submitted_at: string | null;
   session_kind: string | null;
+  creation_source?: string | null;
+  scheduled_session_id?: string | null;
+  scheduled_starts_at?: string | null;
+  scheduled_ends_at?: string | null;
+  attendance_locked_at?: string | null;
   attendance_present_count: number | null;
   attendance_expected_count: number | null;
   qr_token: string | null;
@@ -410,7 +417,8 @@ export const createSessionClaimFn = createServerFn({ method: "POST" })
       status: "DRAFT" as const,
       source_schedule_import_id: null as string | null,
       source_event_fingerprint: "",
-      session_kind: "manual" as string | null,
+      session_kind: "ad_hoc",
+      creation_source: "TUTOR_MANUAL" as const,
     };
 
     const { data: inserted, error: insErr } = await supabase
@@ -503,9 +511,11 @@ export const listAttendanceEvidenceFn = createServerFn({ method: "POST" })
         const { data: signed, error: sErr } = await supabase.storage
           .from(BUCKET)
           .createSignedUrl(path, 3600);
-        if (!sErr && signed?.signedUrl) signedUrl = signed.signedUrl;
+        if (!sErr && signed?.signedUrl) {
+          signedUrl = safeExternalHref(signed.signedUrl);
+        }
       } else {
-        signedUrl = url;
+        signedUrl = safeExternalHref(url);
       }
       out.push({
         id: r.id as string,
@@ -622,12 +632,9 @@ export const generateSessionTokenFn = createServerFn({ method: "POST" })
     const supabase = createSupabaseServerClient();
     const tutorId = await requireUserId(supabase);
 
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + data.expiresInMinutes);
-
     const { data: claimRow, error: cErr } = await supabase
       .from("session_claims")
-      .select("status, frozen_at")
+      .select("status, frozen_at, source_scheduled_session_id")
       .eq("id", data.claimId)
       .eq("tutor_id", tutorId)
       .maybeSingle();
@@ -640,6 +647,12 @@ export const generateSessionTokenFn = createServerFn({ method: "POST" })
       "generate a QR code for this session",
     );
 
+    if (claimRow.source_scheduled_session_id) {
+      return ensureQrTokenForClaim(supabase, data.claimId);
+    }
+
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + data.expiresInMinutes);
     const qr_token = crypto.randomUUID();
 
     const { error } = await supabase
@@ -945,3 +958,5 @@ export const getClaimDetailsFn = createServerFn({
       history,
     };
   });
+
+export { listTutorOperationalSessionsFn } from "./list-operational-sessions";
