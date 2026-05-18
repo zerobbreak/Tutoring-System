@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button } from "#/components/ui/button";
 import {
   Dialog,
@@ -22,6 +22,15 @@ import type {
   ScheduleTutorOptionDTO,
   VenueDTO,
 } from "#/server-actions/lecturer-schedule";
+
+/** Keeps dropdown menus above the dialog overlay (z-50). */
+const selectContentProps = {
+  position: "popper" as const,
+  sideOffset: 4,
+  className: "z-[100] max-h-60",
+};
+
+const selectTriggerClass = "w-full";
 
 export type OneOffFormValues = {
   moduleId: string;
@@ -89,9 +98,22 @@ export function ScheduleOneOffDialog({
     setDtstartLocal(defaultDtstartLocal());
   }, [open, modules]);
 
-  const tutorOptions = tutors.filter((t) =>
-    (tutorIdsByModule[moduleId] ?? []).includes(t.id),
-  );
+  const tutorsForModule = useMemo(() => {
+    const ids = new Set(tutorIdsByModule[moduleId] ?? []);
+    return tutors.filter((t) => ids.has(t.id));
+  }, [moduleId, tutorIdsByModule, tutors]);
+
+  const selectableTutors =
+    tutorsForModule.length > 0 ? tutorsForModule : tutors;
+
+  useEffect(() => {
+    if (!moduleId) return;
+    setTutorId((current) =>
+      current && selectableTutors.some((t) => t.id === current)
+        ? current
+        : (selectableTutors[0]?.id ?? ""),
+    );
+  }, [moduleId, selectableTutors]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -104,11 +126,17 @@ export function ScheduleOneOffDialog({
         </DialogHeader>
         <div className="grid gap-3 py-2">
           <Field label="Module">
-            <Select value={moduleId} onValueChange={setModuleId}>
-              <SelectTrigger>
+            <Select
+              value={moduleId}
+              onValueChange={(id) => {
+                setModuleId(id);
+                setTutorId("");
+              }}
+            >
+              <SelectTrigger className={selectTriggerClass}>
                 <SelectValue placeholder="Module" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent {...selectContentProps}>
                 {modules.map((m) => (
                   <SelectItem key={m.id} value={m.id}>
                     {m.code} — {m.name}
@@ -121,18 +149,33 @@ export function ScheduleOneOffDialog({
             <Input value={title} onChange={(e) => setTitle(e.target.value)} />
           </Field>
           <Field label="Tutor">
-            <Select value={tutorId} onValueChange={setTutorId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Tutor" />
-              </SelectTrigger>
-              <SelectContent>
-                {tutorOptions.map((t) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.fullName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {!selectableTutors.length ? (
+              <p className="rounded-md border border-dashed border-border px-3 py-2 text-sm text-muted-foreground">
+                No tutors in your institution yet. Add a tutor from the Tutors
+                page before scheduling a session.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {!tutorsForModule.length ? (
+                  <p className="text-sm text-muted-foreground">
+                    No tutor is linked to this module yet. Pick one below — they
+                    will be assigned when you publish.
+                  </p>
+                ) : null}
+                <Select value={tutorId} onValueChange={setTutorId}>
+                  <SelectTrigger className={selectTriggerClass}>
+                    <SelectValue placeholder="Select tutor" />
+                  </SelectTrigger>
+                  <SelectContent {...selectContentProps}>
+                    {selectableTutors.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.fullName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </Field>
           <Field label="Start">
             <Input
@@ -157,10 +200,10 @@ export function ScheduleOneOffDialog({
               value={venueId ?? "none"}
               onValueChange={(v) => setVenueId(v === "none" ? null : v)}
             >
-              <SelectTrigger>
+              <SelectTrigger className={selectTriggerClass}>
                 <SelectValue placeholder="Venue" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent {...selectContentProps}>
                 <SelectItem value="none">No venue record</SelectItem>
                 {venues.map((v) => (
                   <SelectItem key={v.id} value={v.id}>
