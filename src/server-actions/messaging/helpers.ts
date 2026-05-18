@@ -1,5 +1,7 @@
 import type { createSupabaseServerClient } from "#/lib/supabase-server";
+import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import type { ConversationMetadata, ConversationType } from "./metadata-contract";
+
 
 export async function requireUserId(
   supabase: ReturnType<typeof createSupabaseServerClient>,
@@ -146,3 +148,119 @@ export async function createWorkflowConversation(
   });
   return conv.id as string;
 }
+
+/** Find an existing DIRECT conversation between two users, clean up duplicates if they exist, and return the unique conversation. */
+export async function getOrCreateDirectConversation(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+  userId: string,
+  otherUserId: string,
+  institutionId: string,
+  metadata?: Record<string, unknown>,
+) {
+  // Find all conversation participants rows for userId
+  const { data: myPart } = await supabase
+    .from("conversation_participants")
+    .select("conversation_id")
+    .eq("user_id", userId);
+
+  const myConvIds = (myPart ?? []).map((r) => r.conversation_id as string);
+
+  let existingDirectConvIds: string[] = [];
+
+  if (myConvIds.length > 0) {
+    // Find all those conversations where otherUserId is also a participant
+    const { data: otherPart } = await supabase
+      .from("conversation_participants")
+      .select("conversation_id")
+      .eq("user_id", otherUserId)
+      .in("conversation_id", myConvIds);
+
+    const sharedConvIds = (otherPart ?? []).map((r) => r.conversation_id as string);
+
+    if (sharedConvIds.length > 0) {
+      // Filter for conversations of type "DIRECT"
+      const { data: directConvs } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("type", "DIRECT")
+        .in("id", sharedConvIds);
+
+      existingDirectConvIds = (directConvs ?? []).map((c) => c.id as string);
+    }
+  }
+
+  if (existingDirectConvIds.length > 0) {
+    // If there is only one conversation and it works, we just return it
+    if (existingDirectConvIds.length === 1) {
+      const { data: conv } = await supabase
+        .from("conversations")
+        .select()
+        .eq("id", existingDirectConvIds[0])
+        .single();
+      if (conv) return conv;
+    }
+
+    // Otherwise, we perform cleanup/deduplication on all existing ones
+    const { data: convDetails } = await supabase
+      .from("conversations")
+      .select("id, updated_at")
+      .in("id", existingDirectConvIds);
+
+    if (convDetails && convDetails.length > 0) {
+      // Find message counts for all of them to preserve history
+      const { data: messages } = await supabase
+        .from("messages")
+        .select("conversation_id")
+        .in("conversation_id", convDetails.map((c) => c.id));
+
+      const msgCounts = new Map<string, number>();
+      for (const m of messages ?? []) {
+        const cid = m.conversation_id as string;
+        msgCounts.set(cid, (msgCounts.get(cid) ?? 0) + 1);
+      }
+
+      // Associate score: message count primary, last updated secondary
+      const scored = convDetails.map((c) => {
+        const count = msgCounts.get(c.id) ?? 0;
+        const time = c.updated_at ? new Date(c.updated_at).getTime() : 0;
+        return {
+          id: c.id,
+          score: count * 1000000000000 + time,
+        };
+      });
+
+      scored.sort((a, b) => b.score - a.score);
+
+      const keepId = scored[0].id;
+      const duplicateIds = scored.slice(1).map((s) => s.id);
+
+      if (duplicateIds.length > 0) {
+        // Use admin client to bypass RLS for deletion
+        const adminClient = getSupabaseAdmin();
+        if (adminClient) {
+          await adminClient.from("conversations").delete().in("id", duplicateIds);
+        } else {
+          // Fallback to user client if admin client isn't available
+          await supabase.from("conversations").delete().in("id", duplicateIds);
+        }
+      }
+
+      const { data: conv } = await supabase
+        .from("conversations")
+        .select()
+        .eq("id", keepId)
+        .single();
+
+      if (conv) return conv;
+    }
+  }
+
+  // If none exists, create a new one!
+  return insertConversationWithParticipants(supabase, {
+    type: "DIRECT",
+    metadata: metadata ?? {},
+    institutionId,
+    participantIds: [otherUserId, userId],
+  });
+}
+

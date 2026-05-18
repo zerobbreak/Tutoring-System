@@ -12,7 +12,9 @@ import {
   findWorkflowConversation,
   getUserInstitutionId,
   requireUserId,
+  getOrCreateDirectConversation,
 } from "./helpers";
+
 
 const claimSchema = z.object({ claimId: z.string().uuid() });
 const disputeSchema = z.object({ disputeId: z.string().uuid() });
@@ -214,7 +216,6 @@ export const getOrCreateDisputeConversationFn = createServerFn({ method: "POST" 
     return { conversationId };
   });
 
-/** Lecturer-only: ensure DIRECT tutor thread uses metadata contract. */
 export const getOrCreateDirectConversationFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({ tutorId: z.string().uuid() }).parse(input),
@@ -229,42 +230,13 @@ export const getOrCreateDirectConversationFn = createServerFn({ method: "POST" }
       lecturer_id: lecturerId,
     });
 
-    const { data: existingParticipants } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id")
-      .eq("user_id", lecturerId);
-
-    const convIds = (existingParticipants ?? []).map(
-      (p) => p.conversation_id as string,
+    const conv = await getOrCreateDirectConversation(
+      supabase,
+      lecturerId,
+      data.tutorId,
+      institutionId,
+      metadata
     );
 
-    if (convIds.length) {
-      const { data: matches } = await supabase
-        .from("conversation_participants")
-        .select("conversation_id")
-        .eq("user_id", data.tutorId)
-        .in("conversation_id", convIds);
-
-      for (const m of matches ?? []) {
-        const cid = m.conversation_id as string;
-        const { data: conv } = await supabase
-          .from("conversations")
-          .select("id, type")
-          .eq("id", cid)
-          .eq("type", "DIRECT")
-          .maybeSingle();
-        if (conv?.id) return { conversationId: conv.id as string };
-      }
-    }
-
-    return {
-      conversationId: await createWorkflowConversation(supabase, {
-        userId: lecturerId,
-        institutionId,
-        type: "DIRECT",
-        title: "Tutor discussion",
-        metadata,
-        participantIds: [data.tutorId],
-      }),
-    };
+    return { conversationId: conv.id as string };
   });

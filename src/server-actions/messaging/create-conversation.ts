@@ -6,6 +6,7 @@ import {
   getUserInstitutionId,
   insertConversationWithParticipants,
   requireUserId,
+  getOrCreateDirectConversation,
 } from "./helpers";
 
 const createConversationSchema = z.object({
@@ -22,6 +23,19 @@ export const createConversationFn = createServerFn({ method: "POST" })
     const userId = await requireUserId(supabase);
     const institutionId = await getUserInstitutionId(supabase, userId);
 
+    if (type === "DIRECT") {
+      const otherUserId = participants.find((p) => p !== userId) || participants[0];
+      if (otherUserId) {
+        return getOrCreateDirectConversation(
+          supabase,
+          userId,
+          otherUserId,
+          institutionId,
+          metadata
+        );
+      }
+    }
+
     return insertConversationWithParticipants(supabase, {
       type,
       title,
@@ -30,3 +44,4 @@ export const createConversationFn = createServerFn({ method: "POST" })
       participantIds: [...participants, userId],
     });
   });
+

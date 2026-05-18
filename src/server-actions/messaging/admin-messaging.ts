@@ -6,7 +6,7 @@ import { createSupabaseServerClient } from "#/lib/supabase-server";
 import {
   createWorkflowConversation,
   findWorkflowConversation,
-  insertConversationWithParticipants,
+  getOrCreateDirectConversation,
 } from "./helpers";
 import {
   buildMetadata,
@@ -182,7 +182,9 @@ async function loadClaimParties(
   };
 }
 
-export const searchInstitutionUsersForAdminFn = createServerFn({ method: "POST" })
+export const searchInstitutionUsersForAdminFn = createServerFn({
+  method: "POST",
+})
   .inputValidator((input: unknown) => searchSchema.parse(input))
   .handler(async ({ data }): Promise<AdminMessagingUserDTO[]> => {
     const supabase = createSupabaseServerClient();
@@ -205,7 +207,9 @@ export const searchInstitutionUsersForAdminFn = createServerFn({ method: "POST" 
     return (rows ?? []) as AdminMessagingUserDTO[];
   });
 
-export const createAdminDirectConversationFn = createServerFn({ method: "POST" })
+export const createAdminDirectConversationFn = createServerFn({
+  method: "POST",
+})
   .inputValidator((input: unknown) => directSchema.parse(input))
   .handler(async ({ data }): Promise<{ conversationId: string }> => {
     const supabase = createSupabaseServerClient();
@@ -225,31 +229,6 @@ export const createAdminDirectConversationFn = createServerFn({ method: "POST" }
       throw new Error("You can only message tutors and lecturers.");
     }
 
-    const { data: myRows } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id")
-      .eq("user_id", userId);
-
-    const convIds = (myRows ?? []).map((r) => r.conversation_id as string);
-    if (convIds.length) {
-      const { data: shared } = await supabase
-        .from("conversation_participants")
-        .select("conversation_id")
-        .eq("user_id", data.targetUserId)
-        .in("conversation_id", convIds);
-
-      for (const row of shared ?? []) {
-        const cid = row.conversation_id as string;
-        const { data: conv } = await supabase
-          .from("conversations")
-          .select("id, type")
-          .eq("id", cid)
-          .eq("type", "DIRECT")
-          .maybeSingle();
-        if (conv?.id) return { conversationId: conv.id as string };
-      }
-    }
-
     const metadata =
       role === "TUTOR"
         ? buildMetadata(METADATA_CATEGORY.ADMIN_NOTICE, {
@@ -261,13 +240,13 @@ export const createAdminDirectConversationFn = createServerFn({ method: "POST" }
             notice_type: NOTICE_TYPES.DIRECT,
           });
 
-    const conv = await insertConversationWithParticipants(supabase, {
-      type: "DIRECT",
-      title: null,
-      metadata,
+    const conv = await getOrCreateDirectConversation(
+      supabase,
+      userId,
+      data.targetUserId,
       institutionId,
-      participantIds: [data.targetUserId, userId],
-    });
+      metadata,
+    );
 
     return { conversationId: conv.id as string };
   });
@@ -320,85 +299,82 @@ export const createInstitutionNoticeFn = createServerFn({ method: "POST" })
     return { conversationId };
   });
 
-export const listOpenDisputesForMessagingFn = createServerFn({ method: "GET" })
-  .handler(async (): Promise<AdminDisputeMessagingRowDTO[]> => {
-    const supabase = createSupabaseServerClient();
-    const { institutionId } = await requireAdminContext(supabase);
+export const listOpenDisputesForMessagingFn = createServerFn({
+  method: "GET",
+}).handler(async (): Promise<AdminDisputeMessagingRowDTO[]> => {
+  const supabase = createSupabaseServerClient();
+  const { institutionId } = await requireAdminContext(supabase);
 
-    const { data: modules, error: mErr } = await supabase
-      .from("modules")
-      .select("id")
-      .eq("institution_id", institutionId);
+  const { data: modules, error: mErr } = await supabase
+    .from("modules")
+    .select("id")
+    .eq("institution_id", institutionId);
 
-    if (mErr) throw new Error(mErr.message);
-    const moduleIds = (modules ?? []).map((m) => m.id as string);
-    if (!moduleIds.length) return [];
+  if (mErr) throw new Error(mErr.message);
+  const moduleIds = (modules ?? []).map((m) => m.id as string);
+  if (!moduleIds.length) return [];
 
-    const { data: claims, error: cErr } = await supabase
-      .from("session_claims")
-      .select("id, module_id, tutor_id")
-      .in("module_id", moduleIds);
+  const { data: claims, error: cErr } = await supabase
+    .from("session_claims")
+    .select("id, module_id, tutor_id")
+    .in("module_id", moduleIds);
 
-    if (cErr) throw new Error(cErr.message);
-    const claimIds = (claims ?? []).map((c) => c.id as string);
-    if (!claimIds.length) return [];
+  if (cErr) throw new Error(cErr.message);
+  const claimIds = (claims ?? []).map((c) => c.id as string);
+  if (!claimIds.length) return [];
 
-    const claimById = new Map(
-      (claims ?? []).map((c) => [c.id as string, c]),
-    );
+  const claimById = new Map((claims ?? []).map((c) => [c.id as string, c]));
 
-    const { data: disputes, error: dErr } = await supabase
-      .from("disputes")
-      .select("id, reason, raised_at, claim_id")
-      .eq("status", "OPEN")
-      .in("claim_id", claimIds)
-      .order("raised_at", { ascending: false });
+  const { data: disputes, error: dErr } = await supabase
+    .from("disputes")
+    .select("id, reason, raised_at, claim_id")
+    .eq("status", "OPEN")
+    .in("claim_id", claimIds)
+    .order("raised_at", { ascending: false });
 
-    if (dErr) throw new Error(dErr.message);
-    if (!disputes?.length) return [];
+  if (dErr) throw new Error(dErr.message);
+  if (!disputes?.length) return [];
 
-    const tutorIds = [
-      ...new Set((claims ?? []).map((c) => c.tutor_id as string)),
-    ];
-    const { data: tutors } = await supabase
-      .from("users")
-      .select("id, full_name")
-      .in("id", tutorIds);
+  const tutorIds = [
+    ...new Set((claims ?? []).map((c) => c.tutor_id as string)),
+  ];
+  const { data: tutors } = await supabase
+    .from("users")
+    .select("id, full_name")
+    .in("id", tutorIds);
 
-    const tutorNameById = new Map(
-      (tutors ?? []).map((t) => [t.id as string, t.full_name as string]),
-    );
+  const tutorNameById = new Map(
+    (tutors ?? []).map((t) => [t.id as string, t.full_name as string]),
+  );
 
-    const { data: moduleRows } = await supabase
-      .from("modules")
-      .select("id, code, name")
-      .in("id", moduleIds);
+  const { data: moduleRows } = await supabase
+    .from("modules")
+    .select("id, code, name")
+    .in("id", moduleIds);
 
-    const moduleById = new Map(
-      (moduleRows ?? []).map((m) => [
-        m.id as string,
-        { code: m.code as string, name: m.name as string },
-      ]),
-    );
+  const moduleById = new Map(
+    (moduleRows ?? []).map((m) => [
+      m.id as string,
+      { code: m.code as string, name: m.name as string },
+    ]),
+  );
 
-    return (disputes ?? []).map((d) => {
-      const claim = claimById.get(d.claim_id as string);
-      const mod = claim
-        ? moduleById.get(claim.module_id as string)
-        : undefined;
-      return {
-        id: d.id as string,
-        reason: d.reason as string,
-        raised_at: d.raised_at as string,
-        claim_id: d.claim_id as string,
-        module_code: mod?.code ?? "",
-        module_name: mod?.name ?? "",
-        tutor_name: claim
-          ? (tutorNameById.get(claim.tutor_id as string) ?? "Tutor")
-          : "Tutor",
-      };
-    });
+  return (disputes ?? []).map((d) => {
+    const claim = claimById.get(d.claim_id as string);
+    const mod = claim ? moduleById.get(claim.module_id as string) : undefined;
+    return {
+      id: d.id as string,
+      reason: d.reason as string,
+      raised_at: d.raised_at as string,
+      claim_id: d.claim_id as string,
+      module_code: mod?.code ?? "",
+      module_name: mod?.name ?? "",
+      tutor_name: claim
+        ? (tutorNameById.get(claim.tutor_id as string) ?? "Tutor")
+        : "Tutor",
+    };
   });
+});
 
 export const joinAdminDisputeConversationFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => disputeIdSchema.parse(input))
