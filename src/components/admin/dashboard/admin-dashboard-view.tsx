@@ -13,6 +13,8 @@ import { InstitutionFeedPanel } from "./institution-feed-panel";
 import { PayrollReadinessPanel } from "./payroll-readiness-panel";
 import { SystemAnalyticsPanel } from "./system-analytics-panel";
 import { UpcomingDeadlinesPanel } from "./upcoming-deadlines-panel";
+import { AdminTutorSessionCreationsPanel } from "#/components/admin/sessions/admin-tutor-session-creations-panel";
+import type { PendingTutorSessionCreationDTO } from "#/server-actions/admin-sessions";
 import { WorkflowHealthPanel } from "./workflow-health-panel";
 
 export type AdminDashboardViewProps = {
@@ -31,6 +33,8 @@ export type AdminDashboardViewProps = {
   analyticsSummary: AdminAnalyticsSummaryDTO;
   weekStart: string;
   weekEnd: string;
+  pendingTutorSessionCreations: PendingTutorSessionCreationDTO[];
+  onTutorSessionApprovalsChanged?: () => void;
 };
 
 export function AdminDashboardView({
@@ -49,6 +53,8 @@ export function AdminDashboardView({
   analyticsSummary,
   weekStart,
   weekEnd,
+  pendingTutorSessionCreations,
+  onTutorSessionApprovalsChanged,
 }: AdminDashboardViewProps) {
   const role = user.user_metadata?.role as string | undefined;
   const displayName =
@@ -89,6 +95,13 @@ export function AdminDashboardView({
       />
 
       <AdminQuickActionsPanel />
+
+      <AdminTutorSessionCreationsPanel
+        items={pendingTutorSessionCreations}
+        loading={booting}
+        showViewAllLink
+        onChanged={onTutorSessionApprovalsChanged}
+      />
 
       <WorkflowHealthPanel
         booting={booting}

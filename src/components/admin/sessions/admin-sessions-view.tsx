@@ -32,6 +32,7 @@ import type {
 } from "#/server-actions/admin-sessions";
 import { AdminSessionCard } from "./admin-session-card";
 import { AdminSessionDetailSheet } from "./admin-session-detail-sheet";
+import { AdminTutorSessionCreationsPanel } from "./admin-tutor-session-creations-panel";
 
 const selectContentProps = {
   position: "popper" as const,
@@ -58,6 +59,7 @@ export type AdminSessionsViewProps = {
   onLecturerChange: (id: string | null) => void;
   navigate: (opts: NavigateOptions) => void | Promise<void>;
   onSheetOpenChange: (open: boolean) => void;
+  onTutorSessionApproved?: () => void;
 };
 
 function SessionsKpiStrip({
@@ -134,6 +136,7 @@ export function AdminSessionsView({
   onLecturerChange,
   navigate,
   onSheetOpenChange,
+  onTutorSessionApproved,
 }: AdminSessionsViewProps) {
   const openSession = (session: AdminSessionCardDTO | { id: string }) => {
     void navigate({
@@ -159,6 +162,8 @@ export function AdminSessionsView({
             status across all modules.
           </p>
         </header>
+
+        <AdminTutorSessionCreationsPanel onApproved={onTutorSessionApproved} />
 
         {loadError ? (
           <div

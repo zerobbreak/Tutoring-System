@@ -14,6 +14,7 @@ import {
   type TutorScheduleImportSource,
 } from "#/lib/tutor-schedule-imports";
 import { typeColumnFlagForEvent } from "#/lib/schedule-display";
+import { TUTOR_VISIBLE_SESSION_CLAIMS_OR_FILTER } from "#/lib/tutor-manual-session-claim";
 
 async function requireUserId(
   supabase: ReturnType<typeof createSupabaseServerClient>,
@@ -151,17 +152,20 @@ export const getTutorDashboardDataFn = createServerFn({ method: "GET" }).handler
         .from("session_claims")
         .select(claimsSelect)
         .eq("tutor_id", uid)
+        .or(TUTOR_VISIBLE_SESSION_CLAIMS_OR_FILTER)
         .gte("session_date", chartFrom)
         .order("session_date", { ascending: false }),
       supabase
         .from("session_claims")
         .select("id", { count: "exact", head: true })
         .eq("tutor_id", uid)
+        .or(TUTOR_VISIBLE_SESSION_CLAIMS_OR_FILTER)
         .in("status", ["DRAFT", "PENDING_VERIFICATION"]),
       supabase
         .from("session_claims")
         .select(claimsSelect)
         .eq("tutor_id", uid)
+        .or(TUTOR_VISIBLE_SESSION_CLAIMS_OR_FILTER)
         .in("status", ["DRAFT", "PENDING_VERIFICATION"])
         .order("session_date", { ascending: false })
         .limit(5),

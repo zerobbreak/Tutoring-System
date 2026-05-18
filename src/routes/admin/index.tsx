@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AdminDashboardView } from "#/components/admin/dashboard/admin-dashboard-view";
 import { useSessionUser } from "#/lib/use-session-user";
 import {
@@ -10,6 +10,7 @@ import {
   type AdminPipelineDTO,
 } from "#/server-actions/admin-dashboard";
 import type { LecturerActivityItemDTO } from "#/server-actions/lecturer-dashboard";
+import type { PendingTutorSessionCreationDTO } from "#/server-actions/admin-sessions";
 
 export const Route = createFileRoute("/admin/")({
   component: AdminDashboardPage,
@@ -52,6 +53,26 @@ function AdminDashboardPage() {
     });
   const [weekStart, setWeekStart] = useState("");
   const [weekEnd, setWeekEnd] = useState("");
+  const [pendingTutorSessionCreations, setPendingTutorSessionCreations] =
+    useState<PendingTutorSessionCreationDTO[]>([]);
+
+  const loadDashboard = useCallback(async () => {
+    const data = await getAdminDashboardDataFn();
+    setInstitutionName(data.institutionName);
+    setPendingApprovalsCount(data.pendingApprovalsCount);
+    setVerifiedClaimsCount(data.verifiedClaimsCount);
+    setActiveSessionsCount(data.activeSessionsCount);
+    setApprovedHours(data.approvedHours);
+    setPipeline(data.pipeline);
+    setActivityFeed(data.activityFeed);
+    setLecturerActivity(data.lecturerActivity);
+    setDeadlines(data.deadlines);
+    setAnalyticsSummary(data.analyticsSummary);
+    setWeekStart(data.weekStart);
+    setWeekEnd(data.weekEnd);
+    setPendingTutorSessionCreations(data.pendingTutorSessionCreations);
+    return data;
+  }, []);
 
   useEffect(() => {
     if (!user) {
@@ -65,20 +86,8 @@ function AdminDashboardPage() {
       setBooting(true);
       setLoadError(null);
       try {
-        const data = await getAdminDashboardDataFn();
         if (cancelled) return;
-        setInstitutionName(data.institutionName);
-        setPendingApprovalsCount(data.pendingApprovalsCount);
-        setVerifiedClaimsCount(data.verifiedClaimsCount);
-        setActiveSessionsCount(data.activeSessionsCount);
-        setApprovedHours(data.approvedHours);
-        setPipeline(data.pipeline);
-        setActivityFeed(data.activityFeed);
-        setLecturerActivity(data.lecturerActivity);
-        setDeadlines(data.deadlines);
-        setAnalyticsSummary(data.analyticsSummary);
-        setWeekStart(data.weekStart);
-        setWeekEnd(data.weekEnd);
+        await loadDashboard();
       } catch (e) {
         if (!cancelled) {
           setLoadError(
@@ -93,7 +102,7 @@ function AdminDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [user?.id, loadDashboard]);
 
   if (pending || !user) {
     return (
@@ -120,6 +129,16 @@ function AdminDashboardPage() {
       analyticsSummary={analyticsSummary}
       weekStart={weekStart}
       weekEnd={weekEnd}
+      pendingTutorSessionCreations={pendingTutorSessionCreations}
+      onTutorSessionApprovalsChanged={() => {
+        void (async () => {
+          try {
+            await loadDashboard();
+          } catch {
+            /* toast handled on next full load */
+          }
+        })();
+      }}
     />
   );
 }

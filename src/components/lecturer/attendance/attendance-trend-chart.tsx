@@ -93,13 +93,13 @@ export function AttendanceTrendChart({
         </div>
       </div>
 
-      <div className="relative h-[240px] w-full min-w-0">
+      <div className="relative h-[240px] min-h-[240px] w-full min-w-0 shrink-0">
         {loading ? (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             <Loader2 className="size-8 animate-spin" aria-label="Loading chart" />
           </div>
         ) : (
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={50}>
             <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="attendanceTrendArea" x1="0" y1="0" x2="0" y2="1">

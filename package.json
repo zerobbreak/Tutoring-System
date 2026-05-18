@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "test": "vitest run",
     "db:push": "supabase db push",
-    "db:push:all": "supabase db push --include-all"
+    "db:push:all": "supabase db push --include-all",
+    "db:migration:list": "supabase migration list",
+    "db:migration:repair": "supabase migration repair"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
