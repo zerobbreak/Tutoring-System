@@ -354,7 +354,8 @@ export function TutorSchedulesPage() {
 
   if (!showResults) {
     return (
-      <div className="flex flex-1 flex-col gap-8 overflow-y-auto p-6 md:p-10">
+      <ScrollArea className="min-h-0 flex-1">
+      <div className="flex flex-col gap-8 p-6 md:p-10">
         <div className="mx-auto w-full max-w-2xl space-y-3 text-center">
           <h1 className="display-title text-3xl font-bold tracking-tight text-(--sea-ink) md:text-4xl">
             Timetable & sessions
@@ -378,6 +379,7 @@ export function TutorSchedulesPage() {
           <TutorAssignedSchedulePanel />
         </div>
       </div>
+      </ScrollArea>
     );
   }
 
@@ -393,7 +395,8 @@ export function TutorSchedulesPage() {
 
       {/* Left: calendar */}
       <div className="flex min-h-0 w-full flex-col overflow-hidden border-r border-transparent lg:min-w-0 lg:flex-1 lg:border-border/40">
-        <div className="flex flex-1 flex-col gap-4 p-4 md:p-6">
+        <ScrollArea className="min-h-0 flex-1">
+        <div className="flex flex-col gap-4 p-4 md:p-6">
           <TutorAssignedSchedulePanel />
           <div className="flex w-full shrink-0 flex-col gap-3">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -548,6 +551,7 @@ export function TutorSchedulesPage() {
             )}
           </div>
         </div>
+        </ScrollArea>
       </div>
 
       {/* Day list — no chrome, spacing only */}

@@ -8,6 +8,7 @@ import {
 } from "#/components/lecturer/schedule/schedule-session-manage-dialog";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
+import { ScrollArea } from "#/components/ui/scroll-area";
 import {
   Card,
   CardContent,
@@ -169,6 +170,7 @@ export function TutorAssignedSchedulePanel() {
               No lecturer-assigned sessions in the next 8 weeks.
             </p>
           ) : (
+            <ScrollArea className="max-h-[min(40vh,320px)] pr-3">
             <ul className="flex flex-col gap-2">
               {events.map((ev) => {
                 const cancelled = isCancelledSessionStatus(ev.status);
@@ -251,6 +253,7 @@ export function TutorAssignedSchedulePanel() {
                 );
               })}
             </ul>
+            </ScrollArea>
           )}
         </CardContent>
       </Card>

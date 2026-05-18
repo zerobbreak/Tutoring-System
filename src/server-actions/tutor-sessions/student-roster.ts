@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { isAfter, parseISO } from "date-fns";
+import { format, isAfter, parseISO } from "date-fns";
 import {
   isAttendanceLocked,
   isWithinQrWindow,
@@ -249,6 +249,80 @@ export async function assertValidQrSession(
   ) {
     throw new Error("QR token has expired.");
   }
+}
+
+export type CheckInSessionPreview = {
+  moduleCode: string;
+  moduleName: string;
+  sessionWhen: string;
+  tutorName: string | null;
+};
+
+/** Public session summary for the student QR check-in page (token must be valid). */
+export async function getCheckInSessionPreview(
+  db: SupabaseClient,
+  sessionId: string,
+  token: string,
+): Promise<CheckInSessionPreview> {
+  await assertValidQrSession(db, sessionId, token);
+
+  const { data: claim, error } = await db
+    .from("session_claims")
+    .select(
+      `
+      session_date,
+      start_time,
+      end_time,
+      module:modules ( code, name ),
+      tutor:users!session_claims_tutor_id_fkey ( full_name ),
+      scheduled:scheduled_sessions ( starts_at, ends_at )
+    `,
+    )
+    .eq("id", sessionId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!claim) throw new Error("Session not found.");
+
+  const mod = claim.module as
+    | { code: string; name: string }
+    | { code: string; name: string }[]
+    | null;
+  const moduleRow = Array.isArray(mod) ? mod[0] : mod;
+  const tutor = claim.tutor as
+    | { full_name: string }
+    | { full_name: string }[]
+    | null;
+  const tutorRow = Array.isArray(tutor) ? tutor[0] : tutor;
+  const scheduled = claim.scheduled as {
+    starts_at: string;
+    ends_at: string;
+  } | null;
+
+  let sessionWhen = "—";
+  if (scheduled?.starts_at) {
+    const start = parseISO(scheduled.starts_at);
+    const end = scheduled.ends_at ? parseISO(scheduled.ends_at) : null;
+    sessionWhen = end
+      ? `${format(start, "EEE d MMM yyyy")} · ${format(start, "HH:mm")}–${format(end, "HH:mm")}`
+      : format(start, "EEE d MMM yyyy · HH:mm");
+  } else if (claim.session_date) {
+    const date = claim.session_date as string;
+    const start = (claim.start_time as string | null)?.slice(0, 5);
+    const end = (claim.end_time as string | null)?.slice(0, 5);
+    sessionWhen =
+      start && end
+        ? `${format(parseISO(date), "EEE d MMM yyyy")} · ${start}–${end}`
+        : format(parseISO(date), "EEE d MMM yyyy");
+  }
+
+  return {
+    moduleCode: moduleRow?.code ?? "—",
+    moduleName: moduleRow?.name ?? "",
+    sessionWhen,
+    tutorName: tutorRow?.full_name ?? null,
+  };
 }
 
 /** Ensure QR token exists with expiry aligned to scheduled session window. */

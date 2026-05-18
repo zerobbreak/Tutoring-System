@@ -7,9 +7,13 @@ import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import {
   assertValidQrSession,
   findOrCreateStudent,
+  getCheckInSessionPreview,
   getSessionInstitutionId,
   recordSessionCheckIn,
+  type CheckInSessionPreview,
 } from "#/server-actions/tutor-sessions/student-roster";
+
+export type { CheckInSessionPreview };
 import {
   schedulingDateForColumn,
   type ClaimStatus,
@@ -836,6 +840,24 @@ const studentRosterInputSchema = z.object({
     })
     .optional(),
 });
+
+/** Session summary for the public check-in page (validates QR token). */
+export const getCheckInSessionPreviewFn = createServerFn({ method: "GET" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        token: z.string().uuid(),
+        sessionId: z.string().uuid(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }): Promise<CheckInSessionPreview> => {
+    const admin = getSupabaseAdmin();
+    if (!admin) {
+      throw new Error("Check-in is not available right now.");
+    }
+    return getCheckInSessionPreview(admin, data.sessionId, data.token);
+  });
 
 /** Student self check-in via QR token (registers roster entry when new). */
 export const checkInStudentFn = createServerFn({ method: "POST" })

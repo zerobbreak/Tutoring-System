@@ -98,6 +98,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 
   const location = useLocation();
   const isAuthPage = location.pathname.startsWith("/auth");
+  const isPublicStudentPage = location.pathname.startsWith("/student");
   const isTutorShell =
     location.pathname === "/tutor" || location.pathname.startsWith("/tutor/");
   const isAdminShell =
@@ -121,7 +122,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <body
         className={`bg-gray-50 ${isDashboardShell ? "flex h-screen flex-col overflow-hidden" : "min-h-screen"}`}
       >
-        {!isAuthPage && !isDashboardShell && (
+        {!isAuthPage && !isDashboardShell && !isPublicStudentPage && (
           <nav className="border-b bg-white px-4 py-3 shadow-sm">
             <div className="mx-auto flex max-w-7xl items-center justify-between">
               <Link to={brandTo} className="text-xl font-bold text-indigo-600">

@@ -194,8 +194,12 @@ export const getTutorEarningsFn = createServerFn({ method: "GET" }).handler(
         }).amountCents;
       }
 
+      const sourceSessionId = row.source_scheduled_session_id as string | null;
+      const isCancelledSession =
+        sourceSessionId != null && cancelledSessionIds.has(sourceSessionId);
+
       if (
-        !cancelledSession &&
+        !isCancelledSession &&
         status === "APPROVED" &&
         !exportInfo &&
         amountCents != null
@@ -203,7 +207,7 @@ export const getTutorEarningsFn = createServerFn({ method: "GET" }).handler(
         awaitingExportHours += hours;
         expectedEarningsCents += amountCents;
       }
-      if (!cancelledSession && exportInfo && amountCents != null) {
+      if (!isCancelledSession && exportInfo && amountCents != null) {
         includedInPayrollCents += amountCents;
       }
 

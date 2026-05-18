@@ -363,7 +363,7 @@ export function TutorRegisterGenerationPage() {
                     </div>
                   )}
                   <Button
-                    className="w-full gap-2 bg-lagoon-deep hover:bg-lagoon-deep/90"
+                    className="w-full gap-2 bg-lagoon-deep hover:bg-lagoon-deep/90 text-black"
                     onClick={handleGenerateQR}
                     disabled={generating}
                   >
