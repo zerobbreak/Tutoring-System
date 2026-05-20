@@ -28,9 +28,10 @@ import {
 } from "#/lib/claim-workflow-timeline";
 import {
   isTutorManualSessionClaim,
+  isTutorSessionClaimListed,
   isTutorSessionClaimVisible,
-  TUTOR_VISIBLE_SESSION_CLAIMS_OR_FILTER,
 } from "#/lib/tutor-manual-session-claim";
+import { SESSION_REQUEST_STATUS } from "#/lib/session-request-status";
 import {
   isNoShowWithEvidence,
   normalizeNoShowReason,
@@ -82,6 +83,19 @@ const createClaimSchema = z.object({
   startTime: z.string().min(1),
   endTime: z.string().min(1),
   venue: z.string().max(255).optional(),
+  sessionKind: z.string().max(50).optional(),
+  requestReason: z.string().min(10).max(2000),
+});
+
+const resubmitSessionRequestSchema = z.object({
+  claimId: z.string().uuid(),
+  moduleId: z.string().uuid(),
+  sessionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  startTime: z.string().min(1),
+  endTime: z.string().min(1),
+  venue: z.string().max(255).optional(),
+  sessionKind: z.string().max(50).optional(),
+  requestReason: z.string().min(10).max(2000),
 });
 
 const attendanceCountsSchema = z.object({
@@ -117,6 +131,9 @@ export type TutorSessionClaimDTO = {
   coverage_validated_at: string | null;
   submitted_at: string | null;
   session_kind: string | null;
+  request_status: string | null;
+  request_reason: string | null;
+  review_feedback: string | null;
   attendance_present_count: number | null;
   attendance_expected_count: number | null;
   qr_token: string | null;
@@ -190,6 +207,9 @@ type RawModule = {
 
 type RawClaim = Omit<TutorSessionClaimDTO, "evidenceCount" | "module"> & {
   module: RawModule | RawModule[] | null;
+  source_scheduled_session_id?: string | null;
+  source_schedule_import_id?: string | null;
+  admin_creation_approved_at?: string | null;
 };
 
 function mapLecturer(
@@ -228,6 +248,9 @@ function mapClaimRow(r: RawClaim, evidenceCount: number): TutorSessionClaimDTO {
     coverage_validated_at: r.coverage_validated_at,
     submitted_at: r.submitted_at,
     session_kind: r.session_kind,
+    request_status: r.request_status ?? null,
+    request_reason: r.request_reason ?? null,
+    review_feedback: r.review_feedback ?? null,
     attendance_present_count: r.attendance_present_count,
     attendance_expected_count: r.attendance_expected_count,
     qr_token: r.qr_token,
@@ -263,6 +286,12 @@ export const listTutorSessionClaimsFn = createServerFn({
         coverage_validated_at,
         submitted_at,
         session_kind,
+        request_status,
+        request_reason,
+        review_feedback,
+        source_scheduled_session_id,
+        source_schedule_import_id,
+        admin_creation_approved_at,
         attendance_present_count,
         attendance_expected_count,
         qr_token,
@@ -277,7 +306,6 @@ export const listTutorSessionClaimsFn = createServerFn({
       `,
     )
     .eq("tutor_id", tutorId)
-    .or(TUTOR_VISIBLE_SESSION_CLAIMS_OR_FILTER)
     .order("session_date", { ascending: true })
     .order("start_time", { ascending: true });
 
@@ -298,7 +326,16 @@ export const listTutorSessionClaimsFn = createServerFn({
     }
   }
 
-  return rows.map((r) => mapClaimRow(r, countMap.get(r.id) ?? 0));
+  return rows
+    .filter((r) =>
+      isTutorSessionClaimListed({
+        source_scheduled_session_id: r.source_scheduled_session_id as string | null,
+        source_schedule_import_id: r.source_schedule_import_id as string | null,
+        admin_creation_approved_at: r.admin_creation_approved_at as string | null,
+        request_status: r.request_status as string | null,
+      }),
+    )
+    .map((r) => mapClaimRow(r, countMap.get(r.id) ?? 0));
 });
 
 /** Reschedule claim into a time-based Kanban column (today / upcoming / completed). */
@@ -370,7 +407,7 @@ export const submitSessionClaimFn = createServerFn({ method: "POST" })
     if (!row) throw new Error("Session not found.");
     if (!isTutorSessionClaimVisible(row)) {
       throw new Error(
-        "This session is awaiting admin approval before you can work on it.",
+        "This session is awaiting approval before you can work on it.",
       );
     }
     if (row.status !== "DRAFT") {
@@ -482,7 +519,7 @@ export const reopenSessionClaimFn = createServerFn({ method: "POST" })
     if (!row) throw new Error("Session not found.");
     if (!isTutorSessionClaimVisible(row)) {
       throw new Error(
-        "This session is awaiting admin approval before you can work on it.",
+        "This session is awaiting approval before you can work on it.",
       );
     }
 
@@ -644,6 +681,33 @@ export const createSessionClaimFn = createServerFn({ method: "POST" })
     const venue =
       data.venue?.trim() === "" ? null : (data.venue?.trim() ?? null);
 
+    const { data: mod, error: modErr } = await supabase
+      .from("modules")
+      .select("institution_id")
+      .eq("id", data.moduleId)
+      .maybeSingle();
+
+    if (modErr) throw new Error(modErr.message);
+
+    let budgetWarning: string | undefined;
+    if (mod?.institution_id) {
+      try {
+        await checkReservedCapacityForStandaloneClaim(supabase, {
+          tutorId,
+          moduleId: data.moduleId,
+          institutionId: mod.institution_id as string,
+          hours,
+          sessionDate: data.sessionDate,
+          strict: true,
+        });
+      } catch (e) {
+        budgetWarning =
+          e instanceof Error ? e.message : "Hour allocation may be exceeded.";
+      }
+    }
+
+    const sessionKind = data.sessionKind?.trim() || "tutorial";
+
     const row = {
       tutor_id: tutorId,
       module_id: data.moduleId,
@@ -655,7 +719,10 @@ export const createSessionClaimFn = createServerFn({ method: "POST" })
       status: "DRAFT" as const,
       source_schedule_import_id: null as string | null,
       source_event_fingerprint: "",
-      session_kind: "manual" as string | null,
+      session_kind: sessionKind,
+      request_reason: data.requestReason.trim(),
+      request_status: SESSION_REQUEST_STATUS.PENDING,
+      creation_source: "TUTOR_MANUAL" as const,
     };
 
     const { data: inserted, error: insErr } = await supabase
@@ -667,8 +734,84 @@ export const createSessionClaimFn = createServerFn({ method: "POST" })
     if (insErr) throw new Error(insErr.message);
     return {
       claimId: inserted!.id as string,
-      pendingAdminApproval: true as const,
+      pendingApproval: true as const,
+      budgetWarning,
     };
+  });
+
+/** Update and resubmit a session request after lecturer/admin requested changes. */
+export const resubmitSessionRequestFn = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => resubmitSessionRequestSchema.parse(input))
+  .handler(async ({ data }) => {
+    const supabase = createSupabaseServerClient();
+    const tutorId = await requireUserId(supabase);
+
+    const { data: existing, error: selErr } = await supabase
+      .from("session_claims")
+      .select(
+        "id, request_status, source_scheduled_session_id, source_schedule_import_id",
+      )
+      .eq("id", data.claimId)
+      .eq("tutor_id", tutorId)
+      .maybeSingle();
+
+    if (selErr) throw new Error(selErr.message);
+    if (!existing) throw new Error("Session not found.");
+    if (!isTutorManualSessionClaim(existing)) {
+      throw new Error("Only session requests can be resubmitted.");
+    }
+    if (existing.request_status !== SESSION_REQUEST_STATUS.CHANGES_REQUESTED) {
+      throw new Error("This request is not awaiting changes from you.");
+    }
+
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const parseClock = (t: string) => {
+      const m = /^(\d{1,2}):(\d{2})(?::(\d{2}))?/.exec(t.trim());
+      if (!m) throw new Error("Invalid time format. Use HH:mm.");
+      return {
+        h: Number(m[1]),
+        mi: Number(m[2]),
+        s: m[3] ? Number(m[3]) : 0,
+      };
+    };
+    const a = parseClock(data.startTime);
+    const b = parseClock(data.endTime);
+    const start_time = `${pad(a.h)}:${pad(a.mi)}:${pad(a.s)}`;
+    const end_time = `${pad(b.h)}:${pad(b.mi)}:${pad(b.s)}`;
+
+    const base = parse(data.sessionDate, "yyyy-MM-dd", new Date());
+    const s = new Date(base);
+    s.setHours(a.h, a.mi, a.s, 0);
+    const e = new Date(base);
+    e.setHours(b.h, b.mi, b.s, 0);
+    if (e.getTime() <= s.getTime()) {
+      e.setDate(e.getDate() + 1);
+    }
+    const hours = Math.round((e.getTime() - s.getTime()) / (1000 * 60 * 60) * 100) / 100;
+    const venue =
+      data.venue?.trim() === "" ? null : (data.venue?.trim() ?? null);
+
+    const { error: upErr } = await supabase
+      .from("session_claims")
+      .update({
+        module_id: data.moduleId,
+        session_date: data.sessionDate,
+        start_time,
+        end_time,
+        hours,
+        venue,
+        session_kind: data.sessionKind?.trim() || "tutorial",
+        request_reason: data.requestReason.trim(),
+        request_status: SESSION_REQUEST_STATUS.PENDING,
+        review_feedback: null,
+        reviewed_at: null,
+        reviewed_by: null,
+      })
+      .eq("id", data.claimId)
+      .eq("tutor_id", tutorId);
+
+    if (upErr) throw new Error(upErr.message);
+    return { ok: true as const };
   });
 
 export const upsertAttendanceCountsFn = createServerFn({ method: "POST" })

@@ -83,6 +83,33 @@ export type ScheduleChangeRequestDTO = {
   createdAt: string;
 };
 
+export type TutorSessionRequestCapacityDTO = {
+  allocatedHours: number | null;
+  reservedHours: number;
+  requestedHours: number;
+  availableHours: number | null;
+  canApprove: boolean;
+  warning: string | null;
+};
+
+export type TutorSessionRequestDTO = {
+  id: string;
+  sessionDate: string;
+  startTime: string;
+  endTime: string;
+  hours: number;
+  venue: string | null;
+  sessionKind: string | null;
+  requestReason: string | null;
+  requestStatus: string;
+  reviewFeedback: string | null;
+  updatedAt: string;
+  tutorName: string;
+  moduleCode: string;
+  moduleName: string;
+  capacity: TutorSessionRequestCapacityDTO;
+};
+
 export type LecturerSchedulePageDataDTO = {
   modules: ScheduleModuleOptionDTO[];
   tutors: ScheduleTutorOptionDTO[];
@@ -92,4 +119,5 @@ export type LecturerSchedulePageDataDTO = {
   events: ScheduleEventDTO[];
   series: ScheduleSeriesDTO[];
   pendingChangeRequests: ScheduleChangeRequestDTO[];
+  pendingTutorSessionRequests: TutorSessionRequestDTO[];
 };

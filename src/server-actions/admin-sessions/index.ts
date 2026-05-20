@@ -5,6 +5,7 @@ export {
   approveTutorSessionCreationFn,
   listPendingTutorSessionCreationsFn,
   rejectTutorSessionCreationFn,
+  suggestChangesTutorSessionCreationFn,
 } from "./tutor-session-creations";
 export type { PendingTutorSessionCreationDTO } from "./tutor-session-creations";
 

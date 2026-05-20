@@ -26,6 +26,11 @@ export type LecturerScheduleViewProps = {
     requestId: string,
     decision: "APPROVED" | "REJECTED",
   ) => Promise<void>;
+  onReviewTutorSessionRequest: (
+    claimId: string,
+    decision: "REJECTED" | "CHANGES_REQUESTED",
+    feedback?: string,
+  ) => Promise<void>;
   formBusy: boolean;
   reviewBusyId: string | null;
 };

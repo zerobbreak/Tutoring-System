@@ -15,6 +15,7 @@ import {
   getLecturerSchedulePageDataFn,
   publishScheduleSeriesFn,
   reviewScheduleChangeRequestFn,
+  reviewTutorSessionRequestFn,
   type LecturerSchedulePageDataDTO,
 } from "#/server-actions/lecturer-schedule";
 
@@ -219,6 +220,29 @@ function SchedulePage() {
     }
   };
 
+  const handleReviewTutorSessionRequest = async (
+    claimId: string,
+    decision: "REJECTED" | "CHANGES_REQUESTED",
+    feedback?: string,
+  ) => {
+    setReviewBusyId(claimId);
+    try {
+      await reviewTutorSessionRequestFn({
+        data: { claimId, decision, feedback },
+      });
+      toast.success(
+        decision === "REJECTED"
+          ? "Session request rejected"
+          : "Feedback sent to tutor",
+      );
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Review failed");
+    } finally {
+      setReviewBusyId(null);
+    }
+  };
+
   if (!user) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
@@ -243,6 +267,7 @@ function SchedulePage() {
       onDeleteSeries={handleDeleteSeries}
       onArchiveSeries={handleArchiveSeries}
       onReviewChange={handleReviewChange}
+      onReviewTutorSessionRequest={handleReviewTutorSessionRequest}
       formBusy={formBusy}
       reviewBusyId={reviewBusyId}
     />

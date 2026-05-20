@@ -16,6 +16,11 @@ export {
   type PublishScheduleSeriesCoreInput,
   type PublishScheduleSeriesCoreResult,
 } from "./publish-schedule-series-core";
+export {
+  approveTutorSessionRequest,
+  previewTutorSessionRequestCapacity,
+  type TutorSessionRequestClaimRow,
+} from "./approve-tutor-session-request";
 export type {
   ClaimFieldMismatch,
   ClaimFieldsForDiff,

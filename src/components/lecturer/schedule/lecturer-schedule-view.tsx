@@ -17,6 +17,7 @@ import { dayHeadingLong } from "#/lib/schedule-display";
 import { ScheduleCalendarBody } from "./schedule-calendar-body";
 import { rangeForView } from "./schedule-range";
 import { ScheduleChangeRequestsPanel } from "./schedule-change-requests-panel";
+import { TutorSessionRequestsPanel } from "./tutor-session-requests-panel";
 import {
   ScheduleDraftSeriesList,
   SchedulePublishedSeriesList,
@@ -62,6 +63,7 @@ export function LecturerScheduleView({
   onDeleteSeries,
   onArchiveSeries,
   onReviewChange,
+  onReviewTutorSessionRequest,
   formBusy,
   reviewBusyId,
 }: LecturerScheduleViewProps) {
@@ -135,11 +137,18 @@ export function LecturerScheduleView({
       ) : null}
 
       {data ? (
-        <ScheduleChangeRequestsPanel
-          requests={data.pendingChangeRequests}
-          busyId={reviewBusyId}
-          onReview={onReviewChange}
-        />
+        <>
+          <TutorSessionRequestsPanel
+            requests={data.pendingTutorSessionRequests}
+            busyId={reviewBusyId}
+            onReview={onReviewTutorSessionRequest}
+          />
+          <ScheduleChangeRequestsPanel
+            requests={data.pendingChangeRequests}
+            busyId={reviewBusyId}
+            onReview={onReviewChange}
+          />
+        </>
       ) : null}
 
       <ScheduleDraftSeriesList

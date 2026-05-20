@@ -145,8 +145,10 @@ export async function checkReservedCapacityForStandaloneClaim(
     institutionId: string;
     hours: number;
     sessionDate: string;
+    strict?: boolean;
   },
 ): Promise<void> {
+  const strict = input.strict ?? true;
   const termId = await resolveAcademicTermIdForModule(
     db,
     input.moduleId,
@@ -160,7 +162,10 @@ export async function checkReservedCapacityForStandaloneClaim(
     input.moduleId,
     termId,
   );
-  if (allocated == null) return;
+  if (allocated == null) {
+    if (!strict) return;
+    return;
+  }
 
   const { summary } = await loadTutorBudgetContext(
     db,
@@ -183,6 +188,6 @@ export async function checkReservedCapacityForStandaloneClaim(
     currentReservedHours: currentReserved,
     additionalHours: input.hours,
     moduleCode: (mod?.code as string) ?? undefined,
-    strict: true,
+    strict,
   });
 }

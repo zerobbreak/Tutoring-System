@@ -8,6 +8,7 @@ import {
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { SCHEDULED_SESSION_SELECT, SERIES_SELECT } from "./constants";
 import { mapChangeRequestRow, mapScheduleEventRow, mapSeriesRow } from "./mappers";
+import { loadPendingTutorSessionRequestsForLecturer } from "./load-pending-tutor-session-requests";
 import type { LecturerSchedulePageDataDTO } from "./types";
 
 const pageDataSchema = z.object({
@@ -171,6 +172,9 @@ export const getLecturerSchedulePageDataFn = createServerFn({ method: "GET" })
       }
     }
 
+    const pendingTutorSessionRequests =
+      await loadPendingTutorSessionRequestsForLecturer(supabase, moduleIds);
+
     return {
       modules: (modules ?? []).map((m) => ({
         id: m.id as string,
@@ -193,5 +197,6 @@ export const getLecturerSchedulePageDataFn = createServerFn({ method: "GET" })
       events,
       series: seriesRows.map((s) => mapSeriesRow(s)),
       pendingChangeRequests,
+      pendingTutorSessionRequests,
     };
   });

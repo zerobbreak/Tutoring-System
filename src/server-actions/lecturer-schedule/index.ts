@@ -7,6 +7,7 @@ export { archiveScheduleSeriesFn } from "./archive-schedule-series";
 export { updateScheduleSeriesFn } from "./update-schedule-series";
 export { createSeriesExceptionFn } from "./series-exception";
 export { reviewScheduleChangeRequestFn } from "./review-change-request";
+export { reviewTutorSessionRequestFn } from "./review-tutor-session-request";
 export { createVenueFn } from "./manage-venue";
 export { assignTutorToModuleFn } from "./manage-tutor-assignment";
 export { rescheduleScheduledSessionFn } from "./reschedule-session";
@@ -15,6 +16,8 @@ export type {
   LecturerSchedulePageDataDTO,
   ScheduleCalendarView,
   ScheduleChangeRequestDTO,
+  TutorSessionRequestDTO,
+  TutorSessionRequestCapacityDTO,
   ScheduleEventDTO,
   ScheduleModuleOptionDTO,
   ScheduleSeriesDTO,

@@ -101,6 +101,10 @@ import type { TutorHourBudgetSummary } from "#/lib/tutor-hour-budget";
 import { getTutorHourBudgetFn } from "#/server-actions/tutor-allocations";
 import { cn } from "#/lib/utils";
 import {
+  SESSION_REQUEST_STATUS,
+  sessionRequestStatusLabel,
+} from "#/lib/session-request-status";
+import {
   createSessionClaimFn,
   deleteDraftSessionClaimFn,
   deleteDraftSessionClaimsFn,
@@ -108,6 +112,7 @@ import {
   listTutorModuleAssignmentsFn,
   listTutorSessionClaimsFn,
   registerAttendanceEvidenceFn,
+  resubmitSessionRequestFn,
   updateSessionClaimSchedulingFn,
   type AttendanceRecordDTO,
   type TutorSessionClaimDTO,
@@ -136,8 +141,8 @@ const COLUMN_META: Record<
   }
 > = {
   claimsPending: {
-    title: "Claims pending",
-    description: "Awaiting lecturer resolution",
+    title: "Pending",
+    description: "Session requests and claims awaiting review",
     accentBorder: "border-t-amber-500",
     headerBg: "bg-gradient-to-b from-amber-500/8 to-transparent",
     countClass: "bg-amber-500/15 text-amber-900 dark:text-amber-100",
@@ -358,6 +363,7 @@ function DraggableSessionCard({
   onSubmit,
   onWorkspace,
   onDiscard,
+  onEditRequest,
   draftSelectMode,
   draftSelected,
   onToggleDraftSelect,
@@ -372,6 +378,7 @@ function DraggableSessionCard({
   onSubmit: () => void;
   onWorkspace: () => void;
   onDiscard: () => void;
+  onEditRequest?: () => void;
   draftSelectMode: boolean;
   draftSelected: boolean;
   onToggleDraftSelect: () => void;
@@ -379,7 +386,12 @@ function DraggableSessionCard({
 }) {
   const reduceMotion = useReducedMotion();
   const isDraft = claim.status === "DRAFT";
-  const dragDisabled = columnId === "claimsPending" || draftSelectMode;
+  const pendingRequest =
+    claim.request_status === SESSION_REQUEST_STATUS.PENDING ||
+    claim.request_status === SESSION_REQUEST_STATUS.CHANGES_REQUESTED ||
+    claim.request_status === SESSION_REQUEST_STATUS.REJECTED;
+  const canWorkSession = !pendingRequest;
+  const dragDisabled = columnId === "claimsPending" || draftSelectMode || pendingRequest;
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: claim.id,
@@ -503,6 +515,18 @@ function DraggableSessionCard({
                     {mod.code}
                   </span>
                 ) : null}
+                {pendingRequest ? (
+                  <Badge variant="warning" className="px-1.5 py-0 text-[10px]">
+                    {sessionRequestStatusLabel(
+                      claim.request_status as
+                        | "PENDING"
+                        | "CHANGES_REQUESTED"
+                        | "REJECTED"
+                        | "APPROVED"
+                        | null,
+                    )}
+                  </Badge>
+                ) : null}
               </div>
               <CardTitle className="line-clamp-2 text-sm leading-snug font-semibold">
                 {mod?.name ?? "Unknown module"}
@@ -517,6 +541,11 @@ function DraggableSessionCard({
                   <span className="text-muted-foreground"> · {claim.venue}</span>
                 ) : null}
               </p>
+              {claim.review_feedback ? (
+                <p className="mt-1 rounded-md bg-amber-500/10 px-2 py-1 text-xs text-amber-900 dark:text-amber-100">
+                  {claim.review_feedback}
+                </p>
+              ) : null}
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -533,19 +562,28 @@ function DraggableSessionCard({
                 <DropdownMenuItem onSelect={onWorkspace}>
                   Open session
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={onUpload}>
-                  Upload register
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={onQr}>Generate QR</DropdownMenuItem>
-                <DropdownMenuItem onSelect={onAttendance}>
-                  View attendance
-                </DropdownMenuItem>
-                {claim.status === "DRAFT" ? (
+                {onEditRequest ? (
+                  <DropdownMenuItem onSelect={onEditRequest}>
+                    Update request
+                  </DropdownMenuItem>
+                ) : null}
+                {canWorkSession ? (
+                  <>
+                    <DropdownMenuItem onSelect={onUpload}>
+                      Upload register
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onSelect={onQr}>Generate QR</DropdownMenuItem>
+                    <DropdownMenuItem onSelect={onAttendance}>
+                      View attendance
+                    </DropdownMenuItem>
+                  </>
+                ) : null}
+                {claim.status === "DRAFT" && canWorkSession ? (
                   <DropdownMenuItem onSelect={onSubmit}>
                     Submit claim
                   </DropdownMenuItem>
                 ) : null}
-                {claim.status === "DRAFT" ? (
+                {claim.status === "DRAFT" && !pendingRequest ? (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
@@ -720,6 +758,9 @@ export function TutorSessionsWorkspace({
   const [createStart, setCreateStart] = useState("09:00");
   const [createEnd, setCreateEnd] = useState("10:00");
   const [createVenue, setCreateVenue] = useState("");
+  const [createSessionKind, setCreateSessionKind] = useState("tutorial");
+  const [createRequestReason, setCreateRequestReason] = useState("");
+  const [resubmitClaimId, setResubmitClaimId] = useState<string | null>(null);
   const [createBusy, setCreateBusy] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [discardTargetIds, setDiscardTargetIds] = useState<string[]>([]);
@@ -814,18 +855,32 @@ export function TutorSessionsWorkspace({
     }
   }, [search.claim, claims]);
 
+  const openResubmitRequest = (claim: TutorSessionClaimDTO) => {
+    setResubmitClaimId(claim.id);
+    setCreateModuleId(claim.module_id);
+    setCreateDate(parseISO(`${claim.session_date}T12:00:00`));
+    setCreateStart(formatClock(claim.start_time) || "09:00");
+    setCreateEnd(formatClock(claim.end_time) || "10:00");
+    setCreateVenue(claim.venue ?? "");
+    setCreateSessionKind(claim.session_kind ?? "tutorial");
+    setCreateRequestReason(claim.request_reason ?? "");
+    setCreateOpen(true);
+  };
+
   useEffect(() => {
     if (!createOpen) return;
     void (async () => {
       try {
         const m = await listTutorModuleAssignmentsFn();
         setModules(m);
-        setCreateModuleId((prev) => prev || m[0]?.moduleId || "");
+        if (!resubmitClaimId) {
+          setCreateModuleId((prev) => prev || m[0]?.moduleId || "");
+        }
       } catch {
         setModules([]);
       }
     })();
-  }, [createOpen]);
+  }, [createOpen, resubmitClaimId]);
 
   const moduleOptions = useMemo(() => {
     const map = new Map<string, string>();
@@ -892,6 +947,14 @@ export function TutorSessionsWorkspace({
       completed: [],
     };
     for (const c of filteredClaims) {
+      if (
+        c.request_status === SESSION_REQUEST_STATUS.PENDING ||
+        c.request_status === SESSION_REQUEST_STATUS.CHANGES_REQUESTED ||
+        c.request_status === SESSION_REQUEST_STATUS.REJECTED
+      ) {
+        buckets.claimsPending.push(c);
+        continue;
+      }
       const times = claimTimes(c);
       const col = sessionKanbanColumn(
         now,
@@ -1397,6 +1460,12 @@ export function TutorSessionsWorkspace({
                                     }}
                                     onWorkspace={() => openWorkspace(c)}
                                     onDiscard={() => openDiscard([c.id])}
+                                    onEditRequest={
+                                      c.request_status ===
+                                      SESSION_REQUEST_STATUS.CHANGES_REQUESTED
+                                        ? () => openResubmitRequest(c)
+                                        : undefined
+                                    }
                                     draftSelectMode={draftSelectMode}
                                     draftSelected={selectedDraftIds.has(c.id)}
                                     onToggleDraftSelect={() =>
@@ -2016,14 +2085,22 @@ export function TutorSessionsWorkspace({
             </DialogContent>
           </Dialog>
 
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogContent>
+          <Dialog
+            open={createOpen}
+            onOpenChange={(open) => {
+              setCreateOpen(open);
+              if (!open) setResubmitClaimId(null);
+            }}
+          >
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
               <DialogHeader>
-                <DialogTitle>Create session</DialogTitle>
+                <DialogTitle>
+                  {resubmitClaimId ? "Update session request" : "Request session"}
+                </DialogTitle>
                 <DialogDescription>
-                  Sends a session request to your admin. It appears on your board
-                  only after approval, then you can complete and submit it for
-                  lecturer verification.
+                  Your lecturer and admin will review this request. After approval
+                  it is added to the schedule and you can submit attendance for
+                  verification.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-3 py-1">
@@ -2039,6 +2116,19 @@ export function TutorSessionsWorkspace({
                         {m.code} — {m.name}
                       </option>
                     ))}
+                  </select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label>Session type</Label>
+                  <select
+                    className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm dark:bg-input/30"
+                    value={createSessionKind}
+                    onChange={(e) => setCreateSessionKind(e.target.value)}
+                  >
+                    <option value="tutorial">Tutorial</option>
+                    <option value="workshop">Workshop</option>
+                    <option value="one_off">One-off</option>
+                    <option value="consultation">Consultation</option>
                   </select>
                 </div>
                 <div className="grid gap-1.5">
@@ -2068,37 +2158,76 @@ export function TutorSessionsWorkspace({
                     />
                   </div>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Duration:{" "}
+                  {(() => {
+                    const [sh, sm] = createStart.split(":").map(Number);
+                    const [eh, em] = createEnd.split(":").map(Number);
+                    let mins = (eh * 60 + em) - (sh * 60 + sm);
+                    if (mins <= 0) mins += 24 * 60;
+                    const h = Math.round((mins / 60) * 10) / 10;
+                    return `${h}h`;
+                  })()}
+                </p>
                 <div className="grid gap-1.5">
-                  <Label>Venue (optional)</Label>
+                  <Label>Venue</Label>
                   <Input
                     value={createVenue}
                     onChange={(e) => setCreateVenue(e.target.value)}
                     placeholder="Room or link"
                   />
                 </div>
+                <div className="grid gap-1.5">
+                  <Label>Reason</Label>
+                  <textarea
+                    className="min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm dark:bg-input/30"
+                    value={createRequestReason}
+                    onChange={(e) => setCreateRequestReason(e.target.value)}
+                    placeholder="Why is this session needed? (min 10 characters)"
+                  />
+                </div>
               </div>
               <DialogFooter>
                 <Button
-                  disabled={createBusy || !createModuleId}
+                  disabled={
+                    createBusy ||
+                    !createModuleId ||
+                    createRequestReason.trim().length < 10
+                  }
                   onClick={async () => {
                     setCreateBusy(true);
                     try {
-                      await createSessionClaimFn({
-                        data: {
-                          moduleId: createModuleId,
-                          sessionDate: format(createDate, "yyyy-MM-dd"),
-                          startTime: createStart,
-                          endTime: createEnd,
-                          venue: createVenue || undefined,
-                        },
-                      });
-                      toast.success(
-                        "Session request sent for admin approval",
-                      );
+                      const payload = {
+                        moduleId: createModuleId,
+                        sessionDate: format(createDate, "yyyy-MM-dd"),
+                        startTime: createStart,
+                        endTime: createEnd,
+                        venue: createVenue || undefined,
+                        sessionKind: createSessionKind,
+                        requestReason: createRequestReason.trim(),
+                      };
+                      if (resubmitClaimId) {
+                        await resubmitSessionRequestFn({
+                          data: { claimId: resubmitClaimId, ...payload },
+                        });
+                        toast.success("Session request updated");
+                      } else {
+                        const result = await createSessionClaimFn({
+                          data: payload,
+                        });
+                        if (result.budgetWarning) {
+                          toast.warning(result.budgetWarning);
+                        }
+                        toast.success(
+                          "Session request sent — awaiting admin approval",
+                        );
+                      }
                       setCreateOpen(false);
+                      setResubmitClaimId(null);
+                      await reload();
                     } catch (e) {
                       toast.error(
-                        e instanceof Error ? e.message : "Could not create",
+                        e instanceof Error ? e.message : "Could not save request",
                       );
                     } finally {
                       setCreateBusy(false);
@@ -2108,7 +2237,7 @@ export function TutorSessionsWorkspace({
                   {createBusy ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : null}
-                  Request approval
+                  {resubmitClaimId ? "Resubmit request" : "Send request"}
                 </Button>
               </DialogFooter>
             </DialogContent>

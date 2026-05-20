@@ -321,6 +321,12 @@ Lifecycle helpers: `src/server-actions/lecturer-schedule/series-lifecycle.ts` (d
 1. **`tutor_schedule_imports`** — Parsed spreadsheet JSON.
 2. Claims created or matched via fingerprints (`src/lib/schedule-event-fingerprint.ts`).
 
+### Tutor-requested sessions
+
+1. Tutor submits a **manual** `session_claims` row (`request_status = PENDING`, `request_reason`, `session_kind`, date/time/venue).
+2. **Lecturer** can reject or suggest changes; **admin** approves (enforces `tutor_hour_allocations` reserved capacity).
+3. On approval, `approveTutorSessionRequest` publishes a one-off `schedule_series`, materializes `scheduled_sessions`, links the existing claim via `source_scheduled_session_id`, and syncs fields — calendars and tutor boards stay aligned.
+
 ### Session claim (central entity)
 
 | Related table | Purpose |
