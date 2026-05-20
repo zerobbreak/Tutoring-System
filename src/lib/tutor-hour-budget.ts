@@ -212,12 +212,6 @@ export function buildTutorHourBudget(input: {
     ensureModule(alloc.module_id, alloc.academic_term_id, alloc);
   }
 
-  const linkedSessionIds = new Set(
-    input.standaloneClaims
-      .map((c) => c.source_scheduled_session_id)
-      .filter((id): id is string => Boolean(id)),
-  );
-
   for (const session of input.scheduledSessions) {
     if (session.tutor_id !== input.tutorId) continue;
     if (session.deleted_at) continue;

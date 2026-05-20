@@ -76,6 +76,7 @@ export function TutorDashboardView({
   pendingPreviewClaims,
   upcomingEvents,
   notifications,
+  hourBudget,
 }: TutorDashboardViewProps) {
   const { prefs } = useDashboardPreferences();
   const [messageConversations, setMessageConversations] = useState<
