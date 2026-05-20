@@ -80,6 +80,7 @@ const ISSUE_LABELS: Record<SchedulingIssue["kind"], string> = {
   tutor_double_booking: "Double bookings",
   venue_conflict: "Venue conflicts",
   tutor_overload: "Tutor overload",
+  allocation_exceeded: "Allocation exceeded",
   missing_schedule: "Missing schedules",
 };
 
@@ -211,6 +212,7 @@ export function AdminSchedulesView({
       tutor_double_booking: 0,
       venue_conflict: 0,
       tutor_overload: 0,
+      allocation_exceeded: 0,
       missing_schedule: 0,
     };
     for (const issue of issues) counts[issue.kind]++;

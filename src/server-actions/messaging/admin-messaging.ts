@@ -5,7 +5,7 @@ import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import {
   createWorkflowConversation,
-  findWorkflowConversation,
+  resolveWorkflowConversationId,
   getOrCreateDirectConversation,
 } from "./helpers";
 import {
@@ -405,7 +405,7 @@ export const joinAdminDisputeConversationFn = createServerFn({ method: "POST" })
     });
 
     let conversationId =
-      (await findWorkflowConversation(supabase, {
+      (await resolveWorkflowConversationId(supabase, {
         userId,
         type: "CLAIM",
         metadataMatch: {

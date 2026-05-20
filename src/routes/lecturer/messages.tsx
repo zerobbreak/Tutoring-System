@@ -5,6 +5,7 @@ import { ConversationSidebar } from "#/components/messaging/ConversationSidebar"
 import { ChatWindow } from "#/components/messaging/ChatWindow";
 import { NewConversationDialog } from "#/components/messaging/NewConversationDialog";
 import { useMessagingPage } from "#/components/messaging/use-messaging-page";
+import { getOrCreateDirectConversationFn } from "#/server-actions/messaging";
 import { Button } from "#/components/ui/button";
 import { Skeleton } from "#/components/ui/skeleton";
 import { MessageSquare, Plus } from "lucide-react";
@@ -34,6 +35,7 @@ function LecturerMessagesPage() {
     isMessagesLoading,
     handleSendMessage,
     handleConversationCreated,
+    handleDeleteConversation,
   } = useMessagingPage({ initialConversationId: search.conversation });
 
   if (isLoading) {
@@ -82,6 +84,7 @@ function LecturerMessagesPage() {
               ),
             );
           }}
+          onDelete={() => void handleDeleteConversation()}
         />
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center bg-muted/5 p-12 text-center">
@@ -103,6 +106,12 @@ function LecturerMessagesPage() {
       <NewConversationDialog
         open={isNewChatOpen}
         onOpenChange={setIsNewChatOpen}
+        onSelectUser={async (user) => {
+          const { conversationId } = await getOrCreateDirectConversationFn({
+            data: { tutorId: user.id },
+          });
+          return conversationId;
+        }}
         onConversationCreated={(id) => void handleConversationCreated(id)}
       />
     </div>

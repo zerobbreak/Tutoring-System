@@ -14,7 +14,9 @@ import {
   type TutorScheduleImportSource,
 } from "#/lib/tutor-schedule-imports";
 import { typeColumnFlagForEvent } from "#/lib/schedule-display";
+import type { TutorHourBudgetSummary } from "#/lib/tutor-hour-budget";
 import { TUTOR_VISIBLE_SESSION_CLAIMS_OR_FILTER } from "#/lib/tutor-manual-session-claim";
+import { loadTutorBudgetContext } from "#/server-actions/tutor-allocations/load-budget-context";
 
 async function requireUserId(
   supabase: ReturnType<typeof createSupabaseServerClient>,
@@ -61,6 +63,7 @@ export type TutorDashboardDataDTO = {
   notifications: DashboardNotificationDTO[];
   weekStart: string;
   weekEnd: string;
+  hourBudget: TutorHourBudgetSummary;
 };
 
 type RawClaimRow = Omit<DashboardClaimDTO, "module"> & {
@@ -112,6 +115,33 @@ export const getTutorDashboardDataFn = createServerFn({ method: "GET" }).handler
   async (): Promise<TutorDashboardDataDTO> => {
     const supabase = createSupabaseServerClient();
     const uid = await requireUserId(supabase);
+
+    const { data: userRow, error: userRowErr } = await supabase
+      .from("users")
+      .select("institution_id")
+      .eq("id", uid)
+      .maybeSingle();
+
+    if (userRowErr) throw new Error(userRowErr.message);
+    const institutionId = userRow?.institution_id as string | undefined;
+    let hourBudget: TutorHourBudgetSummary = {
+      totals: {
+        allocatedHours: 0,
+        reservedHours: 0,
+        workedHours: 0,
+        availableHours: 0,
+        utilizationPercent: 0,
+      },
+      byModule: [],
+    };
+    if (institutionId) {
+      const loaded = await loadTutorBudgetContext(
+        supabase,
+        uid,
+        institutionId,
+      );
+      hourBudget = loaded.summary;
+    }
 
     const now = new Date();
     const weekStart = startOfWeek(now, { weekStartsOn: 1 });
@@ -249,6 +279,7 @@ export const getTutorDashboardDataFn = createServerFn({ method: "GET" }).handler
         []) as DashboardNotificationDTO[],
       weekStart: startStr,
       weekEnd: endStr,
+      hourBudget,
     };
   },
 );

@@ -164,6 +164,7 @@ erDiagram
 | `academic_terms` | Semester/year windows | `label`, `academic_year`, `start_date`, `end_date`, `is_current` |
 | `modules` | Courses | `institution_id`, `lecturer_id`, `code`, `name`, `academic_term_id` |
 | `tutor_assignments` | Tutor ↔ module | `module_id`, `tutor_id`, `start_date`, `end_date`, `is_active` |
+| `tutor_hour_allocations` | Max hours per tutor/module/term | `tutor_id`, `module_id`, `academic_term_id`, `allocated_hours` |
 
 ### Session claims workflow
 

@@ -32,6 +32,7 @@ import {
   MoreHorizontal,
   Plus,
   Search,
+  Send,
   StickyNote,
   Table2,
   Trash2,
@@ -70,7 +71,7 @@ import {
 } from "#/components/ui/dropdown-menu";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
-import { ScrollArea } from "#/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "#/components/ui/scroll-area";
 import { Skeleton } from "#/components/ui/skeleton";
 import {
   Table,
@@ -82,6 +83,7 @@ import {
 } from "#/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
 import { TooltipProvider } from "#/components/ui/tooltip";
+import { SubmitClaimDialog } from "#/components/tutor/sessions/submit-claim-dialog";
 import {
   sessionBoundsLocal,
   sessionKanbanColumn,
@@ -95,6 +97,8 @@ import {
   formatClock,
 } from "#/lib/session-claim-display";
 import { toast } from "#/lib/toast";
+import type { TutorHourBudgetSummary } from "#/lib/tutor-hour-budget";
+import { getTutorHourBudgetFn } from "#/server-actions/tutor-allocations";
 import { cn } from "#/lib/utils";
 import {
   createSessionClaimFn,
@@ -104,7 +108,6 @@ import {
   listTutorModuleAssignmentsFn,
   listTutorSessionClaimsFn,
   registerAttendanceEvidenceFn,
-  submitSessionClaimFn,
   updateSessionClaimSchedulingFn,
   type AttendanceRecordDTO,
   type TutorSessionClaimDTO,
@@ -633,7 +636,22 @@ function DraggableSessionCard({
                 </div>
               </div>
             </div>
-            <ChevronRight className="size-4 shrink-0 text-muted-foreground/50 transition-transform group-hover/card:translate-x-0.5 group-hover/card:text-lagoon-deep" />
+            {isDraft ? (
+              <Button
+                type="button"
+                size="xs"
+                className="shrink-0 gap-1.5"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSubmit();
+                }}
+              >
+                <Send className="size-3.5" />
+                Submit claim
+              </Button>
+            ) : (
+              <ChevronRight className="size-4 shrink-0 text-muted-foreground/50 transition-transform group-hover/card:translate-x-0.5 group-hover/card:text-lagoon-deep" />
+            )}
           </div>
         </CardContent>
       </Card>
@@ -692,7 +710,6 @@ export function TutorSessionsWorkspace({
   const [submitClaim, setSubmitClaim] = useState<TutorSessionClaimDTO | null>(
     null,
   );
-  const [submitBusy, setSubmitBusy] = useState(false);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [modules, setModules] = useState<
@@ -711,6 +728,10 @@ export function TutorSessionsWorkspace({
   const [selectedDraftIds, setSelectedDraftIds] = useState<Set<string>>(
     () => new Set(),
   );
+  const [hourBudget, setHourBudget] = useState<TutorHourBudgetSummary | null>(
+    null,
+  );
+
   const [activeDrag, setActiveDrag] = useState<{
     claim: TutorSessionClaimDTO;
     columnId: SessionKanbanColumnId;
@@ -749,6 +770,12 @@ export function TutorSessionsWorkspace({
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    void getTutorHourBudgetFn()
+      .then(setHourBudget)
+      .catch(() => setHourBudget(null));
+  }, []);
 
   useEffect(() => {
     const onVisible = () => {
@@ -1005,6 +1032,25 @@ export function TutorSessionsWorkspace({
             </div>
           </header>
 
+          {hourBudget && hourBudget.totals.allocatedHours > 0 ? (
+            <div
+              className={cn(
+                "rounded-lg border px-3 py-2 text-sm",
+                hourBudget.totals.availableHours < 0
+                  ? "border-destructive/40 bg-destructive/5 text-destructive"
+                  : "border-border/70 bg-muted/20 text-muted-foreground",
+              )}
+            >
+              <span className="font-medium text-foreground">Hour allocation: </span>
+              {hourBudget.totals.reservedHours}h reserved of{" "}
+              {hourBudget.totals.allocatedHours}h
+              {hourBudget.totals.availableHours >= 0
+                ? ` (${hourBudget.totals.availableHours}h available)`
+                : ` (${Math.abs(hourBudget.totals.availableHours)}h over cap)`}
+              . Worked: {hourBudget.totals.workedHours}h.
+            </div>
+          ) : null}
+
           <div className="rounded-xl border border-border/70 bg-muted/15 p-3 sm:p-4">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-4">
             <div className="relative min-w-0 sm:col-span-2 lg:col-span-1">
@@ -1187,40 +1233,43 @@ export function TutorSessionsWorkspace({
             </div>
           ) : null}
 
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 mt-4">
-            {SESSION_STAT_CARDS.map((card) => {
-              const { label, key, icon: Icon, cardClass, iconWrap, valueClass } = card;
-              const suffix = "suffix" in card ? card.suffix : undefined;
-              const raw = stats[key];
-              const display =
-                loading ? "—" : suffix ? `${raw}${suffix}` : String(raw);
-                return (
-                  <Card
-                    key={key}
-                    className={cn("shadow-sm transition-shadow hover:shadow-md", cardClass)}
-                  >
-                    <CardHeader className="flex flex-row items-start justify-between gap-3 pb-2">
-                      <div className="min-w-0 space-y-1">
-                        <CardDescription className="text-xs">{label}</CardDescription>
-                        <CardTitle
-                          className={cn("text-2xl tabular-nums tracking-tight", valueClass)}
+          <ScrollArea className="w-full mt-4">
+            <div className="flex gap-3 pb-3 min-w-max lg:grid lg:grid-cols-4 lg:min-w-0 lg:pb-0">
+              {SESSION_STAT_CARDS.map((card) => {
+                const { label, key, icon: Icon, cardClass, iconWrap, valueClass } = card;
+                const suffix = "suffix" in card ? card.suffix : undefined;
+                const raw = stats[key];
+                const display =
+                  loading ? "—" : suffix ? `${raw}${suffix}` : String(raw);
+                  return (
+                    <Card
+                      key={key}
+                      className={cn("w-[230px] shrink-0 shadow-sm transition-shadow hover:shadow-md lg:w-auto", cardClass)}
+                    >
+                      <CardHeader className="flex flex-row items-start justify-between gap-3 pb-2">
+                        <div className="min-w-0 space-y-1">
+                          <CardDescription className="text-xs">{label}</CardDescription>
+                          <CardTitle
+                            className={cn("text-2xl tabular-nums tracking-tight", valueClass)}
+                          >
+                            {display}
+                          </CardTitle>
+                        </div>
+                        <span
+                          className={cn(
+                            "flex size-9 shrink-0 items-center justify-center rounded-lg",
+                            iconWrap,
+                          )}
                         >
-                          {display}
-                        </CardTitle>
-                      </div>
-                      <span
-                        className={cn(
-                          "flex size-9 shrink-0 items-center justify-center rounded-lg",
-                          iconWrap,
-                        )}
-                      >
-                        <Icon className="size-4" aria-hidden />
-                      </span>
-                    </CardHeader>
-                  </Card>
-                );
-            })}
-          </div>
+                          <Icon className="size-4" aria-hidden />
+                        </span>
+                      </CardHeader>
+                    </Card>
+                  );
+              })}
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
         </div>
         </div>
 
@@ -1592,7 +1641,23 @@ export function TutorSessionsWorkspace({
                                     </Badge>
                                   </TableCell>
                                   <TableCell className="px-2 py-3.5 text-right align-middle">
-                                    <ChevronRight className="size-4 text-muted-foreground/50 transition group-hover:translate-x-0.5 group-hover:text-lagoon-deep" />
+                                    {status === "DRAFT" ? (
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        className="gap-1.5"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSubmitClaim(claim);
+                                          setSubmitOpen(true);
+                                        }}
+                                      >
+                                        <Send className="size-3.5" />
+                                        Submit claim
+                                      </Button>
+                                    ) : (
+                                      <ChevronRight className="ml-auto size-4 text-muted-foreground/50 transition group-hover:translate-x-0.5 group-hover:text-lagoon-deep" />
+                                    )}
                                   </TableCell>
                                 </TableRow>
                               );
@@ -1709,6 +1774,18 @@ export function TutorSessionsWorkspace({
                     >
                       <Trash2 className="size-4" />
                       Discard draft
+                    </Button>
+                  ) : null}
+                  {detailClaim?.status === "DRAFT" ? (
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setSubmitClaim(detailClaim);
+                        setSubmitOpen(true);
+                      }}
+                    >
+                      <Send className="size-4" />
+                      Submit claim
                     </Button>
                   ) : null}
                   <Button variant="outline" asChild>
@@ -1859,49 +1936,12 @@ export function TutorSessionsWorkspace({
             </DialogContent>
           </Dialog>
 
-          <Dialog open={submitOpen} onOpenChange={setSubmitOpen}>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Submit claim</DialogTitle>
-                <DialogDescription>
-                  Sends this session to pending verification with a timestamp.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="gap-2">
-                <Button variant="outline" onClick={() => setSubmitOpen(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  disabled={submitBusy}
-                  onClick={async () => {
-                    if (!submitClaim) return;
-                    setSubmitBusy(true);
-                    try {
-                      await submitSessionClaimFn({
-                        data: { claimId: submitClaim.id },
-                      });
-                      toast.success("Claim submitted");
-                      setSubmitOpen(false);
-                      await reload();
-                    } catch (e) {
-                      toast.error(
-                        e instanceof Error ? e.message : "Submit failed",
-                      );
-                    } finally {
-                      setSubmitBusy(false);
-                    }
-                  }}
-                >
-                  {submitBusy ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="size-4" />
-                  )}
-                  Confirm submit
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <SubmitClaimDialog
+            claim={submitClaim}
+            open={submitOpen}
+            onOpenChange={setSubmitOpen}
+            onSubmitted={reload}
+          />
 
           <Dialog
             open={discardOpen}

@@ -3,6 +3,7 @@ import {
   extendSeriesHorizon,
   materializeSeriesSessionsIncremental,
 } from "#/lib/schedule-materialize";
+import { checkReservedCapacityForSeriesPublish } from "#/server-actions/tutor-allocations/check-reserved-capacity";
 import { reconcileSeriesClaims } from "./reconcile-series-claims";
 
 export type PublishMaterializeMode = "first_publish" | "repair_horizon";
@@ -66,6 +67,10 @@ export async function publishScheduleSeriesCore(
   const { status } = await assertSeriesPublishable(db, seriesId);
   const alreadyPublished = status === "PUBLISHED";
   const repairedOnly = materializeMode === "repair_horizon" || alreadyPublished;
+
+  if (!repairedOnly) {
+    await checkReservedCapacityForSeriesPublish(db, seriesId);
+  }
 
   if (materializeMode === "repair_horizon" || alreadyPublished) {
     await extendSeriesHorizon(db, seriesId);

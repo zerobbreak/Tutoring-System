@@ -104,6 +104,7 @@ export function AdminMessagingView({ search, navigate }: AdminMessagingViewProps
     isMessagesLoading,
     handleSendMessage,
     handleConversationCreated,
+    handleDeleteConversation,
   } = useMessagingPage({ initialConversationId: search.conversation });
 
   const openNoticeDialog = React.useCallback(
@@ -344,6 +345,7 @@ export function AdminMessagingView({ search, navigate }: AdminMessagingViewProps
                 ),
               );
             }}
+            onDelete={() => void handleDeleteConversation()}
           />
         ) : (
           <div className="flex flex-1 flex-col items-center justify-center bg-muted/5 p-12 text-center">

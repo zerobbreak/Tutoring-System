@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { DashboardRecentMessages } from "#/components/tutor/dashboard/dashboard-recent-messages";
+import { TutorHourProgressCard } from "#/components/tutor/dashboard/tutor-hour-progress-card";
+import type { TutorHourBudgetSummary } from "#/lib/tutor-hour-budget";
 import { useDashboardPreferences } from "#/lib/dashboard-preferences";
 import {
   listConversationsFn,
@@ -57,6 +59,7 @@ type TutorDashboardViewProps = {
   pendingPreviewClaims: DashboardClaimDTO[];
   upcomingEvents: ScheduleParsedEvent[];
   notifications: DashboardNotificationDTO[];
+  hourBudget: TutorHourBudgetSummary | null;
 };
 
 export function TutorDashboardView({
@@ -222,6 +225,7 @@ export function TutorDashboardView({
         </Card>
 
         <div className={`flex flex-col lg:col-span-3 ${prefs.dashboard_compact_mode ? "gap-4" : "gap-6"}`}>
+          <TutorHourProgressCard booting={booting} hourBudget={hourBudget} />
           <Link
             to="/settings"
             className="group block rounded-xl outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"

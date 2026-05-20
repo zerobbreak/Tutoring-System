@@ -5,6 +5,7 @@ export const CLAIM_WORKFLOW_ACTION = {
   SESSION_CREATION_APPROVED: "SESSION_CREATION_APPROVED",
   TUTOR_SUBMITTED: "TUTOR_SUBMITTED",
   TUTOR_RESUBMITTED: "TUTOR_RESUBMITTED",
+  NO_SHOW_ESCALATED: "NO_SHOW_ESCALATED",
 } as const;
 
 export type WorkflowActor = {
@@ -29,6 +30,9 @@ const ACTION_LABELS: Record<string, string> = {
   [CLAIM_WORKFLOW_ACTION.SESSION_CREATION_APPROVED]: "Session approved by admin",
   [CLAIM_WORKFLOW_ACTION.TUTOR_SUBMITTED]: "Submitted for verification",
   [CLAIM_WORKFLOW_ACTION.TUTOR_RESUBMITTED]: "Resubmitted for verification",
+  [CLAIM_WORKFLOW_ACTION.NO_SHOW_ESCALATED]:
+    "Escalated — no-show without explanation",
+  DRAFT_EXPIRED_PURGED: "Expired draft removed from workspace",
   APPROVED: "Approved by lecturer",
   SIGNED_APPROVAL: "Signed approval",
   REJECTED: "Rejected",

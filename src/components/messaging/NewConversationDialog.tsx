@@ -10,12 +10,7 @@ import {
 import { Input } from "#/components/ui/input";
 import { ScrollArea } from "#/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "#/components/ui/avatar";
-import {
-  searchUsersFn,
-  createConversationFn,
-  buildMetadata,
-  METADATA_CATEGORY,
-} from "#/server-actions/messaging";
+import { searchUsersFn } from "#/server-actions/messaging";
 import { toast } from "sonner";
 
 export type NewConversationUser = {
@@ -83,21 +78,11 @@ export function NewConversationDialog({
     setIsCreating(true);
     try {
       let conversationId: string;
-      if (onSelectUser) {
-        conversationId = await onSelectUser(targetUser);
-      } else {
-        const conv = await createConversationFn({
-          data: {
-            type: "DIRECT",
-            participants: [targetUser.id],
-            metadata: buildMetadata(METADATA_CATEGORY.TUTOR_DISCUSSION, {
-              tutor_id: targetUser.id,
-            }),
-          },
-        });
-        conversationId = conv.id as string;
+      if (!onSelectUser) {
+        throw new Error("Conversation handler not configured.");
       }
-      toast.success(`Conversation with ${targetUser.full_name} started`);
+      conversationId = await onSelectUser(targetUser);
+      toast.success(`Opened conversation with ${targetUser.full_name}`);
       onConversationCreated(conversationId);
       onOpenChange(false);
     } catch (err) {

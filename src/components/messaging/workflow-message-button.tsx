@@ -16,6 +16,8 @@ type WorkflowMessageButtonProps = {
   kind: WorkflowKind;
   claimId?: string;
   disputeId?: string;
+  /** Messaging route to open after the thread is resolved. */
+  messagesTo?: "/lecturer/messages" | "/tutor/messaging";
   label?: string;
   variant?: "default" | "outline" | "ghost" | "secondary";
   size?: "default" | "sm" | "lg" | "icon";
@@ -26,6 +28,7 @@ export function WorkflowMessageButton({
   kind,
   claimId,
   disputeId,
+  messagesTo = "/lecturer/messages",
   label,
   variant = "outline",
   size = "sm",
@@ -80,7 +83,7 @@ export function WorkflowMessageButton({
   if (conversationId) {
     return (
       <Button variant={variant} size={size} className={className} asChild>
-        <Link to="/lecturer/messages" search={{ conversation: conversationId }}>
+        <Link to={messagesTo} search={{ conversation: conversationId }}>
           <MessageSquare className="mr-2 size-4" />
           Open messages
         </Link>
