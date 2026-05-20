@@ -34,7 +34,11 @@ export type LowAttendanceSessionDTO = {
 
 export type IntegrityIssueDTO = {
   id: string;
-  kind: "HEADCOUNT_MISMATCH" | "MISSING_REGISTER" | "UNVERIFIED_SCANS";
+  kind:
+    | "HEADCOUNT_MISMATCH"
+    | "MISSING_REGISTER"
+    | "UNVERIFIED_SCANS"
+    | "SCHEDULE_MISMATCH";
   claimId: string;
   moduleCode: string;
   session_date: string;

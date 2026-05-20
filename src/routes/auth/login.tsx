@@ -11,6 +11,7 @@ import sidebarImage from "../../assets/auth-sidebar.png";
 import { supabase } from "../../lib/supabase";
 import { toast } from "../../lib/toast";
 import { needsMfaVerification } from "../../lib/mfa-auth";
+import { getAuthUserLifecycleFn } from "../../lib/auth-server";
 import { getPostAuthDashboardPath } from "../../lib/user-role";
 
 const loginSchema = z.object({
@@ -80,7 +81,10 @@ function Login() {
       const role = data.user.user_metadata?.role as string | undefined;
       toast.success("Signed in successfully.");
       await router.invalidate();
-      await navigate({ to: getPostAuthDashboardPath(role) });
+      const lifecycle = await getAuthUserLifecycleFn();
+      const destination =
+        lifecycle?.destination ?? getPostAuthDashboardPath(role);
+      await navigate({ to: destination });
     } catch (error: any) {
       toast.error(error.message || "Invalid email or password.");
     } finally {

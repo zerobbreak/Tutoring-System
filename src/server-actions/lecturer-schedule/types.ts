@@ -36,6 +36,8 @@ export type ScheduleEventDTO = {
   status: string;
   sessionKind: string;
   claimId: string | null;
+  cancelledAt: string | null;
+  cancellationReason: string | null;
 };
 
 export type ScheduleSeriesDTO = {
@@ -51,11 +53,16 @@ export type ScheduleSeriesDTO = {
   timezone: string;
   dtstart: string;
   durationMinutes: number;
-  recurrence: {
-    frequency: "weekly";
-    byWeekday: number[];
-    until: string | null;
-  };
+  recurrence:
+    | {
+        frequency: "weekly";
+        byWeekday: number[];
+        until: string | null;
+      }
+    | {
+        frequency: "explicit_dates";
+        dates: string[];
+      };
   status: string;
   publishedAt: string | null;
 };
@@ -76,6 +83,33 @@ export type ScheduleChangeRequestDTO = {
   createdAt: string;
 };
 
+export type TutorSessionRequestCapacityDTO = {
+  allocatedHours: number | null;
+  reservedHours: number;
+  requestedHours: number;
+  availableHours: number | null;
+  canApprove: boolean;
+  warning: string | null;
+};
+
+export type TutorSessionRequestDTO = {
+  id: string;
+  sessionDate: string;
+  startTime: string;
+  endTime: string;
+  hours: number;
+  venue: string | null;
+  sessionKind: string | null;
+  requestReason: string | null;
+  requestStatus: string;
+  reviewFeedback: string | null;
+  updatedAt: string;
+  tutorName: string;
+  moduleCode: string;
+  moduleName: string;
+  capacity: TutorSessionRequestCapacityDTO;
+};
+
 export type LecturerSchedulePageDataDTO = {
   modules: ScheduleModuleOptionDTO[];
   tutors: ScheduleTutorOptionDTO[];
@@ -85,4 +119,5 @@ export type LecturerSchedulePageDataDTO = {
   events: ScheduleEventDTO[];
   series: ScheduleSeriesDTO[];
   pendingChangeRequests: ScheduleChangeRequestDTO[];
+  pendingTutorSessionRequests: TutorSessionRequestDTO[];
 };

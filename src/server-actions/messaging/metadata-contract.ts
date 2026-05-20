@@ -119,7 +119,10 @@ export function uiCategoryMatchesConversation(
     case "DISPUTE":
       return (
         conv.type === "CLAIM" &&
-        (cat === METADATA_CATEGORY.CLAIM_DISPUTE || Boolean(meta.dispute_id))
+        (cat === METADATA_CATEGORY.CLAIM_DISPUTE ||
+          cat === METADATA_CATEGORY.CLAIM_DISCUSSION ||
+          Boolean(meta.dispute_id) ||
+          Boolean(meta.claim_id))
       );
     default:
       return true;
@@ -178,17 +181,50 @@ export function adminUiCategoryMatchesConversation(
   }
 }
 
+export function shortTopicId(id: string | undefined): string {
+  return id ? id.slice(0, 8) : "";
+}
+
+/** Human-readable thread label from metadata (claim, dispute, etc.). */
+export function conversationTopicLabel(
+  type: ConversationType,
+  metadata: ConversationMetadata | null | undefined,
+): string | null {
+  const meta = metadata ?? {};
+  if (meta.dispute_id) {
+    return `Dispute · ${shortTopicId(meta.dispute_id)}`;
+  }
+  if (meta.claim_id) {
+    if (meta.category === METADATA_CATEGORY.SESSION_QUERY || type === "SESSION") {
+      return `Session · ${shortTopicId(meta.claim_id)}`;
+    }
+    if (meta.category === METADATA_CATEGORY.ATTENDANCE_ISSUE || type === "ATTENDANCE") {
+      return `Attendance · ${shortTopicId(meta.claim_id)}`;
+    }
+    if (meta.category === METADATA_CATEGORY.CLAIM_DISPUTE) {
+      return `Dispute · ${shortTopicId(meta.claim_id)}`;
+    }
+    return `Claim · ${shortTopicId(meta.claim_id)}`;
+  }
+  if (meta.category === METADATA_CATEGORY.TUTOR_DISCUSSION) {
+    return "Tutor discussion";
+  }
+  if (meta.category === METADATA_CATEGORY.ADMIN_NOTICE) {
+    return "Admin message";
+  }
+  return null;
+}
+
 export function defaultTitleForType(
   type: ConversationType,
   metadata: ConversationMetadata,
 ): string {
+  const topic = conversationTopicLabel(type, metadata);
   switch (type) {
     case "SESSION":
-      return metadata.claim_id
-        ? `Session query · ${metadata.claim_id.slice(0, 8)}`
-        : "Session query";
+      return topic ?? "Session query";
     case "CLAIM":
-      return metadata.dispute_id ? "Claim dispute" : "Claim discussion";
+      return topic ?? (metadata.dispute_id ? "Claim dispute" : "Claim discussion");
     case "ATTENDANCE":
       return "Attendance issue";
     case "GROUP": {

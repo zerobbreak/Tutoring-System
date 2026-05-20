@@ -5,14 +5,17 @@ import { LecturerScheduleView } from "#/components/lecturer/schedule/lecturer-sc
 import { rangeForView } from "#/components/lecturer/schedule/schedule-range";
 import type { ScheduleCalendarView } from "#/components/lecturer/schedule/types";
 import { toast } from "#/lib/toast";
+import { buildDtstartFromDateAndTime } from "#/lib/schedule-recurrence";
 import {
   archiveScheduleSeriesFn,
   assignTutorToModuleFn,
+  createOneOffScheduleSeriesFn,
   createScheduleSeriesFn,
   deleteScheduleSeriesFn,
   getLecturerSchedulePageDataFn,
   publishScheduleSeriesFn,
   reviewScheduleChangeRequestFn,
+  reviewTutorSessionRequestFn,
   type LecturerSchedulePageDataDTO,
 } from "#/server-actions/lecturer-schedule";
 
@@ -70,14 +73,14 @@ function SchedulePage() {
     tutorId: string;
     venueId: string | null;
     venueText: string;
-    dtstart: string;
+    sessionDates: string[];
+    sessionTime: string;
     durationMinutes: number;
-    byWeekday: number[];
-    until: string | null;
   }) => {
     setFormBusy(true);
     try {
       const today = new Date().toISOString().slice(0, 10);
+      const dates = [...values.sessionDates].sort();
       await assignTutorToModuleFn({
         data: {
           moduleId: values.moduleId,
@@ -92,12 +95,11 @@ function SchedulePage() {
           tutorId: values.tutorId,
           venueId: values.venueId,
           venueText: values.venueText || null,
-          dtstart: values.dtstart,
+          dtstart: buildDtstartFromDateAndTime(dates[0], values.sessionTime),
           durationMinutes: values.durationMinutes,
           recurrence: {
-            frequency: "weekly",
-            byWeekday: values.byWeekday,
-            until: values.until,
+            frequency: "explicit_dates",
+            dates,
           },
         },
       });
@@ -105,6 +107,48 @@ function SchedulePage() {
       await load();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not create series");
+      throw e;
+    } finally {
+      setFormBusy(false);
+    }
+  };
+
+  const handleCreateOneOff = async (values: {
+    moduleId: string;
+    title: string;
+    tutorId: string;
+    venueId: string | null;
+    venueText: string;
+    dtstartLocal: string;
+    durationMinutes: number;
+    sessionKind: string;
+  }) => {
+    setFormBusy(true);
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      await assignTutorToModuleFn({
+        data: {
+          moduleId: values.moduleId,
+          tutorId: values.tutorId,
+          startDate: today,
+        },
+      });
+      const { sessionCount } = await createOneOffScheduleSeriesFn({
+        data: {
+          moduleId: values.moduleId,
+          title: values.title,
+          tutorId: values.tutorId,
+          venueId: values.venueId,
+          venueText: values.venueText || null,
+          dtstart: new Date(values.dtstartLocal).toISOString(),
+          durationMinutes: values.durationMinutes,
+          sessionKind: values.sessionKind,
+        },
+      });
+      toast.success(`Published one-off session (${sessionCount} occurrence).`);
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not create session");
       throw e;
     } finally {
       setFormBusy(false);
@@ -176,6 +220,29 @@ function SchedulePage() {
     }
   };
 
+  const handleReviewTutorSessionRequest = async (
+    claimId: string,
+    decision: "REJECTED" | "CHANGES_REQUESTED",
+    feedback?: string,
+  ) => {
+    setReviewBusyId(claimId);
+    try {
+      await reviewTutorSessionRequestFn({
+        data: { claimId, decision, feedback },
+      });
+      toast.success(
+        decision === "REJECTED"
+          ? "Session request rejected"
+          : "Feedback sent to tutor",
+      );
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Review failed");
+    } finally {
+      setReviewBusyId(null);
+    }
+  };
+
   if (!user) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
@@ -195,10 +262,12 @@ function SchedulePage() {
       onFocusDateChange={setFocusDate}
       onReload={load}
       onCreateSeries={handleCreateSeries}
+      onCreateOneOff={handleCreateOneOff}
       onPublishSeries={handlePublishSeries}
       onDeleteSeries={handleDeleteSeries}
       onArchiveSeries={handleArchiveSeries}
       onReviewChange={handleReviewChange}
+      onReviewTutorSessionRequest={handleReviewTutorSessionRequest}
       formBusy={formBusy}
       reviewBusyId={reviewBusyId}
     />

@@ -13,10 +13,12 @@ export function emptyAdminDashboard(
     pipeline: {
       pendingLecturerVerifications: 0,
       pendingAdminApprovals: 0,
+      pendingTutorSessionCreations: 0,
       openDisputes: 0,
       stalledClaims: 0,
       pendingScheduleChanges: 0,
     },
+    pendingTutorSessionCreations: [],
     activityFeed: [],
     lecturerActivity: [],
     deadlines: [],

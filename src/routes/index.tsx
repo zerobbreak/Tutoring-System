@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { getCurrentUserFn } from "../lib/auth-server";
+import { getAuthUserLifecycleFn, getCurrentUserFn } from "../lib/auth-server";
 import { getPostAuthDashboardPath } from "../lib/user-role";
 
 export const Route = createFileRoute("/")({
@@ -10,7 +10,10 @@ export const Route = createFileRoute("/")({
       throw redirect({ to: "/auth/login" });
     }
     const role = sessionData.user.user_metadata?.role as string | undefined;
-    throw redirect({ to: getPostAuthDashboardPath(role) });
+    const lifecycle = await getAuthUserLifecycleFn();
+    const destination =
+      lifecycle?.destination ?? getPostAuthDashboardPath(role);
+    throw redirect({ to: destination });
   },
   component: () => null,
 });

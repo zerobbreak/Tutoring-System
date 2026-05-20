@@ -269,6 +269,7 @@ export function LecturerTutorsView({
           onOpenChange={handleSheetOpenChange}
           onUpdated={() => void load()}
           onMessage={handleMessage}
+          modules={data?.modules ?? []}
         />
       </div>
     </div>

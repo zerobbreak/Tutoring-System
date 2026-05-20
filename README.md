@@ -19,6 +19,7 @@ Staff sign in at `/auth/login`. New staff accounts are created by admins (provis
 |----------|----------|
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, routing map, features by dashboard, server-action layout |
 | [docs/DATABASE.md](docs/DATABASE.md) | Postgres schema, enums, RLS, storage buckets, migrations |
+| [docs/USER_TESTING.md](docs/USER_TESTING.md) | User testing sessions, E2E workflows, per-feature checklists, bug template |
 
 ---
 
@@ -40,7 +41,7 @@ Business rules live in server actions; **RLS** enforces institution tenancy and 
 ## Prerequisites
 
 - **Node.js** 20+ (LTS recommended)
-- **npm** (or pnpm if you prefer; scripts use npm)
+- **pnpm** 10+ ([install](https://pnpm.io/installation); Corepack: `corepack enable` then use the version in `package.json`)
 - A **Supabase** project (local via [Supabase CLI](https://supabase.com/docs/guides/cli) or hosted)
 
 ---
@@ -50,7 +51,7 @@ Business rules live in server actions; **RLS** enforces institution tenancy and 
 ### 1. Install dependencies
 
 ```bash
-npm install
+pnpm install
 ```
 
 ### 2. Environment variables
@@ -82,7 +83,7 @@ Or link a remote project and push. Migration files live in `supabase/migrations/
 ### 4. Run the dev server
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000). The dev server runs on port **3000** by default.
@@ -93,10 +94,10 @@ Open [http://localhost:3000](http://localhost:3000). The dev server runs on port
 
 | Command | Description |
 |---------|-------------|
-| `npm run dev` | Start Vite dev server (port 3000) |
-| `npm run build` | Production build |
-| `npm run preview` | Preview production build locally |
-| `npm run test` | Run Vitest unit tests |
+| `pnpm dev` | Start Vite dev server (port 3000) |
+| `pnpm build` | Production build |
+| `pnpm preview` | Preview production build locally |
+| `pnpm test` | Run Vitest unit tests |
 
 ---
 
@@ -134,7 +135,7 @@ Session conducted → Attendance captured → Tutor submits claim
 
 ## Adding routes
 
-Routes are files under `src/routes/`. TanStack Router generates `src/routeTree.gen.ts` when you run `npm run dev` or `npm run build`. After adding a route file, restart dev or build so types and the route tree stay in sync.
+Routes are files under `src/routes/`. TanStack Router generates `src/routeTree.gen.ts` when you run `pnpm dev` or `pnpm build`. After adding a route file, restart dev or build so types and the route tree stay in sync.
 
 Example:
 
@@ -154,7 +155,7 @@ Use `Link` from `@tanstack/react-router` for in-app navigation.
 ## Testing
 
 ```bash
-npm run test
+pnpm test
 ```
 
 Tests use [Vitest](https://vitest.dev/) with Testing Library. Add tests next to the code they cover or under existing test conventions in the repo.

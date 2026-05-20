@@ -13,6 +13,7 @@ import type {
 import { loadClaimCounts } from "#/server-actions/lecturer-verification/load-claim-counts";
 import { unwrapOne } from "#/server-actions/lecturer-verification/unwrap";
 import { buildIntegrityIssues } from "./build-integrity-issues";
+import { loadScheduleMismatches } from "./load-schedule-mismatches";
 import { buildTrendSeries } from "./build-trend-series";
 import {
   ALERT_LOOKBACK_DAYS,
@@ -266,11 +267,14 @@ export const getAttendanceDashboardFn = createServerFn({ method: "GET" }).handle
       };
     });
 
+    const scheduleMismatches = await loadScheduleMismatches(supabase, claimIds);
+
     const integrityIssues = buildIntegrityIssues(
       integrityClaims,
       scanCountByClaim,
       evidenceClaimIds,
       unverifiedByClaim,
+      scheduleMismatches,
     );
 
     const peakHours = await loadPeakHours(supabase, claimIds);

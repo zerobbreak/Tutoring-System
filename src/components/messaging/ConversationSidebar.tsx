@@ -16,6 +16,7 @@ import { ScrollArea } from "#/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "#/components/ui/avatar";
 import { cn } from "#/lib/utils";
 import {
+  conversationTopicLabel,
   MESSAGING_UI_CATEGORIES,
   searchMessagesFn,
   uiCategoryMatchesConversation,
@@ -260,6 +261,12 @@ function ConversationItem({
   const otherParticipant = conversation.participants.find(
     (p) => p.user_id !== conversation.participants[0]?.user_id,
   ) ?? conversation.participants[0];
+  const topicLabel = conversationTopicLabel(
+    conversation.type,
+    conversation.metadata,
+  );
+  const displayTitle =
+    conversation.title || otherParticipant?.full_name || "New conversation";
 
   return (
     <button
@@ -285,11 +292,7 @@ function ConversationItem({
 
       <div className="min-w-0 flex-1">
         <div className="mb-0.5 flex items-center justify-between">
-          <span className="truncate font-semibold">
-            {conversation.title ||
-              otherParticipant?.full_name ||
-              "New conversation"}
-          </span>
+          <span className="truncate font-semibold">{displayTitle}</span>
           <span className="ml-2 whitespace-nowrap text-[10px] text-muted-foreground">
             {conversation.updated_at &&
               formatDistanceToNow(new Date(conversation.updated_at), {
@@ -297,6 +300,11 @@ function ConversationItem({
               })}
           </span>
         </div>
+        {topicLabel ? (
+          <p className="mb-0.5 line-clamp-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            {topicLabel}
+          </p>
+        ) : null}
         <p className="line-clamp-1 text-xs text-muted-foreground">
           {lastMsg ? (
             <>

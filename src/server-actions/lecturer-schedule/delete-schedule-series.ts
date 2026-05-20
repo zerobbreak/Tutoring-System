@@ -12,7 +12,7 @@ export const deleteScheduleSeriesFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => schema.parse(input))
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const supabase = createSupabaseServerClient();
-    await requireLecturerId(supabase);
-    await deleteDraftScheduleSeries(supabase, data.seriesId);
+    const lecturerId = await requireLecturerId(supabase);
+    await deleteDraftScheduleSeries(supabase, data.seriesId, lecturerId);
     return { ok: true };
   });

@@ -4,6 +4,7 @@ import { TutorDashboardView } from "#/components/tutor/dashboard/tutor-dashboard
 import { useSessionUser } from "#/lib/use-session-user";
 import type { SessionDayPoint } from "#/components/tutor-sessions-activity-chart";
 import type { ScheduleParsedEvent } from "#/lib/schedule-spreadsheet";
+import type { TutorHourBudgetSummary } from "#/lib/tutor-hour-budget";
 import {
   getTutorDashboardDataFn,
   type DashboardClaimDTO,
@@ -29,6 +30,7 @@ function TutorDashboard() {
   const [notifications, setNotifications] = useState<DashboardNotificationDTO[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<ScheduleParsedEvent[]>([]);
   const [pendingPreviewClaims, setPendingPreviewClaims] = useState<DashboardClaimDTO[]>([]);
+  const [hourBudget, setHourBudget] = useState<TutorHourBudgetSummary | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -91,6 +93,7 @@ function TutorDashboard() {
       pendingPreviewClaims={pendingPreviewClaims}
       upcomingEvents={upcomingEvents}
       notifications={notifications}
+      hourBudget={hourBudget}
     />
   );
 }

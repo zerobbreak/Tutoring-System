@@ -15,6 +15,8 @@ type SessionRow = {
   venue_id: string | null;
   venue_text: string | null;
   status: string;
+  cancelled_at?: string | null;
+  cancellation_reason?: string | null;
   module: { id: string; code: string; name: string } | null;
   tutor: { id: string; full_name: string } | null;
   series: { id: string; title: string; session_kind: string } | null;
@@ -43,6 +45,8 @@ export function mapScheduleEventRow(
     status: row.status,
     sessionKind: row.series?.session_kind ?? "tutorial",
     claimId: claimIdBySession.get(row.id) ?? null,
+    cancelledAt: row.cancelled_at ?? null,
+    cancellationReason: row.cancellation_reason ?? null,
   };
 }
 
@@ -77,11 +81,14 @@ export function mapSeriesRow(row: {
     timezone: row.timezone,
     dtstart: row.dtstart,
     durationMinutes: row.duration_minutes,
-    recurrence: {
-      frequency: "weekly",
-      byWeekday: recurrence.byWeekday,
-      until: recurrence.until,
-    },
+    recurrence:
+      recurrence.frequency === "explicit_dates"
+        ? { frequency: "explicit_dates", dates: recurrence.dates }
+        : {
+            frequency: "weekly",
+            byWeekday: recurrence.byWeekday,
+            until: recurrence.until,
+          },
     status: row.status,
     publishedAt: row.published_at,
   };

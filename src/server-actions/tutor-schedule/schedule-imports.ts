@@ -279,6 +279,7 @@ export const ensureSessionClaimForScheduleEventFn = createServerFn({
       source_schedule_import_id: data.importId,
       source_event_fingerprint: fingerprint,
       session_kind,
+      creation_source: "IMPORT" as const,
     };
 
     const { data: inserted, error: insErr } = await supabase

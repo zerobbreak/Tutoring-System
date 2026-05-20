@@ -21,8 +21,8 @@ export function AnalyticsPendingAgeChart({
   buckets,
 }: AnalyticsPendingAgeChartProps) {
   return (
-    <div className="h-[200px] w-full min-w-0">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="h-[200px] min-h-[200px] w-full min-w-0 shrink-0">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={50}>
         <BarChart data={buckets} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
           <XAxis
@@ -60,8 +60,8 @@ export function AnalyticsActionsByWeekChart({
   series,
 }: AnalyticsActionsByWeekChartProps) {
   return (
-    <div className="h-[200px] w-full min-w-0">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="h-[200px] min-h-[200px] w-full min-w-0 shrink-0">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={50}>
         <BarChart data={series} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
           <XAxis

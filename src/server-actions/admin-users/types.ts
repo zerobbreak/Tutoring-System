@@ -20,8 +20,12 @@ export type AdminUserRowDTO = {
   institution_id: string | null;
   institution_name: string | null;
   last_login_at: string | null;
+  user_status: string;
+  onboarding_step: string | null;
+  /** @deprecated Synced from user_status via DB trigger */
   approval_status: string;
   mfa_enabled: boolean;
+  /** @deprecated Use user_status; kept for list filters during transition */
   is_active: boolean;
   created_at: string;
 };

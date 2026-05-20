@@ -34,6 +34,10 @@ export function WorkflowHealthPanel({
       count: pipeline.pendingAdminApprovals,
     },
     {
+      label: "Tutor session requests",
+      count: pipeline.pendingTutorSessionCreations,
+    },
+    {
       label: "Open disputes",
       count: pipeline.openDisputes,
     },

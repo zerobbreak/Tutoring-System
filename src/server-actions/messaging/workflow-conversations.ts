@@ -9,10 +9,13 @@ import {
 } from "./metadata-contract";
 import {
   createWorkflowConversation,
-  findWorkflowConversation,
   getUserInstitutionId,
   requireUserId,
+  getOrCreateDirectConversation,
+  resolveWorkflowConversationId,
 } from "./helpers";
+import { shortTopicId } from "./metadata-contract";
+
 
 const claimSchema = z.object({ claimId: z.string().uuid() });
 const disputeSchema = z.object({ disputeId: z.string().uuid() });
@@ -63,7 +66,7 @@ export const getOrCreateClaimConversationFn = createServerFn({ method: "POST" })
       lecturer_id: parties.lecturerId,
     });
 
-    const existing = await findWorkflowConversation(supabase, {
+    const existing = await resolveWorkflowConversationId(supabase, {
       userId,
       type: "CLAIM",
       metadataMatch: {
@@ -78,7 +81,7 @@ export const getOrCreateClaimConversationFn = createServerFn({ method: "POST" })
       userId,
       institutionId,
       type: "CLAIM",
-      title: `${parties.moduleCode} · Claim discussion`,
+      title: `${parties.moduleCode} · Claim · ${shortTopicId(parties.claimId)}`,
       metadata,
       participantIds: [parties.tutorId, parties.lecturerId],
     });
@@ -100,7 +103,7 @@ export const getOrCreateSessionConversationFn = createServerFn({ method: "POST" 
       lecturer_id: parties.lecturerId,
     });
 
-    const existing = await findWorkflowConversation(supabase, {
+    const existing = await resolveWorkflowConversationId(supabase, {
       userId,
       type: "SESSION",
       metadataMatch: {
@@ -139,7 +142,7 @@ export const getOrCreateAttendanceConversationFn = createServerFn({
       lecturer_id: parties.lecturerId,
     });
 
-    const existing = await findWorkflowConversation(supabase, {
+    const existing = await resolveWorkflowConversationId(supabase, {
       userId,
       type: "ATTENDANCE",
       metadataMatch: {
@@ -154,7 +157,7 @@ export const getOrCreateAttendanceConversationFn = createServerFn({
       userId,
       institutionId,
       type: "ATTENDANCE",
-      title: `${parties.moduleCode} · Attendance`,
+      title: `${parties.moduleCode} · Attendance · ${shortTopicId(parties.claimId)}`,
       metadata,
       participantIds: [parties.tutorId, parties.lecturerId],
     });
@@ -190,7 +193,7 @@ export const getOrCreateDisputeConversationFn = createServerFn({ method: "POST" 
       lecturer_id: parties.lecturerId,
     });
 
-    const existing = await findWorkflowConversation(supabase, {
+    const existing = await resolveWorkflowConversationId(supabase, {
       userId,
       type: "CLAIM",
       metadataMatch: {
@@ -206,7 +209,7 @@ export const getOrCreateDisputeConversationFn = createServerFn({ method: "POST" 
       userId,
       institutionId,
       type: "CLAIM",
-      title: `${parties.moduleCode} · Dispute`,
+      title: `${parties.moduleCode} · Dispute · ${shortTopicId(dispute.id as string)}`,
       metadata,
       participantIds: [parties.tutorId, parties.lecturerId],
     });
@@ -214,7 +217,6 @@ export const getOrCreateDisputeConversationFn = createServerFn({ method: "POST" 
     return { conversationId };
   });
 
-/** Lecturer-only: ensure DIRECT tutor thread uses metadata contract. */
 export const getOrCreateDirectConversationFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({ tutorId: z.string().uuid() }).parse(input),
@@ -229,42 +231,54 @@ export const getOrCreateDirectConversationFn = createServerFn({ method: "POST" }
       lecturer_id: lecturerId,
     });
 
-    const { data: existingParticipants } = await supabase
-      .from("conversation_participants")
-      .select("conversation_id")
-      .eq("user_id", lecturerId);
-
-    const convIds = (existingParticipants ?? []).map(
-      (p) => p.conversation_id as string,
+    const conv = await getOrCreateDirectConversation(
+      supabase,
+      lecturerId,
+      data.tutorId,
+      institutionId,
+      metadata
     );
 
-    if (convIds.length) {
-      const { data: matches } = await supabase
-        .from("conversation_participants")
-        .select("conversation_id")
-        .eq("user_id", data.tutorId)
-        .in("conversation_id", convIds);
+    return { conversationId: conv.id as string };
+  });
 
-      for (const m of matches ?? []) {
-        const cid = m.conversation_id as string;
-        const { data: conv } = await supabase
-          .from("conversations")
-          .select("id, type")
-          .eq("id", cid)
-          .eq("type", "DIRECT")
-          .maybeSingle();
-        if (conv?.id) return { conversationId: conv.id as string };
-      }
-    }
+export const getOrCreatePeerConversationFn = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z.object({ peerUserId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data }): Promise<{ conversationId: string }> => {
+    const supabase = createSupabaseServerClient();
+    const userId = await requireUserId(supabase);
+    const institutionId = await getUserInstitutionId(supabase, userId);
 
-    return {
-      conversationId: await createWorkflowConversation(supabase, {
-        userId: lecturerId,
-        institutionId,
-        type: "DIRECT",
-        title: "Tutor discussion",
-        metadata,
-        participantIds: [data.tutorId],
-      }),
-    };
+    const { data: peer, error: peerErr } = await supabase
+      .from("users")
+      .select("id, role")
+      .eq("id", data.peerUserId)
+      .maybeSingle();
+
+    if (peerErr) throw new Error(peerErr.message);
+    if (!peer) throw new Error("User not found.");
+
+    const peerRole = peer.role as string;
+    const metadata =
+      peerRole === "TUTOR"
+        ? buildMetadata(METADATA_CATEGORY.TUTOR_DISCUSSION, {
+            tutor_id: data.peerUserId,
+            lecturer_id: userId,
+          })
+        : buildMetadata(METADATA_CATEGORY.TUTOR_DISCUSSION, {
+            tutor_id: userId,
+            lecturer_id: data.peerUserId,
+          });
+
+    const conv = await getOrCreateDirectConversation(
+      supabase,
+      userId,
+      data.peerUserId,
+      institutionId,
+      metadata,
+    );
+
+    return { conversationId: conv.id as string };
   });

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { appendClaimWorkflowEvent } from "#/lib/claim-workflow-timeline";
 import type { ClaimStatus } from "#/lib/session-claim-display";
 import { requireLecturerId } from "#/lib/lecturer-server";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
@@ -106,18 +107,16 @@ export const performVerificationActionFn = createServerFn({ method: "POST" })
       if (dErr) throw new Error(dErr.message);
     }
 
-    const { error: actErr } = await supabase.from("verification_actions").insert({
-      claim_id: data.claimId,
-      actor_id: lecturerId,
-      action_type: config.actionType,
-      from_status: fromStatus,
-      to_status: config.nextStatus ?? fromStatus,
+    await appendClaimWorkflowEvent(supabase, {
+      claimId: data.claimId,
+      actorId: lecturerId,
+      actionType: config.actionType,
+      fromStatus,
+      toStatus: config.nextStatus ?? fromStatus,
       comment,
-      mfa_confirmed: config.digitallySigned ?? false,
-      mfa_method: config.digitallySigned ? "LECTURER_SIGNATURE" : null,
+      mfaConfirmed: config.digitallySigned ?? false,
+      mfaMethod: config.digitallySigned ? "LECTURER_SIGNATURE" : null,
     });
-
-    if (actErr) throw new Error(actErr.message);
 
     return {
       ok: true as const,

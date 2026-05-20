@@ -23,6 +23,7 @@ export type SchedulingIssueKind =
   | "tutor_double_booking"
   | "venue_conflict"
   | "tutor_overload"
+  | "allocation_exceeded"
   | "missing_schedule";
 
 export type SchedulingIssue = {
@@ -35,6 +36,8 @@ export type SchedulingIssue = {
   weekStart?: string;
   hours?: number;
   maxHours?: number;
+  allocatedHours?: number;
+  reservedHours?: number;
 };
 
 export type MissingCoverageInput = {
@@ -227,6 +230,36 @@ export function findMissingCoverage(
   return issues;
 }
 
+export type AllocationBudgetRow = {
+  tutorId: string;
+  tutorName?: string;
+  moduleId: string;
+  moduleCode: string;
+  allocatedHours: number;
+  reservedHours: number;
+};
+
+export function findAllocationExceeded(
+  rows: AllocationBudgetRow[],
+): SchedulingIssue[] {
+  const issues: SchedulingIssue[] = [];
+  for (const row of rows) {
+    if (row.allocatedHours <= 0) continue;
+    if (row.reservedHours <= row.allocatedHours) continue;
+    const name = row.tutorName ?? "Tutor";
+    issues.push({
+      kind: "allocation_exceeded",
+      message: `${name} on ${row.moduleCode}: ${row.reservedHours.toFixed(1)}h reserved exceeds ${row.allocatedHours.toFixed(1)}h allocated.`,
+      sessionIds: [],
+      tutorId: row.tutorId,
+      moduleId: row.moduleId,
+      allocatedHours: row.allocatedHours,
+      reservedHours: row.reservedHours,
+    });
+  }
+  return issues;
+}
+
 export function detectAllSchedulingIssues(input: {
   sessions: ScheduleSessionLike[];
   assignments: MissingCoverageInput[];
@@ -234,6 +267,7 @@ export function detectAllSchedulingIssues(input: {
   maxHoursPerWeek: number;
   academicTermId: string | null;
   referenceDate?: Date;
+  allocationRows?: AllocationBudgetRow[];
 }): SchedulingIssue[] {
   return [
     ...detectTutorDoubleBookings(input.sessions),
@@ -243,6 +277,7 @@ export function detectAllSchedulingIssues(input: {
       input.maxHoursPerWeek,
       input.referenceDate,
     ),
+    ...findAllocationExceeded(input.allocationRows ?? []),
     ...findMissingCoverage(
       input.assignments,
       input.publishedSeries,

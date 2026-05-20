@@ -2,7 +2,7 @@ import { format, parseISO } from "date-fns";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
-import type { ReportColumnDTO, ReportResultDTO } from "#/server-actions/lecturer-reports";
+import type { ReportColumnDTO, ReportResultDTO } from "#/lib/report-types";
 
 export type ReportExportFormat = "json" | "csv" | "xlsx" | "pdf";
 

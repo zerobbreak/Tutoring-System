@@ -7,6 +7,9 @@ import {
 } from "./registration-invite-code";
 import { createSupabaseServerClient } from "./supabase-server";
 import { getSupabaseAdmin } from "./supabase-admin";
+import { PENDING_LIFECYCLE } from "./user-status";
+import { fetchAuthUserLifecycle } from "./user-lifecycle-server";
+import { getPostAuthDestination } from "./user-role";
 
 const signUpInputSchema = z.object({
   email: z.email(),
@@ -118,8 +121,7 @@ export const signUpServerFn = createServerFn({ method: "POST" })
         full_name: fullName,
         role,
         institution_id: invite.institution_id,
-        is_active: true,
-        approval_status: "pending_documents",
+        ...PENDING_LIFECYCLE,
       },
       { onConflict: "id" },
     );
@@ -145,6 +147,27 @@ export const signUpServerFn = createServerFn({ method: "POST" })
  * Server Function: verified user + session snapshot for SSR / loaders.
  * Uses `getUser()` (JWT validated with Auth) then `getSession()` for token payload.
  */
+/** Lifecycle snapshot for post-login routing (client-safe path). */
+export const getAuthUserLifecycleFn = createServerFn({ method: "GET" }).handler(
+  async () => {
+    const supabase = createSupabaseServerClient();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+    if (error || !user) return null;
+
+    const lifecycle = await fetchAuthUserLifecycle(supabase, user.id);
+    if (!lifecycle) return null;
+
+    const role = user.user_metadata?.role as string | undefined;
+    return {
+      ...lifecycle,
+      destination: getPostAuthDestination(role, lifecycle.user_status),
+    };
+  },
+);
+
 export const getCurrentUserFn = createServerFn({ method: "GET" }).handler(
   async () => {
     const supabase = createSupabaseServerClient();

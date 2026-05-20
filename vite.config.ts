@@ -7,7 +7,17 @@ import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 const config = defineConfig({
-  resolve: { tsconfigPaths: true },
+  resolve: {
+    tsconfigPaths: true,
+    dedupe: ['react', 'react-dom'],
+  },
+  server: {
+    host: '127.0.0.1',
+    port: 3000,
+  },
+  optimizeDeps: {
+    include: ['tslib'],
+  },
   plugins: [devtools(), tailwindcss(), tanstackStart(), viteReact()],
 })
 

@@ -17,10 +17,15 @@ import { dayHeadingLong } from "#/lib/schedule-display";
 import { ScheduleCalendarBody } from "./schedule-calendar-body";
 import { rangeForView } from "./schedule-range";
 import { ScheduleChangeRequestsPanel } from "./schedule-change-requests-panel";
+import { TutorSessionRequestsPanel } from "./tutor-session-requests-panel";
 import {
   ScheduleDraftSeriesList,
   SchedulePublishedSeriesList,
 } from "./schedule-series-lists";
+import {
+  ScheduleOneOffDialog,
+  type OneOffFormValues,
+} from "./schedule-one-off-dialog";
 import {
   ScheduleSeriesFormDialog,
   type SeriesFormValues,
@@ -53,14 +58,17 @@ export function LecturerScheduleView({
   onViewChange,
   onFocusDateChange,
   onCreateSeries,
+  onCreateOneOff,
   onPublishSeries,
   onDeleteSeries,
   onArchiveSeries,
   onReviewChange,
+  onReviewTutorSessionRequest,
   formBusy,
   reviewBusyId,
 }: LecturerScheduleViewProps) {
   const [seriesOpen, setSeriesOpen] = useState(false);
+  const [oneOffOpen, setOneOffOpen] = useState(false);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   const events = data?.events ?? [];
@@ -84,13 +92,13 @@ export function LecturerScheduleView({
   }, [view, focusDate]);
 
   const handleCreate = async (values: SeriesFormValues) => {
-    const dtstart = new Date(values.dtstartLocal).toISOString();
-    await onCreateSeries({
-      ...values,
-      dtstart,
-      until: values.until || null,
-    });
+    await onCreateSeries(values);
     setSeriesOpen(false);
+  };
+
+  const handleOneOff = async (values: OneOffFormValues) => {
+    await onCreateOneOff(values);
+    setOneOffOpen(false);
   };
 
   const draftSeries = (data?.series ?? []).filter((s) => s.status === "DRAFT");
@@ -111,10 +119,15 @@ export function LecturerScheduleView({
             schedule change requests.
           </p>
         </div>
-        <Button onClick={() => setSeriesOpen(true)} className="shrink-0">
-          <Plus className="mr-2 size-4" />
-          New tutorial series
-        </Button>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Button variant="outline" onClick={() => setOneOffOpen(true)}>
+            One-off session
+          </Button>
+          <Button onClick={() => setSeriesOpen(true)}>
+            <Plus className="mr-2 size-4" />
+            New tutorial series
+          </Button>
+        </div>
       </header>
 
       {loadError ? (
@@ -124,11 +137,18 @@ export function LecturerScheduleView({
       ) : null}
 
       {data ? (
-        <ScheduleChangeRequestsPanel
-          requests={data.pendingChangeRequests}
-          busyId={reviewBusyId}
-          onReview={onReviewChange}
-        />
+        <>
+          <TutorSessionRequestsPanel
+            requests={data.pendingTutorSessionRequests}
+            busyId={reviewBusyId}
+            onReview={onReviewTutorSessionRequest}
+          />
+          <ScheduleChangeRequestsPanel
+            requests={data.pendingChangeRequests}
+            busyId={reviewBusyId}
+            onReview={onReviewChange}
+          />
+        </>
       ) : null}
 
       <ScheduleDraftSeriesList
@@ -163,6 +183,7 @@ export function LecturerScheduleView({
             }
             onSelectEvent={(e) => setSelectedEventId(e.id)}
             onCreateSeries={() => setSeriesOpen(true)}
+            showTutorLink
           />
         </CardContent>
       </Card>
@@ -176,6 +197,17 @@ export function LecturerScheduleView({
         venues={data?.venues ?? []}
         busy={formBusy}
         onSubmit={handleCreate}
+      />
+
+      <ScheduleOneOffDialog
+        open={oneOffOpen}
+        onOpenChange={setOneOffOpen}
+        modules={data?.modules ?? []}
+        tutors={data?.tutors ?? []}
+        tutorIdsByModule={data?.tutorIdsByModule ?? {}}
+        venues={data?.venues ?? []}
+        busy={formBusy}
+        onSubmit={handleOneOff}
       />
     </div>
   );

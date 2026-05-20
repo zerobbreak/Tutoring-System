@@ -4,6 +4,7 @@ import { ConversationSidebar } from "#/components/messaging/ConversationSidebar"
 import { ChatWindow } from "#/components/messaging/ChatWindow";
 import { NewConversationDialog } from "#/components/messaging/NewConversationDialog";
 import { useMessagingPage } from "#/components/messaging/use-messaging-page";
+import { getOrCreatePeerConversationFn } from "#/server-actions/messaging";
 import { Button } from "#/components/ui/button";
 import { Skeleton } from "#/components/ui/skeleton";
 import { MessageSquare, Plus } from "lucide-react";
@@ -27,6 +28,7 @@ function MessagingPage() {
     isMessagesLoading,
     handleSendMessage,
     handleConversationCreated,
+    handleDeleteConversation,
   } = useMessagingPage();
 
   if (isLoading) {
@@ -75,6 +77,7 @@ function MessagingPage() {
               ),
             );
           }}
+          onDelete={() => void handleDeleteConversation()}
         />
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center bg-muted/5 p-12 text-center">
@@ -96,6 +99,12 @@ function MessagingPage() {
       <NewConversationDialog
         open={isNewChatOpen}
         onOpenChange={setIsNewChatOpen}
+        onSelectUser={async (user) => {
+          const { conversationId } = await getOrCreatePeerConversationFn({
+            data: { peerUserId: user.id },
+          });
+          return conversationId;
+        }}
         onConversationCreated={(id) => void handleConversationCreated(id)}
       />
     </div>

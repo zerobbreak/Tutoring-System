@@ -8,6 +8,8 @@ export const SCHEDULED_SESSION_SELECT = `
   venue_id,
   venue_text,
   status,
+  cancelled_at,
+  cancellation_reason,
   module:modules!scheduled_sessions_module_id_fkey (
     id,
     code,
@@ -42,6 +44,7 @@ export const SERIES_SELECT = `
   recurrence_json,
   status,
   published_at,
+  materialized_until,
   module:modules!schedule_series_module_id_fkey (
     code
   ),

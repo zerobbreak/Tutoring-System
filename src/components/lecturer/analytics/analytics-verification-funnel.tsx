@@ -29,8 +29,8 @@ export function AnalyticsVerificationFunnel({
   const data = steps.filter((s) => s.count > 0 || s.status !== "DRAFT");
 
   return (
-    <div className="h-[280px] w-full min-w-0">
-      <ResponsiveContainer width="100%" height="100%">
+    <div className="h-[280px] min-h-[280px] w-full min-w-0 shrink-0">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={50}>
         <BarChart
           data={data}
           layout="vertical"

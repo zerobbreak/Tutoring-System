@@ -32,6 +32,7 @@ import {
   removeTutorFromModuleFn,
   type LecturerTutorDetailDTO,
 } from "#/server-actions/lecturer-tutors";
+import { TutorHourAllocationsPanel } from "./tutor-hour-allocations-panel";
 
 type LecturerTutorDetailSheetProps = {
   tutorId: string | null;
@@ -39,6 +40,7 @@ type LecturerTutorDetailSheetProps = {
   onOpenChange: (open: boolean) => void;
   onUpdated: () => void;
   onMessage: (conversationId: string) => void;
+  modules: { id: string; code: string; name: string }[];
 };
 
 function formatPercent(value: number | null): string {
@@ -121,6 +123,7 @@ export function LecturerTutorDetailSheet({
   onOpenChange,
   onUpdated,
   onMessage,
+  modules,
 }: LecturerTutorDetailSheetProps) {
   const [detail, setDetail] = useState<LecturerTutorDetailDTO | null>(null);
   const [loading, setLoading] = useState(false);
@@ -379,6 +382,16 @@ export function LecturerTutorDetailSheet({
                     ))}
                   </ul>
                 )}
+              </DetailSection>
+
+              <DetailSection
+                title="Hour allocations"
+                description="Caps per module and semester; scheduled sessions reserve hours immediately."
+                icon={Clock}
+              >
+                {tutorId ? (
+                  <TutorHourAllocationsPanel tutorId={tutorId} modules={modules} />
+                ) : null}
               </DetailSection>
 
               {detail.recentClaimIds.length > 0 ? (

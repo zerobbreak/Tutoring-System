@@ -2,6 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { formatTimeRange } from "#/lib/schedule-display";
+import {
+  extendSeriesHorizon,
+  needsHorizonExtension,
+} from "#/lib/schedule-materialize";
 import { ensureClaimForScheduledSession } from "#/server-actions/lecturer-schedule/ensure-claim-for-session";
 
 const rangeSchema = z.object({
@@ -19,6 +23,8 @@ export type TutorAssignedScheduleEventDTO = {
   venueLabel: string | null;
   status: string;
   claimId: string | null;
+  cancelledAt: string | null;
+  cancellationReason: string | null;
 };
 
 export const listTutorAssignedScheduleFn = createServerFn({ method: "GET" })
@@ -31,6 +37,24 @@ export const listTutorAssignedScheduleFn = createServerFn({ method: "GET" })
     } = await supabase.auth.getUser();
     if (authErr || !user) throw new Error("Unauthorized");
 
+    const { data: tutorSeries, error: seriesErr } = await supabase
+      .from("schedule_series")
+      .select("id, materialized_until")
+      .eq("tutor_id", user.id)
+      .eq("status", "PUBLISHED")
+      .is("deleted_at", null);
+
+    if (seriesErr) throw new Error(seriesErr.message);
+    for (const s of tutorSeries ?? []) {
+      if (needsHorizonExtension(s.materialized_until as string | null)) {
+        try {
+          await extendSeriesHorizon(supabase, s.id as string);
+        } catch {
+          /* best-effort horizon extend */
+        }
+      }
+    }
+
     const { data: sessions, error: sessErr } = await supabase
       .from("scheduled_sessions")
       .select(
@@ -40,6 +64,8 @@ export const listTutorAssignedScheduleFn = createServerFn({ method: "GET" })
         ends_at,
         venue_text,
         status,
+        cancelled_at,
+        cancellation_reason,
         venue:venues ( name ),
         module:modules ( code ),
         series:schedule_series ( title )
@@ -48,7 +74,7 @@ export const listTutorAssignedScheduleFn = createServerFn({ method: "GET" })
       .eq("tutor_id", user.id)
       .gte("starts_at", data.from)
       .lte("starts_at", data.to)
-      .neq("status", "CANCELLED")
+      .is("deleted_at", null)
       .order("starts_at");
 
     if (sessErr) throw new Error(sessErr.message);
@@ -60,7 +86,8 @@ export const listTutorAssignedScheduleFn = createServerFn({ method: "GET" })
       const { data: claims, error: claimErr } = await supabase
         .from("session_claims")
         .select("id, source_scheduled_session_id")
-        .in("source_scheduled_session_id", sessionIds);
+        .in("source_scheduled_session_id", sessionIds)
+        .is("deleted_at", null);
 
       if (claimErr) throw new Error(claimErr.message);
       for (const c of claims ?? []) {
@@ -101,6 +128,8 @@ export const listTutorAssignedScheduleFn = createServerFn({ method: "GET" })
         venueLabel,
         status: row.status as string,
         claimId,
+        cancelledAt: (row.cancelled_at as string | null) ?? null,
+        cancellationReason: (row.cancellation_reason as string | null) ?? null,
       });
     }
 

@@ -15,6 +15,7 @@ import {
   ONBOARDING_DOCUMENT_LABELS,
   type OnboardingDocumentKind,
 } from "#/lib/onboarding-documents";
+import { hasPlatformAccess } from "#/lib/user-status";
 import { toast } from "#/lib/toast";
 import {
   getOnboardingStatusFn,
@@ -60,7 +61,7 @@ export function OnboardingDocumentsCard() {
     );
   }
 
-  if (!status || status.approval_status === "approved") {
+  if (!status || hasPlatformAccess(status.user_status)) {
     return null;
   }
 
@@ -103,7 +104,7 @@ export function OnboardingDocumentsCard() {
           dashboards.
         </CardDescription>
         <Badge variant="secondary" className="w-fit">
-          {formatApprovalStatus(status.approval_status)}
+          {formatApprovalStatus(status.user_status, status.onboarding_step)}
         </Badge>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -156,7 +157,8 @@ export function OnboardingDocumentsCard() {
                       variant={uploaded ? "outline" : "default"}
                       disabled={
                         uploading !== null ||
-                        status.approval_status === "rejected"
+                        status.user_status === "REJECTED" ||
+                        status.user_status === "SUSPENDED"
                       }
                       onClick={() => onPick(kind)}
                     >
@@ -171,7 +173,7 @@ export function OnboardingDocumentsCard() {
                 );
               })}
             </ul>
-            {status.approval_status === "pending_review" ? (
+            {status.onboarding_step === "ready_for_review" ? (
               <p className="text-sm text-muted-foreground">
                 Your documents are with an administrator. You will be notified
                 when your account is approved.

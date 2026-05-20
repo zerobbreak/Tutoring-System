@@ -82,5 +82,4 @@ export type VerificationActionKind =
   | "APPROVE"
   | "REJECT"
   | "DISPUTE"
-  | "REQUEST_CLARIFICATION"
-  | "SIGN_AND_APPROVE";
+  | "REQUEST_CLARIFICATION";

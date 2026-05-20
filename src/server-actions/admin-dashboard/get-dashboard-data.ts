@@ -23,6 +23,7 @@ import {
   isTutorInactive,
   type ClaimStatsRow,
 } from "#/server-actions/lecturer-tutors/compute-tutor-stats";
+import { loadPendingTutorSessionCreations } from "#/server-actions/admin-sessions/tutor-session-creations";
 import { emptyAdminDashboard } from "./empty-dashboard";
 import type {
   AdminDashboardDataDTO,
@@ -99,6 +100,7 @@ export const getAdminDashboardDataFn = createServerFn({ method: "GET" }).handler
       lecturersCountRes,
       tomorrowSessionsRes,
       stalledListRes,
+      pendingTutorSessionCreations,
     ] = await Promise.all([
       supabase
         .from("session_claims")
@@ -223,6 +225,7 @@ export const getAdminDashboardDataFn = createServerFn({ method: "GET" }).handler
         .lt("submitted_at", stalledBefore)
         .order("submitted_at", { ascending: true })
         .limit(5),
+      loadPendingTutorSessionCreations(supabase, 20),
     ]);
 
     const errors = [
@@ -367,10 +370,12 @@ export const getAdminDashboardDataFn = createServerFn({ method: "GET" }).handler
       pipeline: {
         pendingLecturerVerifications: pendingApprovalsCount,
         pendingAdminApprovals: verifiedCount,
+        pendingTutorSessionCreations: pendingTutorSessionCreations.length,
         openDisputes,
         stalledClaims: stalledCountRes.count ?? 0,
         pendingScheduleChanges: scheduleChangesRes.count ?? 0,
       },
+      pendingTutorSessionCreations,
       activityFeed,
       lecturerActivity,
       deadlines,

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { AdminSchedulesView } from "#/components/admin/schedules/admin-schedules-view";
 import { rangeForView } from "#/components/lecturer/schedule/schedule-range";
 import type { ScheduleCalendarView } from "#/components/lecturer/schedule/types";
+import { buildDtstartFromDateAndTime } from "#/lib/schedule-recurrence";
 import { toast } from "#/lib/toast";
 import { useSessionUser } from "#/lib/use-session-user";
 import {
@@ -125,10 +126,9 @@ function AdminSchedulesPage() {
     tutorId: string;
     venueId: string | null;
     venueText: string;
-    dtstart: string;
+    sessionDates: string[];
+    sessionTime: string;
     durationMinutes: number;
-    byWeekday: number[];
-    until: string | null;
   }) => {
     setFormBusy(true);
     try {
@@ -140,6 +140,7 @@ function AdminSchedulesPage() {
           startDate: today,
         },
       });
+      const dates = [...values.sessionDates].sort();
       await adminCreateScheduleSeriesFn({
         data: {
           moduleId: values.moduleId,
@@ -147,12 +148,11 @@ function AdminSchedulesPage() {
           tutorId: values.tutorId,
           venueId: values.venueId,
           venueText: values.venueText || null,
-          dtstart: values.dtstart,
+          dtstart: buildDtstartFromDateAndTime(dates[0], values.sessionTime),
           durationMinutes: values.durationMinutes,
           recurrence: {
-            frequency: "weekly",
-            byWeekday: values.byWeekday,
-            until: values.until,
+            frequency: "explicit_dates",
+            dates,
           },
           academicTermId,
         },
@@ -185,6 +185,40 @@ function AdminSchedulesPage() {
       await loadIssues();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Publish failed");
+    } finally {
+      setFormBusy(false);
+    }
+  };
+
+  const handleDeleteSeries = async (seriesId: string) => {
+    setFormBusy(true);
+    try {
+      await adminDeleteScheduleSeriesFn({ data: { seriesId } });
+      toast.success("Draft series deleted.");
+      await load();
+      await loadIssues();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setFormBusy(false);
+    }
+  };
+
+  const handleArchiveSeries = async (seriesId: string) => {
+    setFormBusy(true);
+    try {
+      const { cancelledSessionCount } = await adminArchiveScheduleSeriesFn({
+        data: { seriesId },
+      });
+      toast.success(
+        cancelledSessionCount > 0
+          ? `Series archived. ${cancelledSessionCount} upcoming session(s) cancelled.`
+          : "Series archived.",
+      );
+      await load();
+      await loadIssues();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Archive failed");
     } finally {
       setFormBusy(false);
     }
@@ -241,6 +275,10 @@ function AdminSchedulesPage() {
       onReviewChange={handleReviewChange}
       formBusy={formBusy}
       reviewBusyId={reviewBusyId}
+      onReload={async () => {
+        await load();
+        await loadIssues();
+      }}
     />
   );
 }

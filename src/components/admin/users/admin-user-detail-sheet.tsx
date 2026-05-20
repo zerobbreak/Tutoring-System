@@ -34,9 +34,10 @@ import {
 } from "#/components/ui/sheet";
 import {
   ONBOARDING_DOCUMENT_LABELS,
+  canReviewOnboarding,
   formatApprovalStatus,
-  type UserApprovalStatus,
 } from "#/lib/onboarding-documents";
+import type { UserStatus } from "#/lib/user-status";
 import { formatRoleLabel, USER_ROLES, type UserRole } from "#/lib/user-role";
 import { toast } from "#/lib/toast";
 import { cn } from "#/lib/utils";
@@ -75,14 +76,14 @@ function getInitials(name: string): string {
     .join("");
 }
 
-function approvalBadgeClass(status: string): string {
-  switch (status as UserApprovalStatus) {
-    case "approved":
+function statusBadgeClass(status: string): string {
+  switch (status as UserStatus) {
+    case "ACTIVE":
       return "border-emerald-200 bg-emerald-50 text-emerald-800";
-    case "rejected":
+    case "REJECTED":
+    case "SUSPENDED":
       return "border-destructive/30 bg-destructive/10 text-destructive";
-    case "pending_review":
-    case "pending_documents":
+    case "PENDING_APPROVAL":
       return "border-amber-200 bg-amber-50 text-amber-900";
     default:
       return "";
@@ -204,9 +205,7 @@ export function AdminUserDetailSheet({
   };
 
   const user = detail?.user;
-  const canReview =
-    user &&
-    ["pending_documents", "pending_review"].includes(user.approval_status);
+  const canReview = user && canReviewOnboarding(user.user_status);
   const roleDirty = user ? role !== user.role : false;
 
   return (
@@ -380,10 +379,10 @@ export function AdminUserDetailSheet({
               >
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Button
-                    variant={user.is_active ? "outline" : "default"}
+                    variant={user.user_status === "ACTIVE" ? "outline" : "default"}
                     className={cn(
                       "flex-1",
-                      !user.is_active &&
+                      user.user_status !== "ACTIVE" &&
                         "bg-(--lagoon-deep) text-white hover:bg-(--lagoon-deep)/90",
                     )}
                     disabled={submitting}
@@ -393,16 +392,18 @@ export function AdminUserDetailSheet({
                           setUserActiveFn({
                             data: {
                               userId: user.id,
-                              is_active: !user.is_active,
+                              is_active: user.user_status !== "ACTIVE",
                             },
                           }),
-                        user.is_active
-                          ? "Account disabled."
-                          : "Account enabled.",
+                        user.user_status === "ACTIVE"
+                          ? "Account suspended."
+                          : "Account restored.",
                       )
                     }
                   >
-                    {user.is_active ? "Disable account" : "Re-enable account"}
+                    {user.user_status === "ACTIVE"
+                      ? "Suspend account"
+                      : "Restore access"}
                   </Button>
                   <Button
                     variant="outline"
@@ -522,11 +523,11 @@ function UserDetailHero({ user }: { user: AdminUserRowDTO }) {
             </Badge>
             <Badge
               variant="outline"
-              className={approvalBadgeClass(user.approval_status)}
+              className={statusBadgeClass(user.user_status)}
             >
-              {formatApprovalStatus(user.approval_status)}
+              {formatApprovalStatus(user.user_status, user.onboarding_step)}
             </Badge>
-            {!user.is_active ? (
+            {user.user_status === "SUSPENDED" || user.user_status === "REJECTED" ? (
               <Badge variant="destructive">Disabled</Badge>
             ) : null}
           </div>

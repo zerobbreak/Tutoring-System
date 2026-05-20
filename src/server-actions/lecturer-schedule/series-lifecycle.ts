@@ -1,15 +1,18 @@
 import type { createSupabaseServerClient } from "#/lib/supabase-server";
+import { softDeleteDraftScheduleSeries } from "#/lib/soft-delete";
 
 type Supabase = ReturnType<typeof createSupabaseServerClient>;
 
 export async function deleteDraftScheduleSeries(
   supabase: Supabase,
   seriesId: string,
+  actorId: string,
 ): Promise<void> {
   const { data: series, error: fetchErr } = await supabase
     .from("schedule_series")
     .select("id, status")
     .eq("id", seriesId)
+    .is("deleted_at", null)
     .single();
 
   if (fetchErr) throw new Error(fetchErr.message);
@@ -19,12 +22,12 @@ export async function deleteDraftScheduleSeries(
     );
   }
 
-  const { error: delErr } = await supabase
-    .from("schedule_series")
-    .delete()
-    .eq("id", seriesId);
-
-  if (delErr) throw new Error(delErr.message);
+  await softDeleteDraftScheduleSeries(
+    supabase,
+    seriesId,
+    actorId,
+    "Draft schedule removed",
+  );
 }
 
 export async function archivePublishedScheduleSeries(
@@ -35,6 +38,7 @@ export async function archivePublishedScheduleSeries(
     .from("schedule_series")
     .select("id, status")
     .eq("id", seriesId)
+    .is("deleted_at", null)
     .single();
 
   if (fetchErr) throw new Error(fetchErr.message);
@@ -51,6 +55,7 @@ export async function archivePublishedScheduleSeries(
     .update({ status: "CANCELLED" })
     .eq("series_id", seriesId)
     .eq("status", "SCHEDULED")
+    .is("deleted_at", null)
     .gte("starts_at", now)
     .select("id");
 

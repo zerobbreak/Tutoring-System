@@ -309,15 +309,23 @@ erDiagram
 ### Official schedule (lecturer / admin)
 
 1. **`schedule_series`** — Recurring rule (`recurrence_json`), tutor, venue, status: `DRAFT` → `PUBLISHED` → `ARCHIVED`.
-2. **`scheduled_sessions`** — Materialized occurrences (`SCHEDULED`, `CANCELLED`, `RESCHEDULED`).
-3. **`session_claims`** — Linked via `source_scheduled_session_id` when a tutor runs a session.
+2. **`scheduled_sessions`** — Materialized occurrences (`SCHEDULED`, `CANCELLED`, `RESCHEDULED`). Incremental upsert via `src/lib/schedule-materialize.ts` (no delete-and-reinsert on republish).
+3. **`session_claims`** — Linked via `source_scheduled_session_id`; auto-created in **DRAFT** on publish (`ensureClaimForScheduledSession`).
 
-Lifecycle helpers: `src/server-actions/lecturer-schedule/series-lifecycle.ts` (delete draft, archive published + cancel upcoming sessions).
+`schedule_series.materialized_until` tracks the rolling horizon. Lazy extend on schedule loaders; optional cron via `runSessionAutomationCronFn` (`CRON_SECRET`).
+
+Lifecycle helpers: `src/server-actions/lecturer-schedule/series-lifecycle.ts` (delete draft, archive published + cancel upcoming sessions). Lecturer **one-off** sessions: `createOneOffScheduleSeriesFn`.
 
 ### Tutor timetable import
 
 1. **`tutor_schedule_imports`** — Parsed spreadsheet JSON.
 2. Claims created or matched via fingerprints (`src/lib/schedule-event-fingerprint.ts`).
+
+### Tutor-requested sessions
+
+1. Tutor submits a **manual** `session_claims` row (`request_status = PENDING`, `request_reason`, `session_kind`, date/time/venue).
+2. **Lecturer** can reject or suggest changes; **admin** approves (enforces `tutor_hour_allocations` reserved capacity).
+3. On approval, `approveTutorSessionRequest` publishes a one-off `schedule_series`, materializes `scheduled_sessions`, links the existing claim via `source_scheduled_session_id`, and syncs fields — calendars and tutor boards stay aligned.
 
 ### Session claim (central entity)
 
@@ -360,7 +368,9 @@ stateDiagram-v2
 | `APPROVED` | — | Included in `payroll_exports` |
 | `DISPUTED` / `REJECTED` | Lecturer / tutor | Resolution via verification and messaging |
 
-Display helpers: `src/lib/session-claim-display.ts`. Tutor Kanban columns: `src/lib/session-kanban-column.ts`.
+Display helpers: `src/lib/session-claim-display.ts`. Tutor operational list: `listTutorOperationalSessionsFn` (schedule + claims). Tutor Kanban columns: `src/lib/session-kanban-column.ts`.
+
+Claims record `creation_source` (`SCHEDULE`, `TUTOR_MANUAL`, `IMPORT`, `LECTURER_ONE_OFF`). Optional institution `auto_submit_claims`; reminders and attendance lock via `src/server-actions/session-automation/`.
 
 ---
 
@@ -404,13 +414,13 @@ Display helpers: `src/lib/session-claim-display.ts`. Tutor Kanban columns: `src/
 | `/admin/messaging` | `admin/messaging.tsx` | `admin-messaging-view.tsx` | Institution messaging and notices |
 | `/admin/analytics` | `admin/analytics.tsx` | `admin-analytics-view.tsx` | Institution-wide analytics tables and summaries |
 | `/admin/audit-logs` | `admin/audit-logs.tsx` | `admin-audit-logs-view.tsx` | Filterable audit feed |
-| `/admin/payments` | `admin/payments.tsx` | Placeholder | **Not implemented** |
-| `/admin/reports` | `admin/reports.tsx` | Placeholder | **Not implemented** |
-| `/admin/settings` | `admin/settings.tsx` | Placeholder | **Not implemented** |
+| `/admin/payments` | `admin/payments.tsx` | `admin-payroll-view.tsx` | Payroll summary, create export batch, batch history |
+| `/admin/reports` | `admin/reports.tsx` | `admin-reports-view.tsx` | Report catalog, filters, preview, PDF/CSV/XLSX/JSON export |
+| `/admin/settings` | `admin/settings.tsx` | Placeholder | **Not implemented** (use `/settings`) |
 
 #### Server actions
 
-`admin-dashboard/`, `admin-approvals/`, `admin-institutions/`, `admin-users/`, `admin-schedules/`, `admin-sessions/`, `admin-analytics/`, `admin-audit-logs/`, plus `messaging/admin-messaging.ts`.
+`admin-dashboard/`, `admin-approvals/`, `admin-institutions/`, `admin-users/`, `admin-schedules/`, `admin-sessions/`, `admin-analytics/`, `admin-audit-logs/`, `admin-payroll/`, `admin-reports/`, plus `messaging/admin-messaging.ts`.
 
 ---
 
@@ -590,5 +600,6 @@ npm run test     # Vitest
 ## Related documentation
 
 - [DATABASE.md](./DATABASE.md) — Postgres schema, enums, RLS, storage, migrations
+- [USER_TESTING.md](./USER_TESTING.md) — User testing playbooks and per-feature checklists
 - Code maintenance conventions: `.cursor/rules/codebase-maintenance.mdc`
 - Avoid premature abstraction: `.cursor/rules/avoid-premature-abstraction.mdc`

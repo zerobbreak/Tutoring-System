@@ -1,23 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { logInstitutionAudit } from "#/lib/audit-log";
 import { requireAdminContext } from "#/lib/admin-server";
+import { publishScheduleSeriesCore } from "#/lib/schedule-claims";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
-import { ensureClaimForScheduledSession } from "#/server-actions/lecturer-schedule/ensure-claim-for-session";
-import { materializeSeriesSessions } from "#/server-actions/lecturer-schedule/materialize-series";
 import { publishSeriesSchema } from "./schemas";
-
-async function countSeriesSessions(
-  supabase: ReturnType<typeof createSupabaseServerClient>,
-  seriesId: string,
-): Promise<number> {
-  const { count, error } = await supabase
-    .from("scheduled_sessions")
-    .select("id", { count: "exact", head: true })
-    .eq("series_id", seriesId);
-
-  if (error) throw new Error(error.message);
-  return count ?? 0;
-}
 
 export const adminPublishScheduleSeriesFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => publishSeriesSchema.parse(input))
@@ -29,6 +15,7 @@ export const adminPublishScheduleSeriesFn = createServerFn({ method: "POST" })
       .from("schedule_series")
       .select("id, status, module_id, title")
       .eq("id", data.seriesId)
+      .is("deleted_at", null)
       .single();
 
     if (seriesErr) throw new Error(seriesErr.message);
@@ -43,38 +30,17 @@ export const adminPublishScheduleSeriesFn = createServerFn({ method: "POST" })
     if (modErr) throw new Error(modErr.message);
     if (!mod) throw new Error("Series not found or access denied.");
 
-    if (series.status === "ARCHIVED") {
-      throw new Error("Cannot publish an archived series.");
-    }
-
     const alreadyPublished = series.status === "PUBLISHED";
 
-    const sessionCount = alreadyPublished
-      ? await countSeriesSessions(supabase, data.seriesId)
-      : await materializeSeriesSessions(supabase, data.seriesId);
-
-    const { data: sessions, error: sessErr } = await supabase
-      .from("scheduled_sessions")
-      .select("id")
-      .eq("series_id", data.seriesId);
-
-    if (sessErr) throw new Error(sessErr.message);
-
-    for (const s of sessions ?? []) {
-      await ensureClaimForScheduledSession(supabase, s.id as string);
-    }
+    const { sessionCount, repairedOnly } = await publishScheduleSeriesCore(
+      supabase,
+      {
+        seriesId: data.seriesId,
+        materializeMode: alreadyPublished ? "repair_horizon" : "first_publish",
+      },
+    );
 
     if (!alreadyPublished) {
-      const { error: pubErr } = await supabase
-        .from("schedule_series")
-        .update({
-          status: "PUBLISHED",
-          published_at: new Date().toISOString(),
-        })
-        .eq("id", data.seriesId);
-
-      if (pubErr) throw new Error(pubErr.message);
-
       await logInstitutionAudit(supabase, {
         institutionId,
         actorId: userId,
@@ -88,5 +54,5 @@ export const adminPublishScheduleSeriesFn = createServerFn({ method: "POST" })
       });
     }
 
-    return { sessionCount, repairedOnly: alreadyPublished };
+    return { sessionCount, repairedOnly };
   });

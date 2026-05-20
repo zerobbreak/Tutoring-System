@@ -2,10 +2,12 @@ import type {
   LecturerActivityItemDTO,
   LecturerModuleDTO,
 } from "#/server-actions/lecturer-dashboard/types";
+import type { PendingTutorSessionCreationDTO } from "#/server-actions/admin-sessions/tutor-session-creations";
 
 export type AdminPipelineDTO = {
   pendingLecturerVerifications: number;
   pendingAdminApprovals: number;
+  pendingTutorSessionCreations: number;
   openDisputes: number;
   stalledClaims: number;
   pendingScheduleChanges: number;
@@ -46,6 +48,7 @@ export type AdminDashboardDataDTO = {
   activeSessionsCount: number;
   approvedHours: number;
   pipeline: AdminPipelineDTO;
+  pendingTutorSessionCreations: PendingTutorSessionCreationDTO[];
   activityFeed: LecturerActivityItemDTO[];
   lecturerActivity: AdminLecturerActivityDTO[];
   deadlines: AdminDeadlineDTO[];

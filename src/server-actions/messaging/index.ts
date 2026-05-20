@@ -5,7 +5,9 @@ export {
   ADMIN_MESSAGING_UI_CATEGORIES,
   NOTICE_TYPES,
   buildMetadata,
+  conversationTopicLabel,
   defaultTitleForType,
+  shortTopicId,
   uiCategoryMatchesConversation,
   adminUiCategoryMatchesConversation,
   conversationMetadataSchema,
@@ -32,6 +34,7 @@ export {
   sendMessageFn,
 } from "./messages";
 export { createConversationFn } from "./create-conversation";
+export { deleteConversationFn } from "./delete-conversation";
 export { searchUsersFn } from "./search-users";
 export { togglePinConversationFn } from "./toggle-pin";
 export { searchMessagesFn } from "./search-messages";
@@ -40,6 +43,7 @@ export {
   getOrCreateClaimConversationFn,
   getOrCreateDirectConversationFn,
   getOrCreateDisputeConversationFn,
+  getOrCreatePeerConversationFn,
   getOrCreateSessionConversationFn,
 } from "./workflow-conversations";
 

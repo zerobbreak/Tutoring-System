@@ -164,6 +164,7 @@ erDiagram
 | `academic_terms` | Semester/year windows | `label`, `academic_year`, `start_date`, `end_date`, `is_current` |
 | `modules` | Courses | `institution_id`, `lecturer_id`, `code`, `name`, `academic_term_id` |
 | `tutor_assignments` | Tutor ↔ module | `module_id`, `tutor_id`, `start_date`, `end_date`, `is_active` |
+| `tutor_hour_allocations` | Max hours per tutor/module/term | `tutor_id`, `module_id`, `academic_term_id`, `allocated_hours` |
 
 ### Session claims workflow
 
@@ -258,6 +259,13 @@ Unique: `(institution_id, student_reference)` where reference is set (migration 
 | `qr_token`, `qr_expires_at` | attendance | Public check-in token |
 | `attendance_present_count`, `attendance_expected_count` | workspace | Cached headcounts |
 | `frozen_at` | admin approvals | Blocks status changes when set |
+| `creation_source` | `20260621120000_session_automation` | `SCHEDULE`, `TUTOR_MANUAL`, `IMPORT`, `LECTURER_ONE_OFF` |
+| `attendance_locked_at` | session automation | Locks QR/roster after session end |
+| `auto_submitted_at` | session automation | Policy-based auto-submit timestamp |
+
+`schedule_series.materialized_until` (same migration) stores last materialized occurrence end.
+
+`institutions.auto_submit_claims`, `auto_submit_requires_attendance` gate cron auto-submit.
 
 ### Uniqueness constraints
 
@@ -296,7 +304,7 @@ Recurring template owned by the module lecturer (or admin).
 | `institution_id`, `academic_term_id` | Admin scoping and term filters |
 | `dtstart`, `duration_minutes`, `timezone` | First occurrence anchor |
 
-Publishing **materializes** rows in `scheduled_sessions` and typically creates/links **`session_claims`** via app logic (`ensureClaimForScheduledSession`).
+Publishing **incrementally materializes** rows in `scheduled_sessions` (`src/lib/schedule-materialize.ts`) and creates/links **`session_claims`** via `ensureClaimForScheduledSession`. Future slots removed from the recurrence template are **cancelled**, not deleted.
 
 ### scheduled_sessions
 

@@ -7,6 +7,7 @@ import {
   Pin,
   PinOff,
   FileIcon,
+  Trash2,
 } from "lucide-react";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
@@ -19,7 +20,10 @@ import {
   DropdownMenuTrigger,
 } from "#/components/ui/dropdown-menu";
 import { cn } from "#/lib/utils";
-import { togglePinConversationFn } from "#/server-actions/messaging";
+import {
+  conversationTopicLabel,
+  togglePinConversationFn,
+} from "#/server-actions/messaging";
 import type { MessageDTO, ConversationDTO } from "#/server-actions/messaging";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -38,6 +42,7 @@ interface ChatWindowProps {
     attachments?: PendingAttachment[],
   ) => void | Promise<void>;
   onPinChange?: (pinned: boolean) => void;
+  onDelete?: () => void | Promise<void>;
   isLoading?: boolean;
   currentUserId: string;
 }
@@ -60,12 +65,14 @@ export function ChatWindow({
   messages,
   onSendMessage,
   onPinChange,
+  onDelete,
   currentUserId,
   isLoading,
 }: ChatWindowProps) {
   const [inputValue, setInputValue] = React.useState("");
   const [pendingFiles, setPendingFiles] = React.useState<PendingAttachment[]>([]);
   const [pinning, setPinning] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
   const scrollRef = React.useRef<HTMLDivElement>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -100,6 +107,30 @@ export function ChatWindow({
     e.target.value = "";
   };
 
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    const label =
+      conversation.title ||
+      conversation.participants.find((p) => p.user_id !== currentUserId)
+        ?.full_name ||
+      "this conversation";
+    if (
+      !window.confirm(
+        `Delete "${label}"? All messages will be permanently removed.`,
+      )
+    ) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await onDelete();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not delete");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleTogglePin = async () => {
     setPinning(true);
     try {
@@ -127,6 +158,10 @@ export function ChatWindow({
   const otherParticipant =
     conversation.participants.find((p) => p.user_id !== currentUserId) ||
     conversation.participants[0];
+  const topicLabel = conversationTopicLabel(
+    conversation.type,
+    conversation.metadata,
+  );
 
   return (
     <div className="flex h-full flex-1 flex-col bg-background">
@@ -144,7 +179,7 @@ export function ChatWindow({
                 "Conversation"}
             </h3>
             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              {conversation.type.replace("_", " ")}
+              {topicLabel ?? conversation.type.replace("_", " ")}
             </p>
           </div>
         </div>
@@ -167,6 +202,16 @@ export function ChatWindow({
                 </>
               )}
             </DropdownMenuItem>
+            {onDelete ? (
+              <DropdownMenuItem
+                disabled={deleting}
+                className="text-destructive focus:text-destructive"
+                onClick={() => void handleDelete()}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete conversation
+              </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

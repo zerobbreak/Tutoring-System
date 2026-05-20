@@ -1,9 +1,14 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireLecturerId } from "#/lib/lecturer-server";
+import {
+  extendSeriesHorizon,
+  needsHorizonExtension,
+} from "#/lib/schedule-materialize";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { SCHEDULED_SESSION_SELECT, SERIES_SELECT } from "./constants";
 import { mapChangeRequestRow, mapScheduleEventRow, mapSeriesRow } from "./mappers";
+import { loadPendingTutorSessionRequestsForLecturer } from "./load-pending-tutor-session-requests";
 import type { LecturerSchedulePageDataDTO } from "./types";
 
 const pageDataSchema = z.object({
@@ -68,6 +73,7 @@ export const getLecturerSchedulePageDataFn = createServerFn({ method: "GET" })
         .in("module_id", moduleIds)
         .gte("starts_at", data.from)
         .lte("starts_at", data.to)
+        .is("deleted_at", null)
         .order("starts_at");
 
       if (sessErr) throw new Error(sessErr.message);
@@ -104,6 +110,19 @@ export const getLecturerSchedulePageDataFn = createServerFn({ method: "GET" })
 
       if (seriesErr) throw new Error(seriesErr.message);
       seriesRows = (rows ?? []) as Parameters<typeof mapSeriesRow>[0][];
+
+      for (const s of rows ?? []) {
+        if (
+          s.status === "PUBLISHED" &&
+          needsHorizonExtension(s.materialized_until as string | null)
+        ) {
+          try {
+            await extendSeriesHorizon(supabase, s.id as string);
+          } catch {
+            /* best-effort */
+          }
+        }
+      }
     }
 
     let pendingChangeRequests: LecturerSchedulePageDataDTO["pendingChangeRequests"] =
@@ -153,6 +172,9 @@ export const getLecturerSchedulePageDataFn = createServerFn({ method: "GET" })
       }
     }
 
+    const pendingTutorSessionRequests =
+      await loadPendingTutorSessionRequestsForLecturer(supabase, moduleIds);
+
     return {
       modules: (modules ?? []).map((m) => ({
         id: m.id as string,
@@ -175,5 +197,6 @@ export const getLecturerSchedulePageDataFn = createServerFn({ method: "GET" })
       events,
       series: seriesRows.map((s) => mapSeriesRow(s)),
       pendingChangeRequests,
+      pendingTutorSessionRequests,
     };
   });

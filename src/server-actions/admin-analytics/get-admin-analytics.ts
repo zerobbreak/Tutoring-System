@@ -279,7 +279,7 @@ export const getAdminAnalyticsFn = createServerFn({ method: "GET" }).handler(
         .order("name", { ascending: true }),
       supabase
         .from("users")
-        .select("approval_status, role")
+        .select("user_status, onboarding_step, role")
         .eq("institution_id", institutionId)
         .in("role", ["TUTOR", "LECTURER"]),
       supabase
@@ -952,7 +952,8 @@ export const getAdminAnalyticsFn = createServerFn({ method: "GET" }).handler(
     }
 
     const onboardingRows = (onboardingRes.data ?? []) as {
-      approval_status: string;
+      user_status: string;
+      onboarding_step: string | null;
       role: string;
     }[];
 

@@ -15,11 +15,19 @@ type ClaimRow = {
   moduleCode: string;
 };
 
+export type ScheduleMismatchRow = {
+  claimId: string;
+  moduleCode: string;
+  session_date: string;
+  message: string;
+};
+
 export function buildIntegrityIssues(
   claims: ClaimRow[],
   scanCountByClaim: Map<string, number>,
   evidenceClaimIds: Set<string>,
   unverifiedByClaim: Map<string, number>,
+  scheduleMismatches: ScheduleMismatchRow[] = [],
 ): IntegrityIssueDTO[] {
   const issues: IntegrityIssueDTO[] = [];
 
@@ -63,6 +71,17 @@ export function buildIntegrityIssues(
         message: `${row.moduleCode} on ${row.session_date}: ${unverified} QR check-in${unverified === 1 ? "" : "s"} not verified.`,
       });
     }
+  }
+
+  for (const m of scheduleMismatches) {
+    issues.push({
+      id: `schedule-${m.claimId}`,
+      kind: "SCHEDULE_MISMATCH",
+      claimId: m.claimId,
+      moduleCode: m.moduleCode,
+      session_date: m.session_date,
+      message: m.message,
+    });
   }
 
   return issues.slice(0, 20);

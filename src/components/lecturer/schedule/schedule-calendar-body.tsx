@@ -6,6 +6,7 @@ import { ScheduleCalendarToolbar } from "./schedule-calendar-toolbar";
 import { ScheduleDayDetail } from "./schedule-day-detail";
 import { ScheduleMonthGrid } from "./schedule-month-grid";
 import { ScheduleWeekGrid } from "./schedule-week-grid";
+import type { ScheduleSessionManageAction } from "./schedule-session-manage-dialog";
 import type { ScheduleCalendarView, ScheduleEventDTO } from "./types";
 
 type ScheduleCalendarBodyProps = {
@@ -21,6 +22,16 @@ type ScheduleCalendarBodyProps = {
   onNext: () => void;
   onSelectEvent: (event: ScheduleEventDTO) => void;
   onCreateSeries?: () => void;
+  manageRole?: "admin" | "tutor" | null;
+  onManageAction?: (
+    event: ScheduleEventDTO,
+    action: ScheduleSessionManageAction,
+  ) => void;
+  showTutorLink?: boolean;
+  monitorHrefForClaim?: (claimId: string) => {
+    to: string;
+    search?: Record<string, string>;
+  };
 };
 
 export function ScheduleCalendarBody({
@@ -36,6 +47,10 @@ export function ScheduleCalendarBody({
   onNext,
   onSelectEvent,
   onCreateSeries,
+  manageRole,
+  onManageAction,
+  showTutorLink,
+  monitorHrefForClaim,
 }: ScheduleCalendarBodyProps) {
   const range = rangeForView(view, focusDate);
 
@@ -46,6 +61,13 @@ export function ScheduleCalendarBody({
       </div>
     );
   }
+
+  const dayDetailProps = {
+    manageRole,
+    onManageAction,
+    showTutorLink,
+    monitorHrefForClaim,
+  };
 
   return (
     <>
@@ -74,6 +96,7 @@ export function ScheduleCalendarBody({
             events={eventsInRange}
             selectedEventId={selectedEventId}
             onSelectEvent={onSelectEvent}
+            {...dayDetailProps}
           />
         </div>
       ) : null}
@@ -97,6 +120,7 @@ export function ScheduleCalendarBody({
           selectedEventId={selectedEventId}
           onSelectEvent={onSelectEvent}
           onCreateSeries={onCreateSeries}
+          {...dayDetailProps}
         />
       ) : null}
 

@@ -30,9 +30,6 @@ export const provisionInstitutionUserFn = createServerFn({ method: "POST" })
     }
 
     const email = data.email.trim().toLowerCase();
-    const approvalStatus = data.skipOnboarding
-      ? ("approved" as const)
-      : ("pending_documents" as const);
 
     const result = await provisionInstitutionUser(admin, {
       email,
@@ -40,7 +37,7 @@ export const provisionInstitutionUserFn = createServerFn({ method: "POST" })
       role: data.role,
       institutionId: ctx.institutionId,
       temporaryPassword: data.temporaryPassword,
-      approvalStatus,
+      skipOnboarding: data.skipOnboarding,
     });
 
     await logInstitutionAudit(supabase, {

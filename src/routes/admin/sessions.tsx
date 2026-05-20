@@ -109,6 +109,7 @@ function AdminSessionsPage() {
       onLecturerChange={setLecturerId}
       navigate={navigate}
       onSheetOpenChange={handleSheetOpenChange}
+      onTutorSessionApproved={() => void load()}
     />
   );
 }

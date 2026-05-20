@@ -4,6 +4,7 @@ import { TutorSessionsWorkspace } from "#/components/tutor/sessions/tutor-sessio
 
 const sessionsSearchSchema = z.object({
   claim: z.string().uuid().optional(),
+  session: z.string().uuid().optional(),
 });
 
 export const Route = createFileRoute("/tutor/sessions")({

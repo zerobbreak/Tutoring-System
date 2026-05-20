@@ -7,7 +7,7 @@ import {
   TableRow,
 } from "#/components/ui/table";
 import { formatReportCell } from "#/lib/report-export";
-import type { ReportResultDTO } from "#/server-actions/lecturer-reports";
+import type { ReportResultDTO } from "#/lib/report-types";
 
 type ReportPreviewTableProps = {
   report: ReportResultDTO;

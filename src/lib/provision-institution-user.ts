@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { UserRole } from "#/lib/user-role";
-
-export type ProvisionApprovalStatus = "pending_documents" | "approved";
+import { ACTIVE_LIFECYCLE, PENDING_LIFECYCLE } from "#/lib/user-status";
 
 export type ProvisionInstitutionUserInput = {
   email: string;
@@ -9,7 +8,8 @@ export type ProvisionInstitutionUserInput = {
   role: UserRole;
   institutionId: string;
   temporaryPassword?: string;
-  approvalStatus?: ProvisionApprovalStatus;
+  /** When true, user is immediately ACTIVE; otherwise PENDING_APPROVAL. */
+  skipOnboarding?: boolean;
 };
 
 export type ProvisionInstitutionUserResult = {
@@ -45,7 +45,7 @@ export async function provisionInstitutionUser(
 
   const email = input.email.trim().toLowerCase();
   const fullName = input.fullName.trim();
-  const approvalStatus = input.approvalStatus ?? "pending_documents";
+  const lifecycle = input.skipOnboarding ? ACTIVE_LIFECYCLE : PENDING_LIFECYCLE;
 
   const { data: existingUser } = await admin
     .from("users")
@@ -76,8 +76,7 @@ export async function provisionInstitutionUser(
       .update({
         full_name: fullName,
         institution_id: input.institutionId,
-        is_active: true,
-        approval_status: approvalStatus,
+        ...lifecycle,
       })
       .eq("id", userId);
 
@@ -120,8 +119,7 @@ export async function provisionInstitutionUser(
       full_name: fullName,
       role,
       institution_id: input.institutionId,
-      is_active: true,
-      approval_status: approvalStatus,
+      ...lifecycle,
     },
     { onConflict: "id" },
   );

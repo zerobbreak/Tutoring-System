@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { appendClaimWorkflowEvent } from "#/lib/claim-workflow-timeline";
 import type { ClaimStatus } from "#/lib/session-claim-display";
 import { requireAdminContext } from "#/lib/admin-server";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
@@ -128,18 +129,14 @@ export const performAdminApprovalActionFn = createServerFn({ method: "POST" })
 
     const toStatus = (config.nextStatus ?? fromStatus) as ClaimStatus;
 
-    const { error: actErr } = await supabase.from("verification_actions").insert({
-      claim_id: data.claimId,
-      actor_id: userId,
-      action_type: config.actionType,
-      from_status: fromStatus,
-      to_status: toStatus,
+    await appendClaimWorkflowEvent(supabase, {
+      claimId: data.claimId,
+      actorId: userId,
+      actionType: config.actionType,
+      fromStatus,
+      toStatus,
       comment,
-      mfa_confirmed: false,
-      mfa_method: null,
     });
-
-    if (actErr) throw new Error(actErr.message);
 
     if (data.action === "APPROVE") {
       const admin = getSupabaseAdmin();

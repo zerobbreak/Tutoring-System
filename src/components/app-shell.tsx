@@ -24,6 +24,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
 } from "#/components/ui/sidebar";
 import { supabase } from "#/lib/supabase";
 import { ThemeToggle } from "./theme-toggle";
@@ -85,7 +87,7 @@ function renderNavBlock(
         const Icon = item.icon;
         return (
           <SidebarMenuItem key={item.to}>
-            <SidebarMenuButton asChild isActive={active}>
+            <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
               <Link to={item.to}>
                 <Icon />
                 <span>{item.label}</span>
@@ -150,15 +152,11 @@ export function AppShell({
       className="flex min-h-0 w-full flex-1 items-stretch"
       style={{ "--sidebar-width": "18.5rem" } as CSSProperties}
     >
-      <Sidebar
-        collapsible="none"
-        variant="sidebar"
-        className="h-svh shrink-0 border-r border-sidebar-border bg-sidebar"
-      >
+      <Sidebar collapsible="icon" variant="sidebar">
         <SidebarHeader className="shrink-0 border-b border-sidebar-border">
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton size="lg" asChild>
+              <SidebarMenuButton size="lg" asChild tooltip={brandTitle}>
                 <Link to={homePath}>
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                     {brandMark}
@@ -194,6 +192,7 @@ export function AppShell({
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
+                  tooltip="Settings"
                   isActive={
                     pathname === settingsPath ||
                     pathname.startsWith(`${settingsPath}/`)
@@ -209,6 +208,7 @@ export function AppShell({
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
+                    tooltip="Get Help"
                     isActive={
                       pathname === helpPath ||
                       pathname.startsWith(`${helpPath}/`)
@@ -232,6 +232,7 @@ export function AppShell({
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton
                     size="lg"
+                    tooltip={displayName}
                     className="h-auto min-h-12 rounded-b-none py-2 pb-0 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                   >
                     <Avatar className="size-8 rounded-lg">
@@ -277,10 +278,12 @@ export function AppShell({
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
+        <SidebarRail />
       </Sidebar>
 
-      <SidebarInset className="flex min-h-0 min-w-0 flex-1 flex-col border-l border-border bg-background md:m-0 md:rounded-none md:shadow-none">
-        <header className="flex h-16 shrink-0 items-center gap-3 border-b bg-background px-4 md:px-6">
+      <SidebarInset className="flex min-h-0 min-w-0 flex-1 flex-col bg-background md:m-0 md:rounded-none md:shadow-none">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b bg-background px-3 sm:h-16 sm:gap-3 sm:px-4 md:px-6">
+          <SidebarTrigger className="shrink-0" />
           <nav
             aria-label="Breadcrumb"
             className="flex min-w-0 flex-1 items-center gap-1 text-sm text-muted-foreground"

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { subscribeToIncomingMessages } from "#/lib/messaging-realtime";
 import { supabase } from "#/lib/supabase";
 import {
+  deleteConversationFn,
   getConversationMessagesFn,
   listConversationsFn,
   markConversationAsReadFn,
@@ -179,6 +180,15 @@ export function useMessagingPage({ initialConversationId }: UseMessagingPageOpti
     setSelectedConvId(id);
   };
 
+  const handleDeleteConversation = async () => {
+    if (!selectedConvId) return;
+    await deleteConversationFn({ data: { conversationId: selectedConvId } });
+    setConversations((prev) => prev.filter((c) => c.id !== selectedConvId));
+    setSelectedConvId(undefined);
+    setMessages([]);
+    toast.success("Conversation deleted");
+  };
+
   return {
     conversations,
     setConversations,
@@ -192,5 +202,6 @@ export function useMessagingPage({ initialConversationId }: UseMessagingPageOpti
     refreshConversations,
     handleSendMessage,
     handleConversationCreated,
+    handleDeleteConversation,
   };
 }

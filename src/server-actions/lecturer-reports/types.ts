@@ -1,4 +1,10 @@
 import type { z } from "zod";
+import type {
+  ReportColumnDTO,
+  ReportFiltersDTO,
+  ReportResultDTO as BaseReportResultDTO,
+  ReportRowDTO,
+} from "#/lib/report-types";
 import type { reportFiltersSchema, reportTypeSchema } from "./schemas";
 
 export type ReportCategory = "attendance" | "claims" | "tutor";
@@ -7,29 +13,12 @@ export type ReportType = z.infer<typeof reportTypeSchema>;
 
 export type ReportFiltersInput = z.infer<typeof reportFiltersSchema>;
 
-export type ReportColumnDTO = {
-  key: string;
-  label: string;
-};
+export type { ReportColumnDTO, ReportFiltersDTO, ReportRowDTO };
 
-export type ReportRowDTO = Record<string, string | number | null>;
+export type LecturerReportResultDTO = BaseReportResultDTO<ReportType>;
 
-export type ReportResultDTO = {
-  reportType: ReportType;
-  title: string;
-  generatedAt: string;
-  filters: ReportFiltersDTO;
-  columns: ReportColumnDTO[];
-  rows: ReportRowDTO[];
-  summary: ReportRowDTO | null;
-};
-
-export type ReportFiltersDTO = {
-  dateFrom: string;
-  dateTo: string;
-  moduleId: string | null;
-  tutorId: string | null;
-};
+/** Lecturer report generation result */
+export type ReportResultDTO = LecturerReportResultDTO;
 
 export type ReportCatalogItemDTO = {
   id: ReportType;

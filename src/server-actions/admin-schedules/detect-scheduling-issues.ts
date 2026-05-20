@@ -11,6 +11,7 @@ import {
   parseSchedulingSettings,
   resolveModuleIdsForScope,
 } from "./helpers";
+import { loadTutorBudgetContext } from "#/server-actions/tutor-allocations/load-budget-context";
 import { issuesSchema } from "./schemas";
 import type { DetectSchedulingIssuesResultDTO } from "./types";
 
@@ -168,12 +169,68 @@ export const detectSchedulingIssuesFn = createServerFn({ method: "GET" })
       }));
     }
 
+    const { data: allocationTutors, error: allocTutorErr } = await supabase
+      .from("tutor_hour_allocations")
+      .select("tutor_id")
+      .eq("institution_id", institutionId);
+
+    if (allocTutorErr) throw new Error(allocTutorErr.message);
+
+    const tutorIds = [
+      ...new Set((allocationTutors ?? []).map((r) => r.tutor_id as string)),
+    ];
+
+    const allocationRows: {
+      tutorId: string;
+      tutorName?: string;
+      moduleId: string;
+      moduleCode: string;
+      allocatedHours: number;
+      reservedHours: number;
+    }[] = [];
+
+    for (const tutorId of tutorIds) {
+      if (scope === "tutor" && scopeEntityId && tutorId !== scopeEntityId) {
+        continue;
+      }
+      const { summary } = await loadTutorBudgetContext(
+        supabase,
+        tutorId,
+        institutionId,
+      );
+      const { data: tutorUser } = await supabase
+        .from("users")
+        .select("full_name")
+        .eq("id", tutorId)
+        .maybeSingle();
+
+      for (const m of summary.byModule) {
+        if (m.allocatedHours <= 0) continue;
+        if (
+          scope === "module" &&
+          scopeEntityId &&
+          m.moduleId !== scopeEntityId
+        ) {
+          continue;
+        }
+        allocationRows.push({
+          tutorId,
+          tutorName: (tutorUser?.full_name as string) ?? undefined,
+          moduleId: m.moduleId,
+          moduleCode: m.moduleCode,
+          allocatedHours: m.allocatedHours,
+          reservedHours: m.reservedHours,
+        });
+      }
+    }
+
     const issues = detectAllSchedulingIssues({
       sessions,
       assignments,
       publishedSeries,
       maxHoursPerWeek: maxTutorHoursPerWeek,
       academicTermId,
+      allocationRows,
     });
 
     return { issues, maxTutorHoursPerWeek };

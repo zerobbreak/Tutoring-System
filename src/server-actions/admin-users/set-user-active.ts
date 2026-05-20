@@ -4,6 +4,7 @@ import { logInstitutionAudit } from "#/lib/audit-log";
 import { requireAdminContext } from "#/lib/admin-server";
 import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
+import { ACTIVE_LIFECYCLE, SUSPENDED_LIFECYCLE } from "#/lib/user-status";
 import { assertTargetUserInInstitution } from "./assert-target-user";
 
 const schema = z.object({
@@ -25,9 +26,35 @@ export const setUserActiveFn = createServerFn({ method: "POST" })
 
     const admin = getSupabaseAdmin() ?? supabase;
 
+    const { data: target, error: readErr } = await admin
+      .from("users")
+      .select("user_status")
+      .eq("id", data.userId)
+      .eq("institution_id", ctx.institutionId)
+      .maybeSingle();
+
+    if (readErr) throw new Error(readErr.message);
+    if (!target?.user_status) {
+      throw new Error("User not found.");
+    }
+
+    if (target.user_status === "REJECTED") {
+      throw new Error(
+        "Rejected accounts cannot be re-enabled. The user must register again.",
+      );
+    }
+
+    if (target.user_status === "PENDING_APPROVAL" && data.is_active) {
+      throw new Error(
+        "Approve onboarding first before enabling platform access.",
+      );
+    }
+
+    const lifecycle = data.is_active ? ACTIVE_LIFECYCLE : SUSPENDED_LIFECYCLE;
+
     const { error } = await admin
       .from("users")
-      .update({ is_active: data.is_active })
+      .update(lifecycle)
       .eq("id", data.userId)
       .eq("institution_id", ctx.institutionId);
 
@@ -39,8 +66,11 @@ export const setUserActiveFn = createServerFn({ method: "POST" })
       entityType: "USER",
       entityId: data.userId,
       event: "USER_ACTIVE_CHANGED",
-      payload: { is_active: data.is_active },
+      payload: {
+        is_active: data.is_active,
+        user_status: lifecycle.user_status,
+      },
     });
 
-    return { ok: true as const };
+    return { ok: true as const, user_status: lifecycle.user_status };
   });

@@ -21,7 +21,7 @@ export const ADMIN_QUICK_ACTIONS = [
   },
   {
     label: "Export Payroll",
-    to: "/admin/reports" as const,
+    to: "/admin/payments" as const,
     icon: Wallet,
     soon: true,
   },
