@@ -5,9 +5,12 @@ import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { checkReservedCapacityForStandaloneClaim } from "#/server-actions/tutor-allocations/check-reserved-capacity";
 import { assertClaimNotFrozen } from "#/server-actions/admin-approvals/assert-claim-not-frozen";
 import { getSupabaseAdmin } from "#/lib/supabase-admin";
+import { parseStudentCardPayload } from "#/lib/student-card-payload";
 import {
+  assertSessionOpenForTutorScan,
   assertValidQrSession,
   findOrCreateStudent,
+  findOrCreateStudentFromScan,
   getCheckInSessionPreview,
   getSessionInstitutionId,
   recordSessionCheckIn,
@@ -136,6 +139,7 @@ export type TutorSessionClaimDTO = {
   review_feedback: string | null;
   attendance_present_count: number | null;
   attendance_expected_count: number | null;
+  attendance_locked_at: string | null;
   qr_token: string | null;
   qr_expires_at: string | null;
   module: {
@@ -253,6 +257,7 @@ function mapClaimRow(r: RawClaim, evidenceCount: number): TutorSessionClaimDTO {
     review_feedback: r.review_feedback ?? null,
     attendance_present_count: r.attendance_present_count,
     attendance_expected_count: r.attendance_expected_count,
+    attendance_locked_at: r.attendance_locked_at ?? null,
     qr_token: r.qr_token,
     qr_expires_at: r.qr_expires_at,
     module: moduleOut,
@@ -294,6 +299,7 @@ export const listTutorSessionClaimsFn = createServerFn({
         admin_creation_approved_at,
         attendance_present_count,
         attendance_expected_count,
+        attendance_locked_at,
         qr_token,
         qr_expires_at,
         module:modules (
@@ -1176,6 +1182,62 @@ export const checkInStudentFn = createServerFn({ method: "POST" })
       studentName: student.full_name,
       registered: student.created,
     };
+  });
+
+export type ScanStudentForSessionResult = {
+  success: true;
+  studentId: string;
+  studentName: string;
+  registered: boolean;
+  alreadyCheckedIn: boolean;
+};
+
+/** Tutor scans a student card to check in for the active session. */
+export const scanStudentForSessionFn = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        claimId: z.string().uuid(),
+        payload: z.string().trim().min(1).max(2000),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }): Promise<ScanStudentForSessionResult> => {
+    const supabase = createSupabaseServerClient();
+    const tutorId = await requireUserId(supabase);
+
+    await assertSessionOpenForTutorScan(supabase, data.claimId, tutorId);
+
+    const card = parseStudentCardPayload(data.payload);
+    const institutionId = await getSessionInstitutionId(supabase, data.claimId);
+    const student = await findOrCreateStudentFromScan(
+      supabase,
+      institutionId,
+      card,
+    );
+
+    try {
+      await recordSessionCheckIn(supabase, data.claimId, student.id);
+      return {
+        success: true,
+        studentId: student.id,
+        studentName: student.full_name,
+        registered: student.created,
+        alreadyCheckedIn: false,
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "";
+      if (message.includes("already checked in")) {
+        return {
+          success: true,
+          studentId: student.id,
+          studentName: student.full_name,
+          registered: false,
+          alreadyCheckedIn: true,
+        };
+      }
+      throw err;
+    }
   });
 
 /** Tutor manually registers a student on the session roster. */
