@@ -32,6 +32,7 @@ import {
 } from "#/lib/session-claim-display";
 import { toast } from "#/lib/toast";
 import { cn } from "#/lib/utils";
+import { PrivateSessionFeedbackReadBlock } from "#/components/private-session-feedback/private-session-feedback-read-block";
 import {
   getAdminSessionDetailFn,
   type AdminSessionDetailDTO,
@@ -496,6 +497,15 @@ export function AdminSessionDetailSheet({
                   </ol>
                 )}
               </DetailSection>
+
+              {claimId ? (
+                <PrivateSessionFeedbackReadBlock
+                  claimId={claimId}
+                  claimStatus={session.status}
+                  title="Private lecturer feedback"
+                  description="Optional developmental notes visible to staffing — not shared publicly."
+                />
+              ) : null}
             </div>
           </>
         )}

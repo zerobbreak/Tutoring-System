@@ -171,14 +171,14 @@ export function TutorRegisterGenerationPage() {
         const result = await scanStudentForSessionFn({
           data: { claimId: selectedSessionId, payload },
         });
-        if (result.alreadyCheckedIn) {
-          toast.info(`${result.studentName} is already checked in.`);
+        if (result.alreadyPresent) {
+          toast.info(`${result.studentName} is already marked present.`);
         } else if (result.registered) {
           toast.success(
             `${result.studentName} registered and marked present.`,
           );
         } else {
-          toast.success(`${result.studentName} checked in.`);
+          toast.success(`${result.studentName} marked present.`);
         }
         await loadAttendance();
         await loadSessions();
@@ -254,8 +254,8 @@ export function TutorRegisterGenerationPage() {
             Attendance Workspace
           </h1>
           <p className="text-muted-foreground">
-            Scan student cards for live check-in, optional student QR backup, and
-            exports.
+            Scan student cards to record who was present, optional student QR
+            backup, and exports.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -334,8 +334,8 @@ export function TutorRegisterGenerationPage() {
                   Scan attendance
                 </CardTitle>
                 <CardDescription>
-                  Scan student ID barcodes or QR codes. Attendance is recorded
-                  only for the selected session.
+                  Scan student ID barcodes or QR codes to mark them present for
+                  the selected session only.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -361,11 +361,11 @@ export function TutorRegisterGenerationPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <QrCode className="size-5 text-muted-foreground" />
-                  Student self check-in
+                  Student self-registration
                 </CardTitle>
                 <CardDescription>
-                  Optional backup: students scan this session QR and enter their
-                  details.
+                  Optional backup: students scan this session QR and confirm
+                  they were present.
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col items-center gap-6">
@@ -505,7 +505,7 @@ export function TutorRegisterGenerationPage() {
                           <TableHead>Student Name</TableHead>
                           <TableHead>Reference</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead>Check-in Time</TableHead>
+                          <TableHead>Recorded</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>

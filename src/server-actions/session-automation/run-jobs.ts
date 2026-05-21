@@ -5,6 +5,7 @@ import {
   extendAllPublishedSeries,
   materializeSeriesSessionsIncremental,
 } from "#/lib/schedule-materialize";
+import { repairDraftClaimScheduleMismatches } from "#/lib/schedule-sync/repair-draft-mismatches";
 import {
   ATTENDANCE_LOCK_GRACE_MINUTES,
   isAttendanceLocked,
@@ -21,6 +22,7 @@ export type SessionAutomationJobResult = {
   qrTokensRefreshed: number;
   autoSubmitted: number;
   remindersSent: number;
+  draftClaimsRepaired: number;
 };
 
 async function lockEndedAttendance(db: SupabaseClient): Promise<number> {
@@ -350,6 +352,27 @@ async function runSessionReminders(db: SupabaseClient): Promise<number> {
   return sent;
 }
 
+async function repairDraftClaimsAllInstitutions(
+  db: SupabaseClient,
+): Promise<number> {
+  const { data: institutions, error } = await db
+    .from("institutions")
+    .select("id");
+
+  if (error) throw new Error(error.message);
+
+  let total = 0;
+  for (const row of institutions ?? []) {
+    const { repaired } = await repairDraftClaimScheduleMismatches(
+      db,
+      row.id as string,
+      null,
+    );
+    total += repaired;
+  }
+  return total;
+}
+
 export async function runSessionAutomationJobs(
   db: SupabaseClient = getSupabaseAdmin(),
 ): Promise<SessionAutomationJobResult> {
@@ -358,6 +381,7 @@ export async function runSessionAutomationJobs(
   const qrTokensRefreshed = await refreshQrTokensInWindow(db);
   const autoSubmitted = await autoSubmitEligibleClaims(db);
   const remindersSent = await runSessionReminders(db);
+  const draftClaimsRepaired = await repairDraftClaimsAllInstitutions(db);
 
   return {
     seriesExtended,
@@ -365,6 +389,7 @@ export async function runSessionAutomationJobs(
     qrTokensRefreshed,
     autoSubmitted,
     remindersSent,
+    draftClaimsRepaired,
   };
 }
 

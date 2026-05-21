@@ -118,8 +118,8 @@ export function StudentCardScanner({
             <ScanLine className="size-10 text-muted-foreground/50" />
             <p className="text-sm text-muted-foreground">
               {enabled
-                ? "Start the camera to scan student barcodes or QR codes."
-                : "Select an active session to enable scanning."}
+                ? "Start the camera to scan student cards and mark them present."
+                : "Select an open session to enable scanning."}
             </p>
             <Button
               type="button"

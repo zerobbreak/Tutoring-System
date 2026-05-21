@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logInstitutionAudit } from "#/lib/audit-log";
 import {
+  loadScheduledSessionSnapshot,
+  syncScheduledSessionAfterUpdate,
+} from "#/lib/schedule-sync";
+import {
   softDeleteDraftClaimsForSession,
   softDeleteScheduledSession,
 } from "#/lib/soft-delete";
@@ -82,6 +86,8 @@ export async function cancelScheduledSessionRecord(
     throw new Error("This session is already cancelled.");
   }
 
+  const before = await loadScheduledSessionSnapshot(supabase, params.sessionId);
+
   const now = new Date().toISOString();
   const { error } = await supabase
     .from("scheduled_sessions")
@@ -100,7 +106,13 @@ export async function cancelScheduledSessionRecord(
 
   await rejectPendingChangeRequests(supabase, params.sessionId, params.actorId);
 
-  if (params.institutionId) {
+  if (before) {
+    await syncScheduledSessionAfterUpdate(supabase, {
+      scheduledSessionId: params.sessionId,
+      actorId: params.actorId,
+      before,
+    });
+  } else if (params.institutionId) {
     await logInstitutionAudit(supabase, {
       institutionId: params.institutionId,
       actorId: params.actorId,
@@ -132,6 +144,8 @@ export async function restoreScheduledSessionRecord(
     throw new Error("Only cancelled sessions can be restored.");
   }
 
+  const before = await loadScheduledSessionSnapshot(supabase, params.sessionId);
+
   const now = new Date().toISOString();
   const { error } = await supabase
     .from("scheduled_sessions")
@@ -147,14 +161,22 @@ export async function restoreScheduledSessionRecord(
 
   if (error) throw new Error(error.message);
 
-  await logInstitutionAudit(supabase, {
-    institutionId: params.institutionId,
-    actorId: params.actorId,
-    entityType: "SCHEDULED_SESSION",
-    entityId: params.sessionId,
-    event: "SCHEDULED_SESSION_RESTORED",
-    payload: {},
-  });
+  if (before) {
+    await syncScheduledSessionAfterUpdate(supabase, {
+      scheduledSessionId: params.sessionId,
+      actorId: params.actorId,
+      before,
+    });
+  } else {
+    await logInstitutionAudit(supabase, {
+      institutionId: params.institutionId,
+      actorId: params.actorId,
+      entityType: "SCHEDULED_SESSION",
+      entityId: params.sessionId,
+      event: "SCHEDULED_SESSION_RESTORED",
+      payload: {},
+    });
+  }
 }
 
 export async function deleteScheduledSessionRecord(

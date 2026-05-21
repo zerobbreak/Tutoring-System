@@ -1189,10 +1189,10 @@ export type ScanStudentForSessionResult = {
   studentId: string;
   studentName: string;
   registered: boolean;
-  alreadyCheckedIn: boolean;
+  alreadyPresent: boolean;
 };
 
-/** Tutor scans a student card to check in for the active session. */
+/** Tutor scans a student card to mark them present for the active session. */
 export const scanStudentForSessionFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
@@ -1223,17 +1223,17 @@ export const scanStudentForSessionFn = createServerFn({ method: "POST" })
         studentId: student.id,
         studentName: student.full_name,
         registered: student.created,
-        alreadyCheckedIn: false,
+        alreadyPresent: false,
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : "";
-      if (message.includes("already checked in")) {
+      if (message.includes("already marked present")) {
         return {
           success: true,
           studentId: student.id,
           studentName: student.full_name,
           registered: false,
-          alreadyCheckedIn: true,
+          alreadyPresent: true,
         };
       }
       throw err;

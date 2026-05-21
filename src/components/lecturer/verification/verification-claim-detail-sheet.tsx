@@ -33,6 +33,8 @@ import {
 } from "#/lib/session-claim-display";
 import { toast } from "#/lib/toast";
 import { cn } from "#/lib/utils";
+import { PrivateSessionFeedbackForm } from "#/components/private-session-feedback/private-session-feedback-form";
+import { ELIGIBLE_FEEDBACK_CLAIM_STATUSES } from "#/lib/private-session-feedback";
 import {
   getVerificationClaimFn,
   performVerificationActionFn,
@@ -162,12 +164,15 @@ export function VerificationClaimDetailSheet({
 
   const runActionWithMfa = async (stepUpCode: string) => {
     if (!claimId || !pendingAction) return;
+    const action = pendingAction;
+    const keepOpenForFeedback =
+      action === "APPROVE" || action === "SIGN_AND_APPROVE";
     setSubmitting(true);
     try {
       await performVerificationActionFn({
         data: {
           claimId,
-          action: pendingAction,
+          action,
           comment: comment.trim() || undefined,
           stepUpCode,
         },
@@ -175,8 +180,14 @@ export function VerificationClaimDetailSheet({
       toast.success("Verification action recorded.");
       setStepUpOpen(false);
       setPendingAction(null);
+      setComment("");
       onActionComplete();
-      onOpenChange(false);
+      if (keepOpenForFeedback) {
+        await loadClaim();
+        toast.info("You can add optional private feedback below.");
+      } else {
+        onOpenChange(false);
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Action failed");
     } finally {
@@ -186,6 +197,12 @@ export function VerificationClaimDetailSheet({
 
   const canAct =
     claim && ["PENDING_VERIFICATION", "DISPUTED"].includes(claim.status);
+
+  const showPrivateFeedback =
+    claim &&
+    ELIGIBLE_FEEDBACK_CLAIM_STATUSES.includes(
+      claim.status as (typeof ELIGIBLE_FEEDBACK_CLAIM_STATUSES)[number],
+    );
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -413,6 +430,16 @@ export function VerificationClaimDetailSheet({
                   </ol>
                 )}
               </DetailSection>
+
+              {showPrivateFeedback && claimId ? (
+                <DetailSection
+                  title="Private feedback (optional)"
+                  description="Developmental notes for the tutor — not part of the verification decision."
+                  icon={MessageSquare}
+                >
+                  <PrivateSessionFeedbackForm claimId={claimId} />
+                </DetailSection>
+              ) : null}
 
               {canAct ? (
                 <section className="rounded-xl border border-border/80 bg-card p-4 shadow-sm">

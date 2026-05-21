@@ -83,7 +83,10 @@ import {
 } from "#/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
 import { TooltipProvider } from "#/components/ui/tooltip";
+import { StudentCardScanner } from "#/components/tutor/attendance/student-card-scanner";
+import { PrivateSessionFeedbackReadBlock } from "#/components/private-session-feedback/private-session-feedback-read-block";
 import { SubmitClaimDialog } from "#/components/tutor/sessions/submit-claim-dialog";
+import { canTutorScanAttendanceForClaim } from "#/lib/session-attendance-open";
 import {
   sessionBoundsLocal,
   sessionKanbanColumn,
@@ -112,6 +115,7 @@ import {
   listTutorModuleAssignmentsFn,
   listTutorSessionClaimsFn,
   registerAttendanceEvidenceFn,
+  scanStudentForSessionFn,
   resubmitSessionRequestFn,
   updateSessionClaimSchedulingFn,
   type AttendanceRecordDTO,
@@ -744,6 +748,7 @@ export function TutorSessionsWorkspace({
   const [attendanceRows, setAttendanceRows] = useState<
     AttendanceRecordDTO[] | null
   >(null);
+  const [attendanceScanning, setAttendanceScanning] = useState(false);
   const [submitOpen, setSubmitOpen] = useState(false);
   const [submitClaim, setSubmitClaim] = useState<TutorSessionClaimDTO | null>(
     null,
@@ -825,6 +830,51 @@ export function TutorSessionsWorkspace({
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [reload]);
+
+  const loadAttendanceForClaim = useCallback(async (claimId: string) => {
+    const rows = await getAttendanceDataFn({ data: { claimId } });
+    setAttendanceRows(rows);
+  }, []);
+
+  const attendanceScanEnabled = useMemo(() => {
+    if (!attendanceClaim) return false;
+    return canTutorScanAttendanceForClaim({
+      attendance_locked_at: attendanceClaim.attendance_locked_at,
+      session_date: attendanceClaim.session_date,
+      start_time: attendanceClaim.start_time,
+      end_time: attendanceClaim.end_time,
+    });
+  }, [attendanceClaim]);
+
+  const handleAttendanceScan = useCallback(
+    async (payload: string) => {
+      if (!attendanceClaim) return;
+      setAttendanceScanning(true);
+      try {
+        const result = await scanStudentForSessionFn({
+          data: { claimId: attendanceClaim.id, payload },
+        });
+        if (result.alreadyPresent) {
+          toast.info(`${result.studentName} is already marked present.`);
+        } else if (result.registered) {
+          toast.success(
+            `${result.studentName} registered and marked present.`,
+          );
+        } else {
+          toast.success(`${result.studentName} marked present.`);
+        }
+        await loadAttendanceForClaim(attendanceClaim.id);
+        void reload();
+      } catch (e) {
+        toast.error(
+          e instanceof Error ? e.message : "Could not record attendance",
+        );
+      } finally {
+        setAttendanceScanning(false);
+      }
+    },
+    [attendanceClaim, loadAttendanceForClaim, reload],
+  );
 
   const openDiscard = (claimIds: string[]) => {
     if (claimIds.length === 0) return;
@@ -1441,10 +1491,7 @@ export function TutorSessionsWorkspace({
                                       setAttendanceClaim(c);
                                       setAttendanceOpen(true);
                                       try {
-                                        const rows = await getAttendanceDataFn({
-                                          data: { claimId: c.id },
-                                        });
-                                        setAttendanceRows(rows);
+                                        await loadAttendanceForClaim(c.id);
                                       } catch (e) {
                                         toast.error(
                                           e instanceof Error
@@ -1829,6 +1876,10 @@ export function TutorSessionsWorkspace({
                       </p>
                     </div>
                   ) : null}
+                  <PrivateSessionFeedbackReadBlock
+                    claimId={detailClaim.id}
+                    claimStatus={detailClaim.status}
+                  />
                 </div>
               ) : null}
               </ScrollArea>
@@ -1961,47 +2012,80 @@ export function TutorSessionsWorkspace({
             </DialogContent>
           </Dialog>
 
-          <Dialog open={attendanceOpen} onOpenChange={setAttendanceOpen}>
-            <DialogContent>
+          <Dialog
+            open={attendanceOpen}
+            onOpenChange={(open) => {
+              setAttendanceOpen(open);
+              if (!open) {
+                setAttendanceClaim(null);
+                setAttendanceRows(null);
+              }
+            }}
+          >
+            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
               <DialogHeader>
-                <DialogTitle>Attendance</DialogTitle>
+                <DialogTitle>Record attendance</DialogTitle>
                 <DialogDescription>
                   {attendanceClaim?.module
-                    ? `${attendanceClaim.module.code} — students who attended this session.`
-                    : "Students who attended this session."}
+                    ? `${attendanceClaim.module.code} — scan student cards to mark who was present.`
+                    : "Scan student cards to mark who was present."}
                 </DialogDescription>
               </DialogHeader>
-              <ScrollArea className="max-h-64 pr-4">
-                <div className="space-y-2 text-sm">
-                {attendanceRows?.length ? (
-                  attendanceRows.map((r) => (
-                    <div
-                      key={r.id}
-                      className="flex items-center justify-between gap-2 rounded-md border px-2 py-1.5"
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">
-                          {r.student.full_name}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {r.student.student_reference ?? r.student.email ?? "—"}
-                          {r.check_in_time
-                            ? ` · ${format(parseISO(r.check_in_time), "HH:mm")}`
-                            : ""}
-                        </p>
-                      </div>
-                      <Badge variant="secondary" className="shrink-0 text-[10px]">
-                        {r.status}
-                      </Badge>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-muted-foreground">
-                    No students recorded yet.
-                  </p>
-                )}
-                </div>
-              </ScrollArea>
+              {attendanceClaim ? (
+                <StudentCardScanner
+                  enabled={attendanceScanEnabled}
+                  busy={attendanceScanning}
+                  onScan={handleAttendanceScan}
+                />
+              ) : null}
+              {!attendanceScanEnabled && attendanceClaim ? (
+                <p className="text-xs text-amber-700 dark:text-amber-200">
+                  Scanning is closed for this session (locked or outside the
+                  session window).
+                </p>
+              ) : null}
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Present ({attendanceRows?.length ?? 0})
+                </p>
+                <ScrollArea className="max-h-48 pr-4">
+                  <div className="space-y-2 text-sm">
+                    {attendanceRows?.length ? (
+                      attendanceRows.map((r) => (
+                        <div
+                          key={r.id}
+                          className="flex items-center justify-between gap-2 rounded-md border px-2 py-1.5"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">
+                              {r.student.full_name}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {r.student.student_reference ??
+                                r.student.email ??
+                                "—"}
+                              {r.check_in_time
+                                ? ` · ${format(parseISO(r.check_in_time), "HH:mm")}`
+                                : ""}
+                            </p>
+                          </div>
+                          <Badge
+                            variant="secondary"
+                            className="shrink-0 text-[10px]"
+                          >
+                            {r.status}
+                          </Badge>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground">
+                        No students recorded yet. Scan a card to mark someone
+                        present.
+                      </p>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
             </DialogContent>
           </Dialog>
 

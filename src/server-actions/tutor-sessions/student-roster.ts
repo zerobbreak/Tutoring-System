@@ -302,7 +302,7 @@ export async function recordSessionCheckIn(
 
   if (findErr) throw new Error(findErr.message);
   if (existing?.id) {
-    throw new Error("You have already checked in for this session.");
+    throw new Error("This student is already marked present for this session.");
   }
 
   const { error: insertErr } = await db.from("session_attendance").insert({
@@ -314,7 +314,7 @@ export async function recordSessionCheckIn(
 
   if (insertErr) {
     if (insertErr.code === "23505") {
-      throw new Error("You have already checked in for this session.");
+      throw new Error("This student is already marked present for this session.");
     }
     throw new Error(insertErr.message);
   }
