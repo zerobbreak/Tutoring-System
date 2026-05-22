@@ -7,6 +7,7 @@ import {
   Clock,
   ExternalLink,
   FileText,
+  Activity,
   History,
   Loader2,
   MapPin,
@@ -33,10 +34,15 @@ import {
 } from "#/lib/session-claim-display";
 import { toast } from "#/lib/toast";
 import { cn } from "#/lib/utils";
+import { SessionActivityTimeline } from "#/components/sessions/session-activity-timeline";
 import {
   getLecturerSessionDetailFn,
   type LecturerSessionDetailDTO,
 } from "#/server-actions/lecturer-sessions";
+import {
+  getSessionTimelineFn,
+  type SessionTimelineEntryDTO,
+} from "#/server-actions/scheduled-sessions";
 
 type LecturerSessionDetailSheetProps = {
   claimId: string | null;
@@ -108,14 +114,19 @@ export function LecturerSessionDetailSheet({
   onOpenChange,
 }: LecturerSessionDetailSheetProps) {
   const [session, setSession] = useState<LecturerSessionDetailDTO | null>(null);
+  const [activity, setActivity] = useState<SessionTimelineEntryDTO[]>([]);
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!claimId) return;
     setLoading(true);
     try {
-      const data = await getLecturerSessionDetailFn({ data: { claimId } });
+      const [data, timeline] = await Promise.all([
+        getLecturerSessionDetailFn({ data: { claimId } }),
+        getSessionTimelineFn({ data: { claimId } }),
+      ]);
       setSession(data);
+      setActivity(timeline);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load session");
       onOpenChange(false);
@@ -446,6 +457,14 @@ export function LecturerSessionDetailSheet({
                     ) : null}
                   </div>
                 )}
+              </DetailSection>
+
+              <DetailSection
+                title="Activity"
+                description="Schedule changes, claim workflow, and system events."
+                icon={Activity}
+              >
+                <SessionActivityTimeline entries={activity} />
               </DetailSection>
 
               <DetailSection

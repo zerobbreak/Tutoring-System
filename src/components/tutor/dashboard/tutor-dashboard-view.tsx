@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import {
   ArrowUpRight,
-  Bell,
   CalendarDays,
   Clock,
   ListTodo,
@@ -12,6 +11,7 @@ import {
   Video,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { NotificationsInboxCard } from "#/components/notifications/notifications-inbox-card";
 import { DashboardRecentMessages } from "#/components/tutor/dashboard/dashboard-recent-messages";
 import { TutorHourProgressCard } from "#/components/tutor/dashboard/tutor-hour-progress-card";
 import type { TutorHourBudgetSummary } from "#/lib/tutor-hour-budget";
@@ -75,7 +75,7 @@ export function TutorDashboardView({
   chartSeries,
   pendingPreviewClaims,
   upcomingEvents,
-  notifications,
+  notifications: _notifications,
   hourBudget,
 }: TutorDashboardViewProps) {
   const { prefs } = useDashboardPreferences();
@@ -349,50 +349,7 @@ export function TutorDashboardView({
           ) : null}
 
           {prefs.dashboard_show_notifications ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">Notifications</CardTitle>
-              <CardDescription>Latest in-app messages</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              {booting ? (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin" />
-                  Loading…
-                </div>
-              ) : notifications.length === 0 ? (
-                <p className="text-muted-foreground">No notifications yet.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {notifications.map((n) => (
-                    <li
-                      key={n.id}
-                      className="flex gap-2 border-b border-border/60 pb-2 last:border-0 last:pb-0"
-                    >
-                      <Bell className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-                      <div className="min-w-0">
-                        <p className="font-medium text-foreground">
-                          {n.subject ?? n.type.replace(/_/g, " ")}
-                        </p>
-                        {n.body ? (
-                          <p className="line-clamp-2 text-xs text-muted-foreground">{n.body}</p>
-                        ) : null}
-                        {n.sent_at ? (
-                          <p className="mt-0.5 text-xs text-muted-foreground">
-                            {new Date(n.sent_at).toLocaleString(undefined, {
-                              dateStyle: "medium",
-                              timeStyle: "short",
-                            })}
-                            {n.is_read === false ? " · Unread" : ""}
-                          </p>
-                        ) : null}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
+            <NotificationsInboxCard sessionsLink="/tutor/sessions" />
           ) : null}
 
           <Card>

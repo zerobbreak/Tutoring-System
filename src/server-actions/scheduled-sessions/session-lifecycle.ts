@@ -223,6 +223,42 @@ export async function deleteScheduledSessionRecord(
   }
 }
 
+/** Guard linked official schedule rows before submit, approve, or payroll. */
+export async function assertScheduledSessionActiveForClaimLink(
+  supabase: Supabase,
+  sessionId: string,
+  context: "submit" | "payroll",
+): Promise<void> {
+  const { data: session, error: sessErr } = await supabase
+    .from("scheduled_sessions")
+    .select("status, deleted_at")
+    .eq("id", sessionId)
+    .maybeSingle();
+
+  if (sessErr) throw new Error(sessErr.message);
+  if (!session) {
+    throw new Error(
+      context === "submit"
+        ? "The linked schedule session no longer exists."
+        : "Cannot approve payment for a claim linked to a missing session.",
+    );
+  }
+  if (session.deleted_at) {
+    throw new Error(
+      context === "submit"
+        ? "The linked schedule session was removed."
+        : "Cannot approve payment for a claim linked to a deleted session.",
+    );
+  }
+  if (session.status === "CANCELLED") {
+    throw new Error(
+      context === "submit"
+        ? "This session was cancelled on the official schedule. You cannot submit a claim for it."
+        : "Cannot approve payment for a claim linked to a cancelled session.",
+    );
+  }
+}
+
 export async function assertScheduledSessionActiveForPayroll(
   supabase: Supabase,
   claimId: string,
@@ -241,21 +277,9 @@ export async function assertScheduledSessionActiveForPayroll(
   const sessionId = claim?.source_scheduled_session_id as string | null;
   if (!sessionId) return;
 
-  const { data: session, error: sessErr } = await supabase
-    .from("scheduled_sessions")
-    .select("status, deleted_at")
-    .eq("id", sessionId)
-    .maybeSingle();
-
-  if (sessErr) throw new Error(sessErr.message);
-  if (session?.deleted_at) {
-    throw new Error(
-      "Cannot approve payment for a claim linked to a deleted session.",
-    );
-  }
-  if (session?.status === "CANCELLED") {
-    throw new Error(
-      "Cannot approve payment for a claim linked to a cancelled session.",
-    );
-  }
+  await assertScheduledSessionActiveForClaimLink(
+    supabase,
+    sessionId,
+    "payroll",
+  );
 }

@@ -6,6 +6,7 @@ import { requireAdminContext } from "#/lib/admin-server";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import { snapshotClaimCompensation } from "#/lib/snapshot-claim-compensation";
+import { assertScheduledSessionActiveForPayroll } from "#/server-actions/scheduled-sessions/session-lifecycle";
 import { assertClaimNotFrozen } from "./assert-claim-not-frozen";
 import type { AdminApprovalActionKind } from "./types";
 
@@ -81,6 +82,10 @@ export const performAdminApprovalActionFn = createServerFn({ method: "POST" })
 
     if (data.action === "APPROVE" && fromStatus !== "VERIFIED") {
       throw new Error("Only lecturer-verified claims can be admin-approved.");
+    }
+
+    if (data.action === "APPROVE") {
+      await assertScheduledSessionActiveForPayroll(supabase, data.claimId);
     }
 
     if (

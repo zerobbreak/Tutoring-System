@@ -1,5 +1,14 @@
 import { addWeeks, isAfter, max as maxDate } from "date-fns";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  assertNoSchedulingConflicts,
+  getModuleInstitutionId,
+} from "#/lib/schedule-conflicts-assert";
+import type { ScheduleSessionLike } from "#/lib/schedule-conflicts";
+import {
+  loadScheduledSessionSnapshotsForIds,
+  syncCancelledSessionsBatch,
+} from "#/lib/schedule-sync";
 import { restoreSoftDeleteFields } from "#/lib/soft-delete";
 import {
   DEFAULT_PUBLISH_HORIZON_WEEKS,
@@ -156,16 +165,72 @@ async function loadExistingSessions(
   return (data ?? []) as ExistingScheduledRow[];
 }
 
+function buildProposedSessionsForPlan(
+  series: SeriesMaterializeInput,
+  plan: MaterializePlan,
+  existing: ExistingScheduledRow[],
+): ScheduleSessionLike[] {
+  const existingById = new Map(existing.map((r) => [r.id, r]));
+  const proposed: ScheduleSessionLike[] = [];
+
+  for (const action of plan.actions) {
+    if (action.kind === "cancel") continue;
+    if (action.kind === "insert") {
+      proposed.push({
+        id: `pending-${action.startsAt}`,
+        tutorId: series.tutor_id,
+        moduleId: series.module_id,
+        venueId: series.venue_id,
+        startsAt: action.startsAt,
+        endsAt: action.endsAt,
+        status: "SCHEDULED",
+      });
+    } else {
+      const row = existingById.get(action.sessionId);
+      if (!row) continue;
+      proposed.push({
+        id: action.sessionId,
+        tutorId: series.tutor_id,
+        moduleId: series.module_id,
+        venueId: series.venue_id,
+        startsAt: row.starts_at,
+        endsAt: action.endsAt,
+        status: "SCHEDULED",
+      });
+    }
+  }
+  return proposed;
+}
+
 async function applyMaterializePlan(
   db: Db,
   series: SeriesMaterializeInput,
   plan: MaterializePlan,
+  actorId: string,
+  existing: ExistingScheduledRow[],
 ): Promise<MaterializeSeriesResult> {
   let inserted = 0;
   let updated = 0;
   let restored = 0;
   let cancelled = 0;
   const now = new Date().toISOString();
+
+  const proposed = buildProposedSessionsForPlan(series, plan, existing);
+  if (proposed.length > 0) {
+    const institutionId = await getModuleInstitutionId(db, series.module_id);
+    await assertNoSchedulingConflicts(db, {
+      institutionId,
+      proposedSessions: proposed,
+    });
+  }
+
+  const cancelSessionIds = plan.actions
+    .filter((a): a is Extract<MaterializePlanAction, { kind: "cancel" }> => a.kind === "cancel")
+    .map((a) => a.sessionId);
+  const beforeCancelSnapshots = await loadScheduledSessionSnapshotsForIds(
+    db,
+    cancelSessionIds,
+  );
 
   for (const action of plan.actions) {
     if (action.kind === "insert") {
@@ -245,6 +310,17 @@ async function applyMaterializePlan(
 
   if (countErr) throw new Error(countErr.message);
 
+  if (beforeCancelSnapshots.length > 0) {
+    await syncCancelledSessionsBatch(
+      db,
+      beforeCancelSnapshots.map((before) => ({
+        sessionId: before.id,
+        actorId,
+        before,
+      })),
+    );
+  }
+
   return {
     inserted,
     updated,
@@ -258,12 +334,13 @@ async function applyMaterializePlan(
 export async function materializeSeriesSessionsIncremental(
   db: Db,
   seriesId: string,
+  actorId = "",
 ): Promise<MaterializeSeriesResult> {
   const series = await loadSeries(db, seriesId);
   const occurrences = computeSeriesOccurrences(series);
   const existing = await loadExistingSessions(db, seriesId);
   const plan = planMaterializeActions(occurrences, existing, new Date());
-  return applyMaterializePlan(db, series, plan);
+  return applyMaterializePlan(db, series, plan, actorId, existing);
 }
 
 /** Extend rolling horizon when materialized_until is within threshold. */
@@ -305,7 +382,7 @@ export async function extendSeriesHorizon(
 
   const existing = await loadExistingSessions(db, seriesId);
   const plan = planMaterializeActions(occurrences, existing, now);
-  return applyMaterializePlan(db, series, plan);
+  return applyMaterializePlan(db, series, plan, "", existing);
 }
 
 export async function extendAllPublishedSeries(

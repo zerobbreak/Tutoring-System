@@ -3,6 +3,7 @@ import { AttendanceAlertsPanel } from "./attendance-alerts-panel";
 import { ModulesListPanel } from "./modules-list-panel";
 import { PendingVerificationPanel } from "./pending-verification-panel";
 import { QuickActionsPanel } from "./quick-actions-panel";
+import { NotificationsInboxCard } from "#/components/notifications/notifications-inbox-card";
 import { TutorActivityPanel } from "./tutor-activity-panel";
 import type { LecturerDashboardViewProps } from "./types";
 import { WeeklySessionsPanel } from "./weekly-sessions-panel";
@@ -67,6 +68,11 @@ export function LecturerDashboardView({
           pendingClaims={pendingClaims}
         />
         <TutorActivityPanel booting={booting} activityFeed={activityFeed} />
+        <NotificationsInboxCard
+          sessionsLink="/lecturer/sessions"
+          title="Notifications"
+          description="Schedule changes and claim updates"
+        />
       </div>
 
       <WeeklySessionsPanel booting={booting} recentClaims={recentClaims} />

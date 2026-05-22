@@ -2,6 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireLecturerId } from "#/lib/lecturer-server";
 import {
+  assertNoSchedulingConflicts,
+  getModuleInstitutionId,
+} from "#/lib/schedule-conflicts-assert";
+import type { ScheduleSessionLike } from "#/lib/schedule-conflicts";
+import {
   loadScheduledSessionSnapshot,
   syncScheduledSessionAfterUpdate,
 } from "#/lib/schedule-sync";
@@ -26,6 +31,24 @@ export const rescheduleScheduledSessionFn = createServerFn({ method: "POST" })
       data.scheduledSessionId,
     );
     if (!before) throw new Error("Session not found.");
+
+    const institutionId = await getModuleInstitutionId(supabase, before.moduleId);
+    const proposed: ScheduleSessionLike = {
+      id: data.scheduledSessionId,
+      tutorId: before.tutorId,
+      tutorName: before.moduleCode,
+      moduleId: before.moduleId,
+      moduleCode: before.moduleCode,
+      venueId: data.venueId ?? before.venueId,
+      venueName: data.venueText ?? before.venueText ?? null,
+      startsAt: data.startsAt,
+      endsAt: data.endsAt,
+      status: "RESCHEDULED",
+    };
+    await assertNoSchedulingConflicts(supabase, {
+      institutionId,
+      proposedSessions: [proposed],
+    });
 
     const { error: sessErr } = await supabase
       .from("scheduled_sessions")

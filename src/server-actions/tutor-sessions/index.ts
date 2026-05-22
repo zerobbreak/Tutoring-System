@@ -40,6 +40,7 @@ import {
   normalizeNoShowReason,
 } from "#/lib/session-claim-lifecycle";
 import { purgeExpiredDraftClaimsForTutor } from "#/server-actions/tutor-sessions/purge-expired-drafts";
+import { assertScheduledSessionActiveForClaimLink } from "#/server-actions/scheduled-sessions/session-lifecycle";
 import { requireStepUpMfa } from "#/lib/mfa-auth-server";
 
 async function requireUserId(
@@ -420,6 +421,15 @@ export const submitSessionClaimFn = createServerFn({ method: "POST" })
       throw new Error("Only draft claims can be submitted.");
     }
     assertClaimNotFrozen(row.frozen_at as string | null, "submit this session");
+
+    const linkedSessionId = row.source_scheduled_session_id as string | null;
+    if (linkedSessionId) {
+      await assertScheduledSessionActiveForClaimLink(
+        supabase,
+        linkedSessionId,
+        "submit",
+      );
+    }
 
     if (!row.source_scheduled_session_id) {
       const { data: claimFull, error: fullErr } = await supabase

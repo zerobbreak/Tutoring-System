@@ -13,6 +13,7 @@ export type PublishScheduleSeriesCoreInput = {
   materializeMode: PublishMaterializeMode;
   /** When false, only materialize + reconcile; caller updates series status (e.g. one-off create). */
   markPublished?: boolean;
+  actorId?: string;
 };
 
 export type PublishScheduleSeriesCoreResult = {
@@ -72,10 +73,12 @@ export async function publishScheduleSeriesCore(
     await checkReservedCapacityForSeriesPublish(db, seriesId);
   }
 
+  const actorId = input.actorId ?? "";
+
   if (materializeMode === "repair_horizon" || alreadyPublished) {
     await extendSeriesHorizon(db, seriesId);
   } else {
-    await materializeSeriesSessionsIncremental(db, seriesId);
+    await materializeSeriesSessionsIncremental(db, seriesId, actorId);
   }
 
   await reconcileSeriesClaims(db, seriesId, { skipCancelled: true });

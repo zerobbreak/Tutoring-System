@@ -174,6 +174,7 @@ export async function approveTutorSessionRequest(
   await publishScheduleSeriesCore(db, {
     seriesId,
     materializeMode: "first_publish",
+    actorId: input.reviewerId,
   });
 
   const { data: session, error: sessErr } = await db

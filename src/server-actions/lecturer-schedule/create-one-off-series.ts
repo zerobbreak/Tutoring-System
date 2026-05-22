@@ -76,6 +76,7 @@ export const createOneOffScheduleSeriesFn = createServerFn({ method: "POST" })
     const { sessionCount } = await publishScheduleSeriesCore(supabase, {
       seriesId,
       materializeMode: "first_publish",
+      actorId: lecturerId,
     });
 
     return { seriesId, sessionCount };

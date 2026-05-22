@@ -1,6 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAdminContext } from "#/lib/admin-server";
 import {
+  assertNoSchedulingConflicts,
+} from "#/lib/schedule-conflicts-assert";
+import type { ScheduleSessionLike } from "#/lib/schedule-conflicts";
+import {
   loadScheduledSessionSnapshot,
   syncScheduledSessionAfterUpdate,
 } from "#/lib/schedule-sync";
@@ -66,6 +70,21 @@ export const adminReviewScheduleChangeRequestFn = createServerFn({
     const sessionId = req.scheduled_session_id as string;
     const before = await loadScheduledSessionSnapshot(supabase, sessionId);
     if (!before) throw new Error("Scheduled session not found.");
+
+    const proposed: ScheduleSessionLike = {
+      id: sessionId,
+      tutorId: before.tutorId,
+      moduleId: before.moduleId,
+      moduleCode: before.moduleCode,
+      venueId: (req.proposed_venue_id as string | null) ?? before.venueId,
+      startsAt: req.proposed_starts_at as string,
+      endsAt: req.proposed_ends_at as string,
+      status: "RESCHEDULED",
+    };
+    await assertNoSchedulingConflicts(supabase, {
+      institutionId,
+      proposedSessions: [proposed],
+    });
 
     const { error: sessErr } = await supabase
       .from("scheduled_sessions")

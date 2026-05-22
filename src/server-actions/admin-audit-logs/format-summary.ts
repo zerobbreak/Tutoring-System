@@ -68,6 +68,30 @@ export function formatAuditLogSummary(
   if (event === "STATUS_CHANGED" && entityType === "SESSION_CLAIM" && payload) {
     return `Claim status changed ${String(payload.from)} → ${String(payload.to)}`;
   }
+  if (event === "SESSION_TIME_CHANGED") {
+    return `${who} updated session time`;
+  }
+  if (event === "VENUE_CHANGED") {
+    return `${who} updated session venue`;
+  }
+  if (event === "TUTOR_REASSIGNED") {
+    return `${who} reassigned session tutor`;
+  }
+  if (event === "SESSION_CANCELLED" || event === "SCHEDULED_SESSION_CANCELLED") {
+    return `${who} cancelled scheduled session`;
+  }
+  if (event === "SESSION_RESTORED" || event === "SCHEDULED_SESSION_RESTORED") {
+    return `${who} restored scheduled session`;
+  }
+  if (event === "SCHEDULE_SYNC_DRAFT_REPAIRED") {
+    return `${who} auto-aligned draft claim with schedule`;
+  }
+  if (event === "SCHEDULE_SYNC_SKIPPED_FROZEN_CLAIM") {
+    return `${who} skipped schedule sync (frozen claim)`;
+  }
+  if (event === "SCHEDULED_SESSION_SOFT_DELETED") {
+    return `${who} removed scheduled session`;
+  }
   return `${who} — ${event.replace(/_/g, " ").toLowerCase()}`;
 }
 

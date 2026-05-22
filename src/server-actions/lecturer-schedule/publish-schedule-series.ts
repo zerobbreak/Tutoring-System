@@ -12,11 +12,12 @@ export const publishScheduleSeriesFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => publishSchema.parse(input))
   .handler(async ({ data }): Promise<{ sessionCount: number }> => {
     const supabase = createSupabaseServerClient();
-    await requireLecturerId(supabase);
+    const lecturerId = await requireLecturerId(supabase);
 
     const { sessionCount } = await publishScheduleSeriesCore(supabase, {
       seriesId: data.seriesId,
       materializeMode: "first_publish",
+      actorId: lecturerId,
     });
 
     return { sessionCount };

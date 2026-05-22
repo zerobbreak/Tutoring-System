@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { z } from "zod";
 import { requireAdminContext } from "#/lib/admin-server";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
+import { assertScheduledSessionActiveForPayroll } from "#/server-actions/scheduled-sessions/session-lifecycle";
 import { unwrapOne } from "#/server-actions/lecturer-verification/unwrap";
 import type { PayrollExportResultDTO } from "./types";
 
@@ -87,6 +88,10 @@ export const createPayrollExportFn = createServerFn({ method: "POST" })
       throw new Error(
         "All approved claims in this period are already included in a payroll export.",
       );
+    }
+
+    for (const row of toExport) {
+      await assertScheduledSessionActiveForPayroll(supabase, row.id as string);
     }
 
     let totalHours = 0;

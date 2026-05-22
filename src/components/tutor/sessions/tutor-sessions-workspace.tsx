@@ -86,7 +86,10 @@ import { TooltipProvider } from "#/components/ui/tooltip";
 import { StudentCardScanner } from "#/components/tutor/attendance/student-card-scanner";
 import { PrivateSessionFeedbackReadBlock } from "#/components/private-session-feedback/private-session-feedback-read-block";
 import { SubmitClaimDialog } from "#/components/tutor/sessions/submit-claim-dialog";
-import { canTutorScanAttendanceForClaim } from "#/lib/session-attendance-open";
+import {
+  attendanceScanWindowLabel,
+  canTutorScanAttendanceForClaim,
+} from "#/lib/session-attendance-open";
 import {
   sessionBoundsLocal,
   sessionKanbanColumn,
@@ -2040,8 +2043,12 @@ export function TutorSessionsWorkspace({
               ) : null}
               {!attendanceScanEnabled && attendanceClaim ? (
                 <p className="text-xs text-amber-700 dark:text-amber-200">
-                  Scanning is closed for this session (locked or outside the
-                  session window).
+                  {attendanceScanWindowLabel({
+                    attendance_locked_at: attendanceClaim.attendance_locked_at,
+                    session_date: attendanceClaim.session_date,
+                    start_time: attendanceClaim.start_time,
+                    end_time: attendanceClaim.end_time,
+                  }) ?? "Scanning is closed for this session."}
                 </p>
               ) : null}
               <div className="space-y-2">

@@ -25,7 +25,11 @@ export const adminArchiveScheduleSeriesFn = createServerFn({ method: "POST" })
       institutionId,
     );
 
-    const result = await archivePublishedScheduleSeries(supabase, data.seriesId);
+    const result = await archivePublishedScheduleSeries(
+      supabase,
+      data.seriesId,
+      userId,
+    );
 
     await logInstitutionAudit(supabase, {
       institutionId,

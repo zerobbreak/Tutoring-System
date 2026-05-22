@@ -5,6 +5,7 @@ import {
   extendAllPublishedSeries,
   materializeSeriesSessionsIncremental,
 } from "#/lib/schedule-materialize";
+import { processJobOutbox } from "#/lib/job-outbox/process-outbox";
 import { repairDraftClaimScheduleMismatches } from "#/lib/schedule-sync/repair-draft-mismatches";
 import {
   ATTENDANCE_LOCK_GRACE_MINUTES,
@@ -23,6 +24,8 @@ export type SessionAutomationJobResult = {
   autoSubmitted: number;
   remindersSent: number;
   draftClaimsRepaired: number;
+  outboxProcessed: number;
+  outboxFailed: number;
 };
 
 async function lockEndedAttendance(db: SupabaseClient): Promise<number> {
@@ -168,7 +171,9 @@ async function autoSubmitEligibleClaims(db: SupabaseClient): Promise<number> {
         end_time,
         frozen_at,
         auto_submitted_at,
-        module:modules!inner ( institution_id )
+        source_scheduled_session_id,
+        module:modules!inner ( institution_id ),
+        scheduled:scheduled_sessions ( status, deleted_at )
       `,
       )
       .in("module_id", moduleIds)
@@ -188,6 +193,19 @@ async function autoSubmitEligibleClaims(db: SupabaseClient): Promise<number> {
     const requiresAttendance = instRow?.auto_submit_requires_attendance !== false;
 
     for (const claim of claims ?? []) {
+      const linkedId = claim.source_scheduled_session_id as string | null;
+      if (linkedId) {
+        const schedRaw = claim.scheduled;
+        const sched = Array.isArray(schedRaw) ? schedRaw[0] : schedRaw;
+        if (
+          !sched ||
+          (sched as { deleted_at?: string | null }).deleted_at ||
+          (sched as { status?: string }).status === "CANCELLED"
+        ) {
+          continue;
+        }
+      }
+
       const sessionEnd = `${claim.session_date}T${claim.end_time}`;
       if (sessionEnd > cutoff) continue;
 
@@ -382,6 +400,8 @@ export async function runSessionAutomationJobs(
   const autoSubmitted = await autoSubmitEligibleClaims(db);
   const remindersSent = await runSessionReminders(db);
   const draftClaimsRepaired = await repairDraftClaimsAllInstitutions(db);
+  const { processed: outboxProcessed, failed: outboxFailed } =
+    await processJobOutbox(db);
 
   return {
     seriesExtended,
@@ -390,6 +410,8 @@ export async function runSessionAutomationJobs(
     autoSubmitted,
     remindersSent,
     draftClaimsRepaired,
+    outboxProcessed,
+    outboxFailed,
   };
 }
 

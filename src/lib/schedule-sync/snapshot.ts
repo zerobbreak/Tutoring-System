@@ -94,3 +94,18 @@ export async function loadScheduledSessionSnapshot(
     claimSnapshot,
   };
 }
+
+/** Load snapshots for sessions still SCHEDULED (call before bulk cancel). */
+export async function loadScheduledSessionSnapshotsForIds(
+  db: SupabaseClient,
+  sessionIds: string[],
+): Promise<ScheduledSessionSnapshot[]> {
+  const snapshots: ScheduledSessionSnapshot[] = [];
+  for (const id of sessionIds) {
+    const snap = await loadScheduledSessionSnapshot(db, id);
+    if (snap && snap.status === "SCHEDULED") {
+      snapshots.push(snap);
+    }
+  }
+  return snapshots;
+}

@@ -75,3 +75,27 @@ export async function syncScheduledSessionAfterUpdate(
   if (!events.length) return;
   await emitScheduleSyncEvents(db, events);
 }
+
+/** Run schedule-sync side effects after bulk cancellations (materialize, archive). */
+export async function syncCancelledSessionsBatch(
+  db: SupabaseClient,
+  items: Array<{
+    sessionId: string;
+    actorId: string;
+    before: ScheduledSessionSnapshot;
+  }>,
+): Promise<void> {
+  for (const item of items) {
+    const after = await loadScheduledSessionSnapshot(db, item.sessionId);
+    if (!after) continue;
+
+    const events = classifyScheduleChange({
+      actorId: item.actorId,
+      before: item.before,
+      after,
+    });
+
+    if (!events.length) continue;
+    await emitScheduleSyncEvents(db, events);
+  }
+}

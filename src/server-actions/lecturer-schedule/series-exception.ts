@@ -2,6 +2,11 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireLecturerId } from "#/lib/lecturer-server";
 import {
+  assertNoSchedulingConflicts,
+  getModuleInstitutionId,
+} from "#/lib/schedule-conflicts-assert";
+import type { ScheduleSessionLike } from "#/lib/schedule-conflicts";
+import {
   loadScheduledSessionSnapshot,
   syncScheduledSessionAfterUpdate,
 } from "#/lib/schedule-sync";
@@ -81,6 +86,22 @@ export const createSeriesExceptionFn = createServerFn({ method: "POST" })
 
       if (cancelErr) throw new Error(cancelErr.message);
     } else if (data.overrideStartsAt && data.overrideEndsAt) {
+      const institutionId = await getModuleInstitutionId(supabase, before.moduleId);
+      const proposed: ScheduleSessionLike = {
+        id: sessionId,
+        tutorId: data.overrideTutorId ?? before.tutorId,
+        moduleId: before.moduleId,
+        moduleCode: before.moduleCode,
+        venueId: data.overrideVenueId ?? before.venueId,
+        startsAt: data.overrideStartsAt,
+        endsAt: data.overrideEndsAt,
+        status: "RESCHEDULED",
+      };
+      await assertNoSchedulingConflicts(supabase, {
+        institutionId,
+        proposedSessions: [proposed],
+      });
+
       const patch: Record<string, unknown> = {
         starts_at: data.overrideStartsAt,
         ends_at: data.overrideEndsAt,
