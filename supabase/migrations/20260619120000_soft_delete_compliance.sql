@@ -195,6 +195,7 @@ CREATE POLICY "scheduled_sessions_tutor_update_own" ON public.scheduled_sessions
 -- session_attendance: no hard DELETE for tutors
 -- ---------------------------------------------------------------------------
 DROP POLICY IF EXISTS "tutors_manage_session_attendance" ON public.session_attendance;
+DROP POLICY IF EXISTS "session_attendance_tutor_select" ON public.session_attendance;
 CREATE POLICY "session_attendance_tutor_select" ON public.session_attendance
   FOR SELECT TO authenticated
   USING (
@@ -208,6 +209,7 @@ CREATE POLICY "session_attendance_tutor_select" ON public.session_attendance
     )
   );
 
+DROP POLICY IF EXISTS "session_attendance_tutor_insert" ON public.session_attendance;
 CREATE POLICY "session_attendance_tutor_insert" ON public.session_attendance
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -221,6 +223,7 @@ CREATE POLICY "session_attendance_tutor_insert" ON public.session_attendance
     )
   );
 
+DROP POLICY IF EXISTS "session_attendance_tutor_update" ON public.session_attendance;
 CREATE POLICY "session_attendance_tutor_update" ON public.session_attendance
   FOR UPDATE TO authenticated
   USING (
@@ -243,6 +246,7 @@ CREATE POLICY "session_attendance_tutor_update" ON public.session_attendance
   );
 
 -- Tutors may restore soft-deleted attendance on their sessions (check-in again)
+DROP POLICY IF EXISTS "session_attendance_tutor_restore" ON public.session_attendance;
 CREATE POLICY "session_attendance_tutor_restore" ON public.session_attendance
   FOR UPDATE TO authenticated
   USING (
@@ -314,6 +318,13 @@ CREATE POLICY "scheduled_sessions_admin_update" ON public.scheduled_sessions
   );
 
 DROP POLICY IF EXISTS "scheduled_sessions_admin_delete" ON public.scheduled_sessions;
+CREATE POLICY "scheduled_sessions_admin_delete" ON public.scheduled_sessions
+  FOR DELETE TO authenticated
+  USING (
+    deleted_at IS NULL
+    AND public.auth_user_is_admin()
+    AND public.is_module_in_auth_institution(module_id)
+  );
 
 DROP POLICY IF EXISTS "schedule_series_admin_select" ON public.schedule_series;
 CREATE POLICY "schedule_series_admin_select" ON public.schedule_series

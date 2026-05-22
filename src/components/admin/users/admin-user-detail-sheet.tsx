@@ -53,6 +53,7 @@ import {
   type AdminUserRowDTO,
   type InstitutionModuleOptionDTO,
 } from "#/server-actions/admin-users";
+import { AdminTutorHourAllocationsPanel } from "./admin-tutor-hour-allocations-panel";
 
 const selectContentProps = {
   position: "popper" as const,
@@ -486,6 +487,19 @@ export function AdminUserDetailSheet({
                       </p>
                     )}
                   </div>
+                </DetailSection>
+              ) : null}
+
+              {user.role === "TUTOR" ? (
+                <DetailSection
+                  title="Tutor hour allocations"
+                  description="Reserve hours for this tutor across institution modules and academic terms."
+                  icon={Calendar}
+                >
+                  <AdminTutorHourAllocationsPanel
+                    tutorId={user.id}
+                    modules={modules}
+                  />
                 </DetailSection>
               ) : null}
             </div>

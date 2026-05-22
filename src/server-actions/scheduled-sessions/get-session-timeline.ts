@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { formatWorkflowActionLabel } from "#/lib/claim-workflow-timeline";
+
 import { eventTypeLabel } from "#/lib/schedule-sync/classify-change";
 import type { ScheduleSyncEventType } from "#/lib/schedule-sync/types";
 import { formatAuditLogSummary } from "#/server-actions/admin-audit-logs/format-summary";
@@ -85,32 +85,8 @@ export const getSessionTimelineFn = createServerFn({ method: "GET" })
     if (!claim) throw new Error("Session not found.");
 
     const scheduledSessionId = claim.source_scheduled_session_id as string | null;
-    const { data: vaRows, error: vaErr } = await supabase
-      .from("verification_actions")
-      .select(
-        `
-        id,
-        action_type,
-        acted_at,
-        actor:users!verification_actions_actor_id_fkey ( full_name )
-      `,
-      )
-      .eq("claim_id", data.claimId)
-      .order("acted_at", { ascending: false });
-
-    if (vaErr) throw new Error(vaErr.message);
-
-    for (const row of vaRows ?? []) {
-      const actor = Array.isArray(row.actor) ? row.actor[0] : row.actor;
-      entries.push({
-        id: `va:${row.id as string}`,
-        at: row.acted_at as string,
-        label: formatWorkflowActionLabel(row.action_type as string),
-        category: "CLAIM",
-        actorName: (actor as { full_name?: string } | null)?.full_name ?? null,
-      });
-    }
-
+    // verification_actions are shown separately in the session detail screens.
+    // Exclude them from the shared activity feed to avoid duplicate timeline entries.
     if (scheduledSessionId) {
       const [sessionAuditRes, claimAuditRes] = await Promise.all([
         supabase

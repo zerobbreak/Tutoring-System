@@ -24,7 +24,7 @@ DROP POLICY IF EXISTS "verification_actions_admin_insert" ON public.verification
 CREATE POLICY "verification_actions_admin_insert" ON public.verification_actions
   FOR INSERT TO authenticated
   WITH CHECK (
-    actor_id = auth.uid()
+    actor_id = auth.uid()::uuid
     AND public.auth_user_is_admin()
     AND public.is_claim_in_auth_institution(claim_id)
   );

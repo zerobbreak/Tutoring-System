@@ -16,6 +16,7 @@ import {
   recordSessionCheckIn,
   type CheckInSessionPreview,
 } from "#/server-actions/tutor-sessions/student-roster";
+import { softDeleteClaim } from "#/lib/soft-delete";
 
 export type { CheckInSessionPreview };
 import {
@@ -572,7 +573,7 @@ export const reopenSessionClaimFn = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-/** Permanently remove a draft claim (tutor-owned only). */
+/** Discard a draft claim (tutor-owned only). */
 export const deleteDraftSessionClaimFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => deleteDraftClaimSchema.parse(input))
   .handler(async ({ data }) => {
@@ -592,18 +593,16 @@ export const deleteDraftSessionClaimFn = createServerFn({ method: "POST" })
       throw new Error("Only draft sessions can be discarded.");
     }
 
-    const { error: delErr } = await supabase
-      .from("session_claims")
-      .delete()
-      .eq("id", data.claimId)
-      .eq("tutor_id", tutorId)
-      .eq("status", "DRAFT");
-
-    if (delErr) throw new Error(delErr.message);
+    await softDeleteClaim(
+      supabase,
+      data.claimId,
+      tutorId,
+      "Tutor discarded draft",
+    );
     return { ok: true as const };
   });
 
-/** Permanently remove multiple draft claims (tutor-owned only). */
+/** Discard multiple draft claims (tutor-owned only). */
 export const deleteDraftSessionClaimsFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => deleteDraftClaimsSchema.parse(input))
   .handler(async ({ data }) => {
@@ -633,14 +632,14 @@ export const deleteDraftSessionClaimsFn = createServerFn({ method: "POST" })
 
     for (let i = 0; i < uniqueIds.length; i += DELETE_DRAFT_CLAIMS_BATCH) {
       const batch = uniqueIds.slice(i, i + DELETE_DRAFT_CLAIMS_BATCH);
-      const { error: delErr } = await supabase
-        .from("session_claims")
-        .delete()
-        .eq("tutor_id", tutorId)
-        .eq("status", "DRAFT")
-        .in("id", batch);
-
-      if (delErr) throw new Error(delErr.message);
+      for (const claimId of batch) {
+        await softDeleteClaim(
+          supabase,
+          claimId,
+          tutorId,
+          "Tutor discarded draft",
+        );
+      }
     }
 
     return { ok: true as const, deletedCount: uniqueIds.length };

@@ -173,21 +173,10 @@ export const approveTutorSessionCreationFn = createServerFn({ method: "POST" })
     const supabase = createSupabaseServerClient();
     const { userId } = await requireAdminContext(supabase);
 
-    const { data: modRow, error: modErr } = await supabase
-      .from("session_claims")
-      .select("module:modules ( lecturer_id )")
-      .eq("id", data.claimId)
-      .maybeSingle();
-
-    if (modErr) throw new Error(modErr.message);
-    const modRaw = modRow?.module;
-    const mod = Array.isArray(modRaw) ? modRaw[0] : modRaw;
-    const lecturerId = (mod as { lecturer_id: string } | null)?.lecturer_id;
-
     return approveTutorSessionRequest(supabase, {
       claimId: data.claimId,
       reviewerId: userId,
-      seriesCreatedBy: lecturerId ?? userId,
+      seriesCreatedBy: userId,
     });
   });
 

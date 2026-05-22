@@ -61,11 +61,13 @@ export function AdminDashboardView({
     user.user_metadata?.full_name || user.email || formatRoleLabel(role);
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-6 md:p-8">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight text-foreground">
-          Institution Operations Overview
-        </h2>
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain gap-4 p-10">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-6 pb-10 md:p-8">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight text-foreground">
+            Institution Operations Overview
+          </h2>
+        </div>
         <p className="text-sm text-muted-foreground">
           Welcome back,{" "}
           <span className="font-medium text-foreground">{displayName}</span>

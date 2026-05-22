@@ -384,7 +384,7 @@ function DraggableSessionCard({
   onAttendance: () => void;
   onSubmit: () => void;
   onWorkspace: () => void;
-  onDiscard: () => void;
+  onDiscard?: () => void;
   onEditRequest?: () => void;
   draftSelectMode: boolean;
   draftSelected: boolean;
@@ -590,7 +590,7 @@ function DraggableSessionCard({
                     Submit claim
                   </DropdownMenuItem>
                 ) : null}
-                {claim.status === "DRAFT" && !pendingRequest ? (
+                {isDraft && onDiscard ? (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
@@ -880,8 +880,12 @@ export function TutorSessionsWorkspace({
   );
 
   const openDiscard = (claimIds: string[]) => {
-    if (claimIds.length === 0) return;
-    setDiscardTargetIds(claimIds);
+    const draftIds = new Set(
+      claims.filter((claim) => claim.status === "DRAFT").map((claim) => claim.id),
+    );
+    const safeIds = claimIds.filter((id) => draftIds.has(id));
+    if (safeIds.length === 0) return;
+    setDiscardTargetIds(safeIds);
     setDiscardOpen(true);
   };
 
@@ -1131,7 +1135,7 @@ export function TutorSessionsWorkspace({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
         <div className="shrink-0 space-y-4 border-b border-border/60 p-3 sm:space-y-5 sm:p-4 md:p-6 lg:p-8">
           <header className="flex min-w-0 gap-3">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-lagoon/10 text-lagoon-deep sm:size-11">
@@ -1509,7 +1513,11 @@ export function TutorSessionsWorkspace({
                                       setSubmitOpen(true);
                                     }}
                                     onWorkspace={() => openWorkspace(c)}
-                                    onDiscard={() => openDiscard([c.id])}
+                                    onDiscard={
+                                      c.status === "DRAFT"
+                                        ? () => openDiscard([c.id])
+                                        : undefined
+                                    }
                                     onEditRequest={
                                       c.request_status ===
                                       SESSION_REQUEST_STATUS.CHANGES_REQUESTED

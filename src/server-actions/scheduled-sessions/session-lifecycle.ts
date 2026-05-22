@@ -207,6 +207,15 @@ export async function deleteScheduledSessionRecord(
     params.reason,
   );
 
+  await supabase.from("notifications").insert({
+    recipient_id: session.tutor_id,
+    claim_id: null,
+    channel: "IN_APP",
+    type: "SESSION_DELETED",
+    subject: "Scheduled session removed",
+    body: `A scheduled session has been removed from the calendar and needs to be rescheduled. Reason: ${params.reason.trim()}`,
+  });
+
   if (params.institutionId) {
     await logInstitutionAudit(supabase, {
       institutionId: params.institutionId,

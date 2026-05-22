@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isSessionEnded, type SessionClaimTimingFields } from "#/lib/session-claim-lifecycle";
+import { softDeleteClaim } from "#/lib/soft-delete";
 
 export const DRAFT_EXPIRED_PURGED_ACTION = "DRAFT_EXPIRED_PURGED";
 
@@ -12,8 +13,8 @@ type DraftRow = SessionClaimTimingFields & {
 };
 
 /**
- * Removes tutor DRAFT claims whose session end is in the past. Writes a
- * verification_actions row before delete so institutions keep an audit trail.
+ * Soft-deletes tutor DRAFT claims whose session end is in the past. Writes a
+ * verification_actions row before discard so institutions keep an audit trail.
  */
 export async function purgeExpiredDraftClaimsForTutor(
   db: SupabaseClient,
@@ -72,15 +73,9 @@ export async function purgeExpiredDraftClaimsForTutor(
     if (logErr) throw new Error(logErr.message);
   }
 
-  const ids = expired.map((r) => r.id);
-  const { error: delErr } = await db
-    .from("session_claims")
-    .delete()
-    .eq("tutor_id", tutorId)
-    .eq("status", "DRAFT")
-    .in("id", ids);
-
-  if (delErr) throw new Error(delErr.message);
+  for (const row of expired) {
+    await softDeleteClaim(db, row.id, tutorId, "Expired draft purged");
+  }
 
   return expired.length;
 }

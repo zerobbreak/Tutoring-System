@@ -133,7 +133,7 @@ DROP POLICY IF EXISTS "verification_actions_lecturer_insert" ON public.verificat
 CREATE POLICY "verification_actions_lecturer_insert" ON public.verification_actions
   FOR INSERT TO authenticated
   WITH CHECK (
-    actor_id = auth.uid()
+    actor_id = auth.uid()::uuid
     AND public.is_lecturer_for_claim(claim_id)
   );
 

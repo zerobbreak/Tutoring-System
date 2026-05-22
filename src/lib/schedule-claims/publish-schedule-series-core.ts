@@ -13,6 +13,8 @@ export type PublishScheduleSeriesCoreInput = {
   materializeMode: PublishMaterializeMode;
   /** When false, only materialize + reconcile; caller updates series status (e.g. one-off create). */
   markPublished?: boolean;
+  /** When false, materialize sessions but let the caller link/create claims. */
+  reconcileClaims?: boolean;
   actorId?: string;
 };
 
@@ -81,7 +83,9 @@ export async function publishScheduleSeriesCore(
     await materializeSeriesSessionsIncremental(db, seriesId, actorId);
   }
 
-  await reconcileSeriesClaims(db, seriesId, { skipCancelled: true });
+  if (input.reconcileClaims !== false) {
+    await reconcileSeriesClaims(db, seriesId, { skipCancelled: true });
+  }
 
   const sessionCount = await countActiveSessions(db, seriesId);
 
