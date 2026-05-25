@@ -244,64 +244,108 @@ export function AppShell({
         </SidebarGroup>
 
         <SidebarFooter className="shrink-0 gap-0 border-t border-sidebar-border bg-sidebar p-0 px-2 pt-2 pb-0">
-          <SidebarMenu
-            className={
-              notificationsPath
-                ? "flex flex-row items-stretch gap-1 group-data-[collapsible=icon]:flex-col"
-                : undefined
-            }
-          >
-            {notificationsPath ? (
-              <SidebarNotificationsBell to={notificationsPath} />
-            ) : null}
-            <SidebarMenuItem className={notificationsPath ? "min-w-0 flex-1" : undefined}>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton
-                    size="lg"
-                    tooltip={displayName}
-                    className="h-auto min-h-12 w-full rounded-b-none py-2 pb-0 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+          <SidebarMenu>
+            <SidebarMenuItem>
+              {notificationsPath ? (
+                <div className="flex min-h-12 w-full items-center gap-1.5 py-2 pb-0 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-1">
+                  <DropdownMenu className="min-w-0 flex-1">
+                    <DropdownMenuTrigger asChild>
+                      <SidebarMenuButton
+                        size="lg"
+                        tooltip={displayName}
+                        className="h-auto min-h-0 w-full rounded-md py-2 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                      >
+                        <Avatar className="size-8 rounded-lg">
+                          {user.user_metadata?.avatar_url ? (
+                            <AvatarImage
+                              src={user.user_metadata.avatar_url}
+                              alt={user.email ?? ""}
+                            />
+                          ) : (
+                            <AvatarFallback className="rounded-lg text-xs font-medium">
+                              {initials}
+                            </AvatarFallback>
+                          )}
+                        </Avatar>
+                        <div className="grid flex-1 text-left text-sm leading-tight">
+                          <span className="truncate font-semibold">
+                            {displayName}
+                          </span>
+                          <span className="truncate text-xs text-muted-foreground">
+                            {user.email}
+                          </span>
+                        </div>
+                      </SidebarMenuButton>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      className="w-56"
+                      side="bottom"
+                      align="end"
+                      sideOffset={4}
+                    >
+                      <DropdownMenuItem asChild>
+                        <Link to={settingsPath}>Settings</Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={handleLogout}
+                      >
+                        Log out
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <SidebarNotificationsBell to={notificationsPath} />
+                </div>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <SidebarMenuButton
+                      size="lg"
+                      tooltip={displayName}
+                      className="h-auto min-h-12 w-full rounded-b-none py-2 pb-0 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                    >
+                      <Avatar className="size-8 rounded-lg">
+                        {user.user_metadata?.avatar_url ? (
+                          <AvatarImage
+                            src={user.user_metadata.avatar_url}
+                            alt={user.email ?? ""}
+                          />
+                        ) : (
+                          <AvatarFallback className="rounded-lg text-xs font-medium">
+                            {initials}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div className="grid flex-1 text-left text-sm leading-tight">
+                        <span className="truncate font-semibold">
+                          {displayName}
+                        </span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {user.email}
+                        </span>
+                      </div>
+                    </SidebarMenuButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="w-56"
+                    side="bottom"
+                    align="end"
+                    sideOffset={4}
                   >
-                    <Avatar className="size-8 rounded-lg">
-                      {user.user_metadata?.avatar_url ? (
-                        <AvatarImage
-                          src={user.user_metadata.avatar_url}
-                          alt={user.email ?? ""}
-                        />
-                      ) : (
-                        <AvatarFallback className="rounded-lg text-xs font-medium">
-                          {initials}
-                        </AvatarFallback>
-                      )}
-                    </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">
-                        {displayName}
-                      </span>
-                      <span className="truncate text-xs text-muted-foreground">
-                        {user.email}
-                      </span>
-                    </div>
-                  </SidebarMenuButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  className="w-56"
-                  side="bottom"
-                  align="end"
-                  sideOffset={4}
-                >
-                  <DropdownMenuItem asChild>
-                    <Link to={settingsPath}>Settings</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={handleLogout}
-                  >
-                    Log out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <DropdownMenuItem asChild>
+                      <Link to={settingsPath}>Settings</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={handleLogout}
+                    >
+                      Log out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>

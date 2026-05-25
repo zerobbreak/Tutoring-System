@@ -1,18 +1,18 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Bell } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import {
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "#/components/ui/sidebar";
 import { cn } from "#/lib/utils";
 import { listNotificationsForUserFn } from "#/server-actions/notifications";
 
 type SidebarNotificationsBellProps = {
   to: string;
+  className?: string;
 };
 
-export function SidebarNotificationsBell({ to }: SidebarNotificationsBellProps) {
+export function SidebarNotificationsBell({
+  to,
+  className,
+}: SidebarNotificationsBellProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const active = pathname === to || pathname.startsWith(`${to}/`);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -42,27 +42,24 @@ export function SidebarNotificationsBell({ to }: SidebarNotificationsBellProps) 
     unreadCount > 9 ? "9+" : unreadCount > 0 ? String(unreadCount) : null;
 
   return (
-    <SidebarMenuItem className="w-auto shrink-0 group-data-[collapsible=icon]:w-full">
-      <SidebarMenuButton
-        asChild
-        tooltip="Notifications"
-        isActive={active}
-        className="relative size-10 shrink-0 p-0 group-data-[collapsible=icon]:size-8"
-      >
-        <Link to={to} aria-label="Notifications">
-          <Bell className="size-[1.125rem]" aria-hidden />
-          {badgeLabel ? (
-            <span
-              className={cn(
-                "absolute -top-0.5 -right-0.5 flex min-w-4 items-center justify-center rounded-full bg-(--lagoon-deep) px-1 text-[10px] font-semibold leading-none text-white",
-                "group-data-[collapsible=icon]:-top-0.5 group-data-[collapsible=icon]:-right-0.5",
-              )}
-            >
-              {badgeLabel}
-            </span>
-          ) : null}
-        </Link>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
+    <Link
+      to={to}
+      aria-label="Notifications"
+      className={cn(
+        "relative flex size-10 shrink-0 items-center justify-center text-sidebar-foreground transition-opacity",
+        "hover:opacity-80",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+        active && "text-(--lagoon-deep)",
+        "group-data-[collapsible=icon]:size-8",
+        className,
+      )}
+    >
+      <Bell className="size-4" aria-hidden />
+      {badgeLabel ? (
+        <span className="absolute -top-0.5 -right-0.5 flex min-w-4 items-center justify-center rounded-full bg-(--lagoon-deep) px-1 text-[10px] font-semibold leading-none text-white">
+          {badgeLabel}
+        </span>
+      ) : null}
+    </Link>
   );
 }
