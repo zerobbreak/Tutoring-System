@@ -2,12 +2,10 @@ import { Link } from "@tanstack/react-router";
 import { Loader2, MessageSquare } from "lucide-react";
 import { Button } from "#/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "#/components/ui/card";
+  DashboardPanelCard,
+  DASHBOARD_PANEL_LIST_MIN_H,
+  DASHBOARD_PANEL_PREVIEW_LIMIT,
+} from "#/components/tutor/dashboard/dashboard-panel-card";
 import type { ConversationDTO } from "#/server-actions/messaging";
 
 type DashboardRecentMessagesProps = {
@@ -19,25 +17,32 @@ export function DashboardRecentMessages({
   booting,
   conversations,
 }: DashboardRecentMessagesProps) {
-  const preview = conversations.slice(0, 5);
+  const preview = conversations.slice(0, DASHBOARD_PANEL_PREVIEW_LIMIT);
+  const hasMore = conversations.length > DASHBOARD_PANEL_PREVIEW_LIMIT;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between space-y-0">
-        <div>
-          <CardTitle className="text-base font-semibold">Recent messages</CardTitle>
-          <CardDescription>Latest conversations across your institution</CardDescription>
-        </div>
+    <DashboardPanelCard
+      title="Recent messages"
+      description="Latest conversations across your institution"
+      action={
         <Button
           variant="ghost"
           size="sm"
-          className="shrink-0 text-muted-foreground hover:text-foreground"
+          className="text-muted-foreground hover:text-foreground"
           asChild
         >
-          <Link to="/tutor/messaging">Open messaging</Link>
+          <Link to="/tutor/notifications">More</Link>
         </Button>
-      </CardHeader>
-      <CardContent className="space-y-3 text-sm">
+      }
+      footer={
+        !booting && hasMore ? (
+          <p className="text-xs text-muted-foreground">
+            Showing {preview.length} of {conversations.length} conversations.
+          </p>
+        ) : null
+      }
+    >
+      <div className={DASHBOARD_PANEL_LIST_MIN_H}>
         {booting ? (
           <div className="flex items-center gap-2 text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
@@ -74,7 +79,7 @@ export function DashboardRecentMessages({
                     <p className="line-clamp-1 text-xs text-muted-foreground">{last}</p>
                   </div>
                   {conv.unread_count > 0 ? (
-                    <span className="shrink-0 rounded-full bg-[var(--lagoon)] px-2 py-0.5 text-xs font-medium text-white">
+                    <span className="shrink-0 rounded-full bg-(--lagoon) px-2 py-0.5 text-xs font-medium text-white">
                       {conv.unread_count}
                     </span>
                   ) : null}
@@ -83,7 +88,7 @@ export function DashboardRecentMessages({
             })}
           </ul>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </DashboardPanelCard>
   );
 }

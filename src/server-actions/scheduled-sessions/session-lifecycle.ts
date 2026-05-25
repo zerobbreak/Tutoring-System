@@ -211,9 +211,9 @@ export async function deleteScheduledSessionRecord(
     recipient_id: session.tutor_id,
     claim_id: null,
     channel: "IN_APP",
-    type: "SESSION_DELETED",
+    type: "SESSION_CANCELLED",
     subject: "Scheduled session removed",
-    body: `A scheduled session has been removed from the calendar and needs to be rescheduled. Reason: ${params.reason.trim()}`,
+    body: `A scheduled session has been removed from the calendar. Reason: ${params.reason.trim()}`,
   });
 
   if (params.institutionId) {

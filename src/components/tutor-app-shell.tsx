@@ -51,6 +51,7 @@ export function TutorAppShell({
     <AppShell
       homePath="/tutor"
       helpPath="/tutor/help"
+      notificationsPath="/tutor/notifications"
       brandMark={<span className="text-xs font-bold">TS</span>}
       brandTitle="Tutor Studio"
       brandSubtitle="Emeris Learning"

@@ -57,12 +57,12 @@ export function TutorHourProgressCard({
 
   if (booting) {
     return (
-      <Card>
-        <CardHeader>
+      <Card className="flex h-full flex-col">
+        <CardHeader className="pb-4">
           <Skeleton className="h-5 w-32" />
           <Skeleton className="h-4 w-48" />
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           <Skeleton className="h-3 w-full" />
         </CardContent>
       </Card>
@@ -71,9 +71,9 @@ export function TutorHourProgressCard({
 
   if (!hasAllocation) {
     return (
-      <Card className="border-dashed">
-        <CardHeader>
-          <CardTitle className="text-base">Hours allocation</CardTitle>
+      <Card className="flex h-full flex-col border-dashed">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base font-semibold">Hours allocation</CardTitle>
           <CardDescription>
             No hour cap has been set for your modules yet. Your coordinator can
             assign allocated hours per module and semester.
@@ -90,15 +90,15 @@ export function TutorHourProgressCard({
   const utilization = totals!.utilizationPercent;
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">Hours progress</CardTitle>
+    <Card className="flex h-full flex-col">
+      <CardHeader className="space-y-1 pb-4">
+        <CardTitle className="text-base font-semibold">Hours progress</CardTitle>
         <CardDescription>
           Reserved hours include scheduled and submitted sessions. Worked hours
           are completed sessions only.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-3 pt-0">
         <div className="space-y-1.5">
           <div className="flex items-baseline justify-between text-sm">
             <span className="font-medium text-foreground">

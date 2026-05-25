@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { logInstitutionAudit } from "#/lib/audit-log";
-import { requireAdminContext } from "#/lib/admin-server";
+import { requireAdminContext, resolveAdminWriteClient } from "#/lib/admin-server";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { archivePublishedScheduleSeries } from "#/server-actions/lecturer-schedule/series-lifecycle";
 import { assertModuleInInstitution } from "./helpers";
@@ -25,8 +25,9 @@ export const adminArchiveScheduleSeriesFn = createServerFn({ method: "POST" })
       institutionId,
     );
 
+    const writeDb = resolveAdminWriteClient(supabase);
     const result = await archivePublishedScheduleSeries(
-      supabase,
+      writeDb,
       data.seriesId,
       userId,
     );

@@ -28,6 +28,7 @@ import {
   SidebarTrigger,
 } from "#/components/ui/sidebar";
 import { supabase } from "#/lib/supabase";
+import { SidebarNotificationsBell } from "#/components/notifications/sidebar-notifications-bell";
 import { ThemeToggle } from "./theme-toggle";
 
 export type AppShellNavItem = {
@@ -62,7 +63,15 @@ function pageTitleFromPath(
   homePath: string,
   navGroups: readonly AppShellNavGroup[],
   helpPath?: string,
+  notificationsPath?: string,
 ) {
+  if (
+    notificationsPath &&
+    (pathname === notificationsPath ||
+      pathname.startsWith(`${notificationsPath}/`))
+  ) {
+    return "Notifications";
+  }
   if (
     helpPath &&
     (pathname === helpPath || pathname.startsWith(`${helpPath}/`))
@@ -112,6 +121,7 @@ export function AppShell({
   headerTrailing,
   helpPath,
   settingsPath = "/settings",
+  notificationsPath,
 }: {
   homePath: string;
   brandMark: ReactNode;
@@ -127,9 +137,17 @@ export function AppShell({
   helpPath?: string;
   /** Sidebar settings link target (default `/settings`). */
   settingsPath?: string;
+  /** When set, shows a bell control beside the profile menu in the sidebar footer. */
+  notificationsPath?: string;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const title = pageTitleFromPath(pathname, homePath, navGroups, helpPath);
+  const title = pageTitleFromPath(
+    pathname,
+    homePath,
+    navGroups,
+    helpPath,
+    notificationsPath,
+  );
 
   const initials = user.user_metadata?.full_name
     ? user.user_metadata.full_name
@@ -226,14 +244,23 @@ export function AppShell({
         </SidebarGroup>
 
         <SidebarFooter className="shrink-0 gap-0 border-t border-sidebar-border bg-sidebar p-0 px-2 pt-2 pb-0">
-          <SidebarMenu>
-            <SidebarMenuItem>
+          <SidebarMenu
+            className={
+              notificationsPath
+                ? "flex flex-row items-stretch gap-1 group-data-[collapsible=icon]:flex-col"
+                : undefined
+            }
+          >
+            {notificationsPath ? (
+              <SidebarNotificationsBell to={notificationsPath} />
+            ) : null}
+            <SidebarMenuItem className={notificationsPath ? "min-w-0 flex-1" : undefined}>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuButton
                     size="lg"
                     tooltip={displayName}
-                    className="h-auto min-h-12 rounded-b-none py-2 pb-0 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                    className="h-auto min-h-12 w-full rounded-b-none py-2 pb-0 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                   >
                     <Avatar className="size-8 rounded-lg">
                       {user.user_metadata?.avatar_url ? (

@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "#/components/ui/select";
+import { ScrollArea } from "#/components/ui/scroll-area";
 import { Skeleton } from "#/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
 import type {
@@ -151,7 +152,8 @@ export function AdminSessionsView({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain p-6 pb-10 md:p-8">
+      <ScrollArea className="min-h-0 flex-1">
+      <div className="flex flex-col gap-6 p-6 pb-10 md:p-8">
         <header className="shrink-0">
           <h2 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
             <Video className="size-7 text-(--lagoon-deep)" />
@@ -353,6 +355,7 @@ export function AdminSessionsView({
           </Tabs>
         )}
       </div>
+      </ScrollArea>
 
       <AdminSessionDetailSheet
         claimId={selectedClaimId}

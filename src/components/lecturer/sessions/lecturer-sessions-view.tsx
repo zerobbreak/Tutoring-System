@@ -1,6 +1,7 @@
 import type { NavigateOptions } from "@tanstack/react-router";
 import { Loader2, Video } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+import { ScrollArea } from "#/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
 import {
   listLecturerSessionsFn,
@@ -86,7 +87,8 @@ export function LecturerSessionsView({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain p-6 pb-10 md:p-8">
+      <ScrollArea className="min-h-0 flex-1">
+      <div className="flex flex-col gap-6 p-6 pb-10 md:p-8">
         <div className="shrink-0">
           <h2 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
             <Video className="size-7 text-(--lagoon-deep)" />
@@ -229,6 +231,7 @@ export function LecturerSessionsView({
           onOpenChange={handleSheetOpenChange}
         />
       </div>
+      </ScrollArea>
     </div>
   );
 }

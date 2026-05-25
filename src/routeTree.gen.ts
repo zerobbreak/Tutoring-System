@@ -20,6 +20,7 @@ import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as TutorSessionsRouteImport } from './routes/tutor/sessions'
 import { Route as TutorSchedulesRouteImport } from './routes/tutor/schedules'
 import { Route as TutorRegisterGenerationRouteImport } from './routes/tutor/register-generation'
+import { Route as TutorNotificationsRouteImport } from './routes/tutor/notifications'
 import { Route as TutorNotesRouteImport } from './routes/tutor/notes'
 import { Route as TutorMessagingRouteImport } from './routes/tutor/messaging'
 import { Route as TutorHelpRouteImport } from './routes/tutor/help'
@@ -105,6 +106,11 @@ const TutorSchedulesRoute = TutorSchedulesRouteImport.update({
 const TutorRegisterGenerationRoute = TutorRegisterGenerationRouteImport.update({
   id: '/register-generation',
   path: '/register-generation',
+  getParentRoute: () => TutorRouteRoute,
+} as any)
+const TutorNotificationsRoute = TutorNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => TutorRouteRoute,
 } as any)
 const TutorNotesRoute = TutorNotesRouteImport.update({
@@ -298,6 +304,7 @@ export interface FileRoutesByFullPath {
   '/tutor/help': typeof TutorHelpRoute
   '/tutor/messaging': typeof TutorMessagingRoute
   '/tutor/notes': typeof TutorNotesRoute
+  '/tutor/notifications': typeof TutorNotificationsRoute
   '/tutor/register-generation': typeof TutorRegisterGenerationRoute
   '/tutor/schedules': typeof TutorSchedulesRoute
   '/tutor/sessions': typeof TutorSessionsRoute
@@ -339,6 +346,7 @@ export interface FileRoutesByTo {
   '/tutor/help': typeof TutorHelpRoute
   '/tutor/messaging': typeof TutorMessagingRoute
   '/tutor/notes': typeof TutorNotesRoute
+  '/tutor/notifications': typeof TutorNotificationsRoute
   '/tutor/register-generation': typeof TutorRegisterGenerationRoute
   '/tutor/schedules': typeof TutorSchedulesRoute
   '/tutor/sessions': typeof TutorSessionsRoute
@@ -384,6 +392,7 @@ export interface FileRoutesById {
   '/tutor/help': typeof TutorHelpRoute
   '/tutor/messaging': typeof TutorMessagingRoute
   '/tutor/notes': typeof TutorNotesRoute
+  '/tutor/notifications': typeof TutorNotificationsRoute
   '/tutor/register-generation': typeof TutorRegisterGenerationRoute
   '/tutor/schedules': typeof TutorSchedulesRoute
   '/tutor/sessions': typeof TutorSessionsRoute
@@ -430,6 +439,7 @@ export interface FileRouteTypes {
     | '/tutor/help'
     | '/tutor/messaging'
     | '/tutor/notes'
+    | '/tutor/notifications'
     | '/tutor/register-generation'
     | '/tutor/schedules'
     | '/tutor/sessions'
@@ -471,6 +481,7 @@ export interface FileRouteTypes {
     | '/tutor/help'
     | '/tutor/messaging'
     | '/tutor/notes'
+    | '/tutor/notifications'
     | '/tutor/register-generation'
     | '/tutor/schedules'
     | '/tutor/sessions'
@@ -515,6 +526,7 @@ export interface FileRouteTypes {
     | '/tutor/help'
     | '/tutor/messaging'
     | '/tutor/notes'
+    | '/tutor/notifications'
     | '/tutor/register-generation'
     | '/tutor/schedules'
     | '/tutor/sessions'
@@ -618,6 +630,13 @@ declare module '@tanstack/react-router' {
       path: '/register-generation'
       fullPath: '/tutor/register-generation'
       preLoaderRoute: typeof TutorRegisterGenerationRouteImport
+      parentRoute: typeof TutorRouteRoute
+    }
+    '/tutor/notifications': {
+      id: '/tutor/notifications'
+      path: '/notifications'
+      fullPath: '/tutor/notifications'
+      preLoaderRoute: typeof TutorNotificationsRouteImport
       parentRoute: typeof TutorRouteRoute
     }
     '/tutor/notes': {
@@ -905,6 +924,7 @@ interface TutorRouteRouteChildren {
   TutorHelpRoute: typeof TutorHelpRoute
   TutorMessagingRoute: typeof TutorMessagingRoute
   TutorNotesRoute: typeof TutorNotesRoute
+  TutorNotificationsRoute: typeof TutorNotificationsRoute
   TutorRegisterGenerationRoute: typeof TutorRegisterGenerationRoute
   TutorSchedulesRoute: typeof TutorSchedulesRoute
   TutorSessionsRoute: typeof TutorSessionsRoute
@@ -918,6 +938,7 @@ const TutorRouteRouteChildren: TutorRouteRouteChildren = {
   TutorHelpRoute: TutorHelpRoute,
   TutorMessagingRoute: TutorMessagingRoute,
   TutorNotesRoute: TutorNotesRoute,
+  TutorNotificationsRoute: TutorNotificationsRoute,
   TutorRegisterGenerationRoute: TutorRegisterGenerationRoute,
   TutorSchedulesRoute: TutorSchedulesRoute,
   TutorSessionsRoute: TutorSessionsRoute,

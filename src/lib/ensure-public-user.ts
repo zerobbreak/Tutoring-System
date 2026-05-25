@@ -2,7 +2,7 @@ import type { User } from "@supabase/supabase-js";
 import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import type { createSupabaseServerClient } from "#/lib/supabase-server";
 
-const VALID_ROLES = new Set(["TUTOR", "LECTURER", "ADMIN"]);
+const VALID_ROLES = new Set(["TUTOR", "LECTURER", "ADMIN", "SUPER_ADMIN"]);
 
 export type PublicUserProfile = {
   id: string;

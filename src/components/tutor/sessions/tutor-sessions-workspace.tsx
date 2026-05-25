@@ -1135,7 +1135,8 @@ export function TutorSessionsWorkspace({
 
   return (
     <TooltipProvider delayDuration={200}>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <ScrollArea className="min-h-0 flex-1">
         <div className="shrink-0 space-y-4 border-b border-border/60 p-3 sm:space-y-5 sm:p-4 md:p-6 lg:p-8">
           <header className="flex min-w-0 gap-3">
             <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-lagoon/10 text-lagoon-deep sm:size-11">
@@ -1393,11 +1394,11 @@ export function TutorSessionsWorkspace({
         </div>
         </div>
 
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-3 pb-4 sm:px-4 md:px-6 lg:px-8">
+        <div className="flex min-w-0 flex-col px-3 pb-4 sm:px-4 md:px-6 lg:px-8">
           <Tabs
             value={workspaceTab}
             onValueChange={onWorkspaceTabChange}
-            className="flex min-h-0 flex-1 flex-col pt-4"
+            className="flex flex-col pt-4"
           >
             <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-3">
               <TabsList className="h-10 gap-0.5 p-1">
@@ -1414,7 +1415,7 @@ export function TutorSessionsWorkspace({
 
             <TabsContent
               value="kanban"
-              className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden"
+              className="mt-0 flex flex-col data-[state=inactive]:hidden"
             >
               {loading ? (
                 <div className="grid grid-cols-2 gap-3 2xl:grid-cols-4">
@@ -1463,8 +1464,8 @@ export function TutorSessionsWorkspace({
                             </span>
                           </div>
                         </div>
-                        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 pb-3">
-                          <div className="flex min-h-full flex-col gap-2 pt-2">
+                        <ScrollArea className="min-h-0 flex-1">
+                          <div className="flex min-h-full flex-col gap-2 px-2 pb-3 pt-2">
                             <AnimatePresence initial={false}>
                               {columns[colId].length === 0 ? (
                                 <motion.div
@@ -1534,7 +1535,7 @@ export function TutorSessionsWorkspace({
                               )}
                             </AnimatePresence>
                           </div>
-                        </div>
+                        </ScrollArea>
                       </DroppableColumn>
                     ))}
                   </div>
@@ -1550,11 +1551,10 @@ export function TutorSessionsWorkspace({
 
             <TabsContent
               value="table"
-              className="mt-0 flex min-h-0 flex-1 flex-col overflow-hidden data-[state=inactive]:hidden"
+              className="mt-0 flex flex-col data-[state=inactive]:hidden"
             >
-              <Card className="flex min-h-0 flex-1 flex-col overflow-hidden border-border/70 shadow-sm">
-                <CardContent className="flex min-h-0 flex-1 flex-col p-0">
-                  <ScrollArea className="min-h-0 flex-1">
+              <Card className="flex flex-col overflow-hidden border-border/70 shadow-sm">
+                <CardContent className="flex flex-col p-0">
                     <div className="min-w-0 overflow-x-auto">
                       <Table className="min-w-[48rem] [&_[data-slot=table-container]]:overflow-visible">
                         <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm">
@@ -1793,7 +1793,6 @@ export function TutorSessionsWorkspace({
                         </TableBody>
                       </Table>
                     </div>
-                  </ScrollArea>
                   {tableSortedClaims.length > 0 && !loading ? (
                     <div className="shrink-0 border-t border-border/60 bg-muted/10 px-4 py-2.5 text-xs text-muted-foreground">
                       Showing{" "}
@@ -1809,6 +1808,7 @@ export function TutorSessionsWorkspace({
             </TabsContent>
           </Tabs>
         </div>
+        </ScrollArea>
 
         <Button
           type="button"

@@ -5,13 +5,17 @@ import {
   Clock,
   ListTodo,
   Loader2,
-  MoreHorizontal,
   Settings,
   Users,
   Video,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { NotificationsInboxCard } from "#/components/notifications/notifications-inbox-card";
+import {
+  DashboardPanelCard,
+  DASHBOARD_PANEL_LIST_MIN_H,
+  DASHBOARD_PANEL_PREVIEW_LIMIT,
+} from "#/components/tutor/dashboard/dashboard-panel-card";
 import { DashboardRecentMessages } from "#/components/tutor/dashboard/dashboard-recent-messages";
 import { TutorHourProgressCard } from "#/components/tutor/dashboard/tutor-hour-progress-card";
 import type { TutorHourBudgetSummary } from "#/lib/tutor-hour-budget";
@@ -29,7 +33,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "#/components/ui/card";
@@ -105,8 +108,21 @@ export function TutorDashboardView({
   }, [prefs.dashboard_show_messages]);
 
   const recentClaims = useMemo(() => {
-    return [...claims].sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1)).slice(0, 5);
+    return [...claims]
+      .sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))
+      .slice(0, DASHBOARD_PANEL_PREVIEW_LIMIT);
   }, [claims]);
+
+  const upcomingPreview = useMemo(
+    () => upcomingEvents.slice(0, DASHBOARD_PANEL_PREVIEW_LIMIT),
+    [upcomingEvents],
+  );
+  const pendingPreview = useMemo(
+    () => pendingPreviewClaims.slice(0, DASHBOARD_PANEL_PREVIEW_LIMIT),
+    [pendingPreviewClaims],
+  );
+  const hasMoreUpcoming = upcomingEvents.length > DASHBOARD_PANEL_PREVIEW_LIMIT;
+  const hasMorePending = pendingPreviewClaims.length > DASHBOARD_PANEL_PREVIEW_LIMIT;
 
   const kpiItems = [
     {
@@ -135,11 +151,12 @@ export function TutorDashboardView({
     },
   ];
 
-  const rootGap = prefs.dashboard_compact_mode ? "gap-4" : "gap-6";
+  const sectionGap = prefs.dashboard_compact_mode ? "gap-4" : "gap-6";
+  const panelGrid = "grid items-stretch gap-4";
 
   return (
     <ScrollArea className="min-h-0 flex-1">
-      <div className={`mx-auto flex w-full max-w-7xl flex-col p-6 md:p-8 ${rootGap}`}>
+      <div className={`mx-auto flex w-full max-w-7xl flex-col p-6 md:p-8 ${sectionGap}`}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight text-foreground">Dashboard</h2>
@@ -199,208 +216,270 @@ export function TutorDashboardView({
       </div>
       ) : null}
 
-      <div className={`grid lg:grid-cols-7 ${prefs.dashboard_compact_mode ? "gap-4" : "gap-6"}`}>
-        <Card className="border-border shadow-sm lg:col-span-4">
-          <CardHeader className="flex flex-row items-start justify-between space-y-0">
-            <div>
+      <div className={`${panelGrid} lg:grid-cols-3`}>
+        <Card className="flex flex-col border-border shadow-sm lg:col-span-2">
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
+            <div className="space-y-1">
               <CardTitle className="text-base font-semibold">Session activity</CardTitle>
               <CardDescription>
                 Sessions per day — hover a point to see hours worked
               </CardDescription>
             </div>
-            <Button variant="ghost" size="icon" className="size-8 shrink-0" aria-label="More options">
-              <MoreHorizontal className="size-4" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="shrink-0 text-muted-foreground hover:text-foreground"
+              asChild
+            >
+              <Link to="/tutor/sessions">View all sessions</Link>
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             <TutorSessionsActivityChart
               series={chartSeries ?? undefined}
               seriesLoading={booting || chartSeries === null}
             />
           </CardContent>
-          <CardFooter className="border-t bg-muted/20 py-3">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" asChild>
-              <Link to="/tutor/sessions">View all sessions</Link>
-            </Button>
-          </CardFooter>
         </Card>
 
-        <div className={`flex flex-col lg:col-span-3 ${prefs.dashboard_compact_mode ? "gap-4" : "gap-6"}`}>
-          <TutorHourProgressCard booting={booting} hourBudget={hourBudget} />
-          <Link
-            to="/settings"
-            className="group block rounded-xl outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+        <TutorHourProgressCard booting={booting} hourBudget={hourBudget} />
+      </div>
+
+      <div className={`${panelGrid} md:grid-cols-3`}>
+        <DashboardPanelCard
+          title="Upcoming sessions"
+          description="Tutorial slots from your saved timetable imports"
+          action={
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground"
+              asChild
+            >
+              <Link to="/tutor/schedules">Calendar</Link>
+            </Button>
+          }
+          footer={
+            !booting && hasMoreUpcoming ? (
+              <p className="text-xs text-muted-foreground">
+                Showing {upcomingPreview.length} of {upcomingEvents.length} events.
+              </p>
+            ) : null
+          }
+        >
+          <div className={DASHBOARD_PANEL_LIST_MIN_H}>
+            {booting ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                Loading…
+              </div>
+            ) : upcomingPreview.length === 0 ? (
+              <p className="text-muted-foreground">
+                No upcoming tutorial events. Import a schedule on the Schedules page.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {upcomingPreview.map((ev) => (
+                  <li
+                    key={`${ev.start}-${ev.title}`}
+                    className="flex gap-2 border-b border-border/60 pb-2 last:border-0 last:pb-0"
+                  >
+                    <CalendarDays
+                      className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                      aria-hidden
+                    />
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground">{ev.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(ev.start).toLocaleString(undefined, {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                        {ev.location ? ` · ${ev.location}` : ""}
+                        {ev.moduleCode ? ` · ${ev.moduleCode}` : ""}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </DashboardPanelCard>
+
+        <DashboardPanelCard
+          title="Pending claims"
+          description="Draft or awaiting verification"
+          action={
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground"
+              asChild
+            >
+              <Link to="/tutor/claims">View all</Link>
+            </Button>
+          }
+          footer={
+            !booting && hasMorePending ? (
+              <p className="text-xs text-muted-foreground">
+                Showing {pendingPreview.length} of {pendingPreviewClaims.length}{" "}
+                pending.
+              </p>
+            ) : null
+          }
+        >
+          <div className={DASHBOARD_PANEL_LIST_MIN_H}>
+            {booting ? (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" />
+                Loading…
+              </div>
+            ) : pendingPreview.length === 0 ? (
+              <p className="text-muted-foreground">No pending claims right now.</p>
+            ) : (
+              <ul className="space-y-2">
+                {pendingPreview.map((c) => (
+                  <li
+                    key={c.id}
+                    className="flex flex-col gap-0.5 border-b border-border/60 pb-2 last:border-0 last:pb-0"
+                  >
+                    <Link
+                      to="/tutor/claims/$claimId"
+                      params={{ claimId: c.id }}
+                      className="font-medium text-foreground hover:underline"
+                    >
+                      {c.module?.code ?? "Session"} · {c.session_date}
+                    </Link>
+                    <span className="text-xs capitalize text-muted-foreground">
+                      {formatClaimStatus(c.status)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </DashboardPanelCard>
+
+        <DashboardPanelCard
+          title="Coverage"
+          description="Claims still missing a coverage confirmation (non-draft)"
+        >
+          <div
+            className={`${DASHBOARD_PANEL_LIST_MIN_H} flex flex-col justify-center`}
           >
-            <Card className="h-full transition-colors group-hover:border-primary/25 group-hover:bg-muted/25">
-              <CardHeader className="flex flex-row items-start gap-3 space-y-0">
-                <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-background">
-                  <Settings className="size-5 text-muted-foreground" aria-hidden />
-                </div>
-                <div className="min-w-0 flex-1 space-y-1">
-                  <CardTitle className="text-base font-semibold">Account &amp; settings</CardTitle>
-                  <CardDescription>
-                    Profile, email, and preferences — opens the same page as Settings in the sidebar.
-                  </CardDescription>
-                </div>
-                <ArrowUpRight
-                  className="mt-0.5 size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                  aria-hidden
-                />
-              </CardHeader>
-            </Card>
-          </Link>
+            {booting ? (
+              <Skeleton className="h-8 w-12" />
+            ) : (
+              <p className="text-2xl font-bold tabular-nums text-foreground">
+                {coverageGapCount}
+              </p>
+            )}
+            <Button variant="link" className="mt-1 h-auto px-0 text-xs" asChild>
+              <Link to="/tutor/notes">Review in session notes</Link>
+            </Button>
+          </div>
+        </DashboardPanelCard>
+      </div>
 
-          <Card>
-            <CardHeader className="flex flex-row items-start justify-between space-y-0">
-              <div>
-                <CardTitle className="text-base font-semibold">Upcoming sessions</CardTitle>
-                <CardDescription>Tutorial slots from your saved timetable imports</CardDescription>
-              </div>
-              <Button variant="ghost" size="sm" className="shrink-0 text-muted-foreground hover:text-foreground" asChild>
-                <Link to="/tutor/schedules">Calendar</Link>
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              {booting ? (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin" />
-                  Loading…
-                </div>
-              ) : upcomingEvents.length === 0 ? (
-                <p className="text-muted-foreground">
-                  No upcoming tutorial events. Import a schedule on the Schedules page.
-                </p>
-              ) : (
-                <ul className="space-y-2">
-                  {upcomingEvents.map((ev) => (
-                    <li
-                      key={`${ev.start}-${ev.title}`}
-                      className="flex gap-2 border-b border-border/60 pb-2 last:border-0 last:pb-0"
-                    >
-                      <CalendarDays className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden />
-                      <div className="min-w-0">
-                        <p className="font-medium text-foreground">{ev.title}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(ev.start).toLocaleString(undefined, {
-                            weekday: "short",
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                          {ev.location ? ` · ${ev.location}` : ""}
-                          {ev.moduleCode ? ` · ${ev.moduleCode}` : ""}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-start justify-between space-y-0">
-              <div>
-                <CardTitle className="text-base font-semibold">Pending claims</CardTitle>
-                <CardDescription>Draft or awaiting verification</CardDescription>
-              </div>
-              <Button variant="ghost" size="sm" className="shrink-0 text-muted-foreground hover:text-foreground" asChild>
-                <Link to="/tutor/claims">View All</Link>
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              {booting ? (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin" />
-                  Loading…
-                </div>
-              ) : pendingPreviewClaims.length === 0 ? (
-                <p className="text-muted-foreground">No pending claims right now.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {pendingPreviewClaims.map((c) => (
-                    <li
-                      key={c.id}
-                      className="flex flex-col gap-0.5 border-b border-border/60 pb-2 last:border-0 last:pb-0"
-                    >
-                      <Link
-                        to="/tutor/claims/$claimId"
-                        params={{ claimId: c.id }}
-                        className="font-medium text-foreground hover:underline"
-                      >
-                        {c.module?.code ?? "Session"} · {c.session_date}
-                      </Link>
-                      <span className="text-xs capitalize text-muted-foreground">
-                        {formatClaimStatus(c.status)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardContent>
-          </Card>
-
+      {prefs.dashboard_show_messages || prefs.dashboard_show_notifications ? (
+        <div
+          className={`${panelGrid} ${
+            prefs.dashboard_show_messages && prefs.dashboard_show_notifications
+              ? "md:grid-cols-2"
+              : "grid-cols-1"
+          }`}
+        >
           {prefs.dashboard_show_messages ? (
             <DashboardRecentMessages
               booting={booting}
               conversations={messageConversations}
             />
           ) : null}
-
           {prefs.dashboard_show_notifications ? (
-            <NotificationsInboxCard sessionsLink="/tutor/sessions" />
+            <NotificationsInboxCard
+              sessionsLink="/tutor/sessions"
+              previewLimit={DASHBOARD_PANEL_PREVIEW_LIMIT}
+              moreHref="/tutor/notifications"
+            />
           ) : null}
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">Coverage</CardTitle>
-              <CardDescription>
-                Claims still missing a coverage confirmation (non-draft)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {booting ? (
-                <Skeleton className="h-8 w-12" />
-              ) : (
-                <p className="text-2xl font-bold tabular-nums text-foreground">{coverageGapCount}</p>
-              )}
-              <Button variant="link" className="mt-1 h-auto px-0 text-xs" asChild>
-                <Link to="/tutor/notes">Review in session notes</Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">Recent activity</CardTitle>
-              <CardDescription>Latest updates to your session claims</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              {booting ? (
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin" />
-                  Loading…
-                </div>
-              ) : recentClaims.length === 0 ? (
-                <p className="text-muted-foreground">No recent claim activity.</p>
-              ) : (
-                recentClaims.map((c) => (
-                  <div key={c.id} className="flex gap-3">
-                    <span className="mt-1.5 size-2 shrink-0 rounded-full bg-sky-500" />
-                    <p className="text-muted-foreground">
-                      <span className="font-medium text-foreground">
-                        {c.module?.name ?? c.module?.code ?? "Session"}
-                      </span>{" "}
-                      ({c.session_date}) — {formatClaimStatus(c.status)}
-                    </p>
-                  </div>
-                ))
-              )}
-            </CardContent>
-          </Card>
         </div>
-      </div>
+      ) : null}
+
+      <DashboardPanelCard
+        title="Recent activity"
+        description="Latest updates to your session claims"
+        action={
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-muted-foreground hover:text-foreground"
+            asChild
+          >
+            <Link to="/tutor/claims">View all</Link>
+          </Button>
+        }
+        footer={
+          !booting && claims.length > DASHBOARD_PANEL_PREVIEW_LIMIT ? (
+            <p className="text-xs text-muted-foreground">
+              Showing {recentClaims.length} of {claims.length} recent updates.
+            </p>
+          ) : null
+        }
+      >
+        <div className={DASHBOARD_PANEL_LIST_MIN_H}>
+          {booting ? (
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              Loading…
+            </div>
+          ) : recentClaims.length === 0 ? (
+            <p className="text-muted-foreground">No recent claim activity.</p>
+          ) : (
+            <ul className="space-y-2">
+              {recentClaims.map((c) => (
+                <li
+                  key={c.id}
+                  className="flex gap-3 border-b border-border/60 pb-2 text-sm last:border-0 last:pb-0"
+                >
+                  <span className="mt-1.5 size-2 shrink-0 rounded-full bg-sky-500" />
+                  <p className="min-w-0 text-muted-foreground">
+                    <span className="font-medium text-foreground">
+                      {c.module?.name ?? c.module?.code ?? "Session"}
+                    </span>{" "}
+                    ({c.session_date}) — {formatClaimStatus(c.status)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </DashboardPanelCard>
+
+      <Link
+        to="/settings"
+        className="group block rounded-xl outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <Card className="transition-colors group-hover:border-primary/25 group-hover:bg-muted/25">
+          <CardHeader className="flex flex-row items-center gap-3 space-y-0 py-4">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-background">
+              <Settings className="size-5 text-muted-foreground" aria-hidden />
+            </div>
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <CardTitle className="text-base font-semibold">Account &amp; settings</CardTitle>
+              <CardDescription>
+                Profile, email, and dashboard preferences
+              </CardDescription>
+            </div>
+            <ArrowUpRight
+              className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+              aria-hidden
+            />
+          </CardHeader>
+        </Card>
+      </Link>
       </div>
     </ScrollArea>
   );
