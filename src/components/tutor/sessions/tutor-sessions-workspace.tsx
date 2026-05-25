@@ -18,8 +18,11 @@ import { format, parseISO, startOfDay } from "date-fns";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   AlertTriangle,
+  CalendarDays,
   CalendarRange,
   CheckCircle2,
+  Clock,
+  MapPin,
   CheckSquare,
   ChevronDown,
   ChevronRight,
@@ -40,7 +43,7 @@ import {
   Video,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Avatar, AvatarFallback } from "#/components/ui/avatar";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
@@ -115,6 +118,7 @@ import {
   deleteDraftSessionClaimFn,
   deleteDraftSessionClaimsFn,
   getAttendanceDataFn,
+  getClaimDetailsFn,
   listTutorModuleAssignmentsFn,
   listTutorSessionClaimsFn,
   registerAttendanceEvidenceFn,
@@ -122,8 +126,37 @@ import {
   resubmitSessionRequestFn,
   updateSessionClaimSchedulingFn,
   type AttendanceRecordDTO,
+  type ClaimDetailsDTO,
   type TutorSessionClaimDTO,
 } from "#/server-actions/tutor-sessions";
+
+function workspaceClaimFromDetails(detail: ClaimDetailsDTO): TutorSessionClaimDTO {
+  return {
+    id: detail.id,
+    module_id: detail.module_id,
+    session_date: detail.session_date,
+    start_time: detail.start_time,
+    end_time: detail.end_time,
+    hours: detail.hours,
+    venue: detail.venue,
+    status: detail.status,
+    notes: detail.notes,
+    topics_covered: detail.topics_covered,
+    coverage_validated_at: detail.coverage_validated_at,
+    submitted_at: detail.submitted_at,
+    session_kind: detail.session_kind,
+    request_status: detail.request_status,
+    request_reason: detail.request_reason,
+    review_feedback: detail.review_feedback,
+    attendance_present_count: detail.attendance_present_count,
+    attendance_expected_count: detail.attendance_expected_count,
+    attendance_locked_at: detail.attendance_locked_at,
+    qr_token: detail.qr_token,
+    qr_expires_at: detail.qr_expires_at,
+    module: detail.module,
+    evidenceCount: detail.evidence.length,
+  };
+}
 
 const DROP_PREFIX = "kanban-drop:";
 
@@ -773,6 +806,10 @@ export function TutorSessionsWorkspace({
   const [discardOpen, setDiscardOpen] = useState(false);
   const [discardTargetIds, setDiscardTargetIds] = useState<string[]>([]);
   const [discardBusy, setDiscardBusy] = useState(false);
+  const [resumeWorkspaceAfterDiscardCancel, setResumeWorkspaceAfterDiscardCancel] =
+    useState(false);
+  /** Prevents search.claim effect from reopening workspace right after discard. */
+  const recentlyDiscardedClaimIds = useRef<Set<string>>(new Set());
   const [draftSelectMode, setDraftSelectMode] = useState(false);
   const [selectedDraftIds, setSelectedDraftIds] = useState<Set<string>>(
     () => new Set(),
@@ -885,6 +922,13 @@ export function TutorSessionsWorkspace({
     );
     const safeIds = claimIds.filter((id) => draftIds.has(id));
     if (safeIds.length === 0) return;
+
+    const returnToWorkspace =
+      detailOpen &&
+      safeIds.length === 1 &&
+      detailClaim?.id === safeIds[0];
+    setResumeWorkspaceAfterDiscardCancel(returnToWorkspace);
+    setDetailOpen(false);
     setDiscardTargetIds(safeIds);
     setDiscardOpen(true);
   };
@@ -904,13 +948,53 @@ export function TutorSessionsWorkspace({
   };
 
   useEffect(() => {
-    if (!search.claim || claims.length === 0) return;
+    if (!search.claim) {
+      recentlyDiscardedClaimIds.current.clear();
+      return;
+    }
+
+    if (recentlyDiscardedClaimIds.current.has(search.claim)) {
+      return;
+    }
+
     const hit = claims.find((c) => c.id === search.claim);
     if (hit) {
       setDetailClaim(hit);
       setDetailOpen(true);
+      return;
     }
-  }, [search.claim, claims]);
+
+    if (loading) return;
+
+    setDetailClaim(null);
+    setDetailOpen(false);
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const detail = await getClaimDetailsFn({
+          data: { claimId: search.claim! },
+        });
+        if (cancelled) return;
+        if (recentlyDiscardedClaimIds.current.has(search.claim!)) return;
+        setDetailClaim(workspaceClaimFromDetails(detail));
+        setDetailOpen(true);
+      } catch {
+        if (!cancelled && search.claim) {
+          recentlyDiscardedClaimIds.current.add(search.claim);
+          void navigate({
+            to: "/tutor/sessions",
+            search: { claim: undefined },
+            replace: true,
+          });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [search.claim, claims, loading, navigate]);
 
   const openResubmitRequest = (claim: TutorSessionClaimDTO) => {
     setResubmitClaimId(claim.id);
@@ -1068,6 +1152,7 @@ export function TutorSessionsWorkspace({
   };
 
   const closeDetailSearch = () => {
+    setDetailClaim(null);
     setDetailOpen(false);
     void navigate({
       to: "/tutor/sessions",
@@ -1075,6 +1160,28 @@ export function TutorSessionsWorkspace({
       replace: true,
     });
   };
+
+  const finishDiscardSuccess = (discardedIds: string[]) => {
+    for (const id of discardedIds) {
+      recentlyDiscardedClaimIds.current.add(id);
+    }
+    setResumeWorkspaceAfterDiscardCancel(false);
+    setDiscardTargetIds([]);
+    setDiscardOpen(false);
+    setDetailClaim(null);
+    setDetailOpen(false);
+    void navigate({
+      to: "/tutor/sessions",
+      search: { claim: undefined },
+      replace: true,
+    });
+  };
+
+  const discardConfirmClaim =
+    discardTargetIds.length === 1
+      ? claims.find((c) => c.id === discardTargetIds[0]) ??
+        (detailClaim?.id === discardTargetIds[0] ? detailClaim : null)
+      : null;
 
   const onDragStart = (event: DragStartEvent) => {
     const claim = claims.find((c) => c.id === String(event.active.id));
@@ -1827,99 +1934,127 @@ export function TutorSessionsWorkspace({
               if (!o) closeDetailSearch();
             }}
           >
-            <DialogContent className="max-h-[90vh] sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle>Session workspace</DialogTitle>
-                <DialogDescription>
-                  {detailClaim?.module
-                    ? `${detailClaim.module.code} — ${detailClaim.module.name}`
-                    : "Session"}
-                </DialogDescription>
-              </DialogHeader>
-              <ScrollArea className="max-h-[60vh] pr-4">
-                {detailClaim ? (
-                <div className="space-y-3 text-sm">
-                  <div className="grid grid-cols-2 gap-2 text-muted-foreground">
-                    <span>Date</span>
-                    <span className="text-foreground">
-                      {format(
-                        parseISO(`${detailClaim.session_date}T12:00:00`),
-                        "d MMM yyyy",
-                      )}
+            <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+              <DialogHeader className="space-y-3 border-b border-border/60 px-6 py-5">
+                <div className="flex flex-wrap items-center gap-2">
+                  {detailClaim?.module?.code ? (
+                    <span className="rounded-md bg-lagoon/15 px-2 py-0.5 text-xs font-semibold tracking-wide text-lagoon-deep">
+                      {detailClaim.module.code}
                     </span>
-                    <span>Time</span>
-                    <span className="text-foreground">
-                      {formatClock(detailClaim.start_time)}–
-                      {formatClock(detailClaim.end_time)}
-                    </span>
-                    <span>Venue</span>
-                    <span className="text-foreground">
-                      {detailClaim.venue ?? "—"}
-                    </span>
-                    <span>Hours</span>
-                    <span className="text-foreground">{detailClaim.hours}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant={claimBadgeVariant(detailClaim.status)}>
-                      {claimBadgeLabel(detailClaim.status)}
-                    </Badge>
-                    {detailClaim.session_kind ? (
-                      <Badge variant="outline">{detailClaim.session_kind}</Badge>
-                    ) : null}
-                  </div>
-                  {detailClaim.topics_covered ? (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Topics covered
-                      </p>
-                      <p className="mt-1 whitespace-pre-wrap rounded-md border bg-muted/30 p-2 text-xs">
-                        {detailClaim.topics_covered}
-                      </p>
-                    </div>
                   ) : null}
-                  {detailClaim.notes ? (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground">
-                        Notes
-                      </p>
-                      <p className="mt-1 whitespace-pre-wrap rounded-md border bg-muted/30 p-2 text-xs">
-                        {detailClaim.notes}
-                      </p>
-                    </div>
+                  {detailClaim ? (
+                    <>
+                      <Badge variant={claimBadgeVariant(detailClaim.status)}>
+                        {claimBadgeLabel(detailClaim.status)}
+                      </Badge>
+                      {detailClaim.session_kind ? (
+                        <Badge variant="outline" className="font-normal capitalize">
+                          {detailClaim.session_kind}
+                        </Badge>
+                      ) : null}
+                    </>
                   ) : null}
-                  <PrivateSessionFeedbackReadBlock
-                    claimId={detailClaim.id}
-                    claimStatus={detailClaim.status}
-                  />
                 </div>
-              ) : null}
+                <div className="space-y-1 text-left">
+                  <DialogTitle className="font-display text-xl leading-tight">
+                    Session workspace
+                  </DialogTitle>
+                  <DialogDescription className="text-sm leading-snug">
+                    {detailClaim?.module?.name ?? "Teaching session"}
+                  </DialogDescription>
+                </div>
+              </DialogHeader>
+
+              <ScrollArea className="max-h-[min(52vh,28rem)] flex-1 px-6 py-4">
+                {detailClaim ? (
+                  <div className="space-y-4 text-sm">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5">
+                        <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                          <CalendarDays className="size-3.5 shrink-0" aria-hidden />
+                          Date
+                        </p>
+                        <p className="mt-1 font-medium tabular-nums text-foreground">
+                          {format(
+                            parseISO(`${detailClaim.session_date}T12:00:00`),
+                            "d MMM yyyy",
+                          )}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5">
+                        <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                          <Clock className="size-3.5 shrink-0" aria-hidden />
+                          Time
+                        </p>
+                        <p className="mt-1 font-medium tabular-nums text-foreground">
+                          {formatClock(detailClaim.start_time)}–
+                          {formatClock(detailClaim.end_time)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5">
+                        <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                          <MapPin className="size-3.5 shrink-0" aria-hidden />
+                          Venue
+                        </p>
+                        <p className="mt-1 font-medium text-foreground">
+                          {detailClaim.venue ?? "—"}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5">
+                        <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                          <Video className="size-3.5 shrink-0" aria-hidden />
+                          Hours
+                        </p>
+                        <p className="mt-1 font-medium tabular-nums text-foreground">
+                          {detailClaim.hours.toFixed(1)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {detailClaim.topics_covered ? (
+                      <div className="rounded-lg border border-border/70 bg-card p-3">
+                        <p className="text-xs font-semibold text-muted-foreground">
+                          Topics covered
+                        </p>
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                          {detailClaim.topics_covered}
+                        </p>
+                      </div>
+                    ) : null}
+                    {detailClaim.notes ? (
+                      <div className="rounded-lg border border-border/70 bg-card p-3">
+                        <p className="text-xs font-semibold text-muted-foreground">
+                          Session notes
+                        </p>
+                        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                          {detailClaim.notes}
+                        </p>
+                      </div>
+                    ) : null}
+                    <PrivateSessionFeedbackReadBlock
+                      claimId={detailClaim.id}
+                      claimStatus={detailClaim.status}
+                    />
+                  </div>
+                ) : null}
               </ScrollArea>
-              <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
-                <div className="flex flex-wrap gap-2">
-                  {detailClaim?.status === "DRAFT" ? (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => openDiscard([detailClaim.id])}
-                    >
-                      <Trash2 className="size-4" />
-                      Discard draft
-                    </Button>
-                  ) : null}
-                  {detailClaim?.status === "DRAFT" ? (
-                    <Button
-                      type="button"
-                      onClick={() => {
-                        setSubmitClaim(detailClaim);
-                        setSubmitOpen(true);
-                      }}
-                    >
-                      <Send className="size-4" />
-                      Submit claim
-                    </Button>
-                  ) : null}
-                  <Button variant="outline" asChild>
+
+              <DialogFooter className="flex-col gap-3 border-t border-border/60 bg-muted/10 px-6 py-4 sm:flex-col">
+                {detailClaim?.status === "DRAFT" ? (
+                  <Button
+                    type="button"
+                    className="w-full gap-2 bg-(--lagoon-deep) text-white hover:bg-(--lagoon-deep)/90"
+                    onClick={() => {
+                      setSubmitClaim(detailClaim);
+                      setSubmitOpen(true);
+                    }}
+                  >
+                    <Send className="size-4" />
+                    Submit claim
+                  </Button>
+                ) : null}
+                <div className="flex w-full flex-wrap items-center gap-2">
+                  <Button variant="outline" className="gap-2" asChild>
                     <Link
                       to="/tutor/notes"
                       search={{
@@ -1927,12 +2062,30 @@ export function TutorSessionsWorkspace({
                         focus: Date.now(),
                       }}
                     >
-                      <StickyNote className="size-4" />
+                      <StickyNote className="size-4 text-(--lagoon-deep)" />
                       Open notes
                     </Link>
                   </Button>
+                  {detailClaim?.status === "DRAFT" ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => openDiscard([detailClaim.id])}
+                    >
+                      <Trash2 className="size-4" />
+                      Discard draft
+                    </Button>
+                  ) : null}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="ml-auto"
+                    onClick={closeDetailSearch}
+                  >
+                    Close
+                  </Button>
                 </div>
-                <Button onClick={closeDetailSearch}>Close</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -2115,7 +2268,17 @@ export function TutorSessionsWorkspace({
             open={discardOpen}
             onOpenChange={(open) => {
               setDiscardOpen(open);
-              if (!open) setDiscardTargetIds([]);
+              if (!open) {
+                setDiscardTargetIds([]);
+                if (
+                  resumeWorkspaceAfterDiscardCancel &&
+                  detailClaim &&
+                  !recentlyDiscardedClaimIds.current.has(detailClaim.id)
+                ) {
+                  setDetailOpen(true);
+                }
+                setResumeWorkspaceAfterDiscardCancel(false);
+              }
             }}
           >
             <DialogContent>
@@ -2126,9 +2289,29 @@ export function TutorSessionsWorkspace({
                     : "Discard draft?"}
                 </DialogTitle>
                 <DialogDescription>
-                  {discardTargetIds.length > 1
-                    ? "These sessions will be removed from your workspace and claims list. This cannot be undone."
-                    : "This removes the session from your workspace and claims list. It cannot be undone."}
+                  {discardTargetIds.length > 1 ? (
+                    "These sessions will be removed from your workspace and claims list. This cannot be undone."
+                  ) : discardConfirmClaim ? (
+                    <>
+                      Confirm you want to discard the draft for{" "}
+                      <span className="font-medium text-foreground">
+                        {discardConfirmClaim.module?.code ?? "this module"}
+                      </span>{" "}
+                      on{" "}
+                      <span className="font-medium text-foreground">
+                        {format(
+                          parseISO(
+                            `${discardConfirmClaim.session_date}T12:00:00`,
+                          ),
+                          "d MMM yyyy",
+                        )}
+                      </span>
+                      . It will be removed from your workspace and claims list
+                      and cannot be undone.
+                    </>
+                  ) : (
+                    "This removes the session from your workspace and claims list. It cannot be undone."
+                  )}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="gap-2">
@@ -2155,14 +2338,9 @@ export function TutorSessionsWorkspace({
                           `${result.deletedCount} drafts discarded`,
                         );
                       }
-                      setDiscardOpen(false);
+                      const discardedIds = [...discardTargetIds];
+                      finishDiscardSuccess(discardedIds);
                       exitDraftSelectMode();
-                      if (
-                        detailClaim &&
-                        discardTargetIds.includes(detailClaim.id)
-                      ) {
-                        closeDetailSearch();
-                      }
                       await reload();
                     } catch (e) {
                       toast.error(

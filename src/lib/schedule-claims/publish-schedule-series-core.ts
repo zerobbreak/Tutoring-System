@@ -3,6 +3,7 @@ import {
   extendSeriesHorizon,
   materializeSeriesSessionsIncremental,
 } from "#/lib/schedule-materialize";
+import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import { checkReservedCapacityForSeriesPublish } from "#/server-actions/tutor-allocations/check-reserved-capacity";
 import { reconcileSeriesClaims } from "./reconcile-series-claims";
 
@@ -83,12 +84,6 @@ export async function publishScheduleSeriesCore(
     await materializeSeriesSessionsIncremental(db, seriesId, actorId);
   }
 
-  if (input.reconcileClaims !== false) {
-    await reconcileSeriesClaims(db, seriesId, { skipCancelled: true });
-  }
-
-  const sessionCount = await countActiveSessions(db, seriesId);
-
   if (markPublished && !alreadyPublished) {
     const { error: pubErr } = await db
       .from("schedule_series")
@@ -100,6 +95,13 @@ export async function publishScheduleSeriesCore(
 
     if (pubErr) throw new Error(pubErr.message);
   }
+
+  if (input.reconcileClaims !== false) {
+    const claimDb = getSupabaseAdmin() ?? db;
+    await reconcileSeriesClaims(claimDb, seriesId, { skipCancelled: true });
+  }
+
+  const sessionCount = await countActiveSessions(db, seriesId);
 
   return { sessionCount, repairedOnly };
 }

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { resolveTutorClaimWriteDb } from "#/lib/schedule-claims/claim-write-db";
 
 export type SoftDeleteFields = {
   deleted_at: string;
@@ -75,8 +76,9 @@ export async function softDeleteClaim(
   actorId: string,
   reason?: string | null,
 ): Promise<void> {
-  await softDeleteAttendanceForClaim(db, claimId, actorId, reason);
-  const { error } = await db
+  const writeDb = await resolveTutorClaimWriteDb(db, actorId);
+  await softDeleteAttendanceForClaim(writeDb, claimId, actorId, reason);
+  const { error } = await writeDb
     .from("session_claims")
     .update(softDeleteFields(actorId, reason))
     .eq("id", claimId)

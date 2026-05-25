@@ -105,6 +105,9 @@ export const listTutorAssignedScheduleFn = createServerFn({ method: "GET" })
       if (!claimId) {
         try {
           claimId = await ensureClaimForScheduledSession(supabase, id);
+          if (claimId) {
+            claimIdBySession.set(id, claimId);
+          }
         } catch {
           claimId = null;
         }

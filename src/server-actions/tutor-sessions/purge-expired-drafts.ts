@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isSessionEnded, type SessionClaimTimingFields } from "#/lib/session-claim-lifecycle";
+import { resolveTutorClaimWriteDb } from "#/lib/schedule-claims/claim-write-db";
 import { softDeleteClaim } from "#/lib/soft-delete";
 
 export const DRAFT_EXPIRED_PURGED_ACTION = "DRAFT_EXPIRED_PURGED";
@@ -21,8 +22,9 @@ export async function purgeExpiredDraftClaimsForTutor(
   tutorId: string,
 ): Promise<number> {
   const now = new Date();
+  const writeDb = await resolveTutorClaimWriteDb(db, tutorId);
 
-  const { data: rows, error } = await db
+  const { data: rows, error } = await writeDb
     .from("session_claims")
     .select(
       `
@@ -61,7 +63,7 @@ export async function purgeExpiredDraftClaimsForTutor(
       purged_at: now.toISOString(),
     };
 
-    const { error: logErr } = await db.from("verification_actions").insert({
+    const { error: logErr } = await writeDb.from("verification_actions").insert({
       claim_id: row.id,
       actor_id: tutorId,
       action_type: DRAFT_EXPIRED_PURGED_ACTION,

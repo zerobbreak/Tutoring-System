@@ -274,7 +274,11 @@ export const listTutorSessionClaimsFn = createServerFn({
   const supabase = createSupabaseServerClient();
   const tutorId = await requireUserId(supabase);
 
-  await purgeExpiredDraftClaimsForTutor(supabase, tutorId);
+  try {
+    await purgeExpiredDraftClaimsForTutor(supabase, tutorId);
+  } catch {
+    /* Best-effort purge — do not block sessions/claims workspace load */
+  }
 
   const { data, error } = await supabase
     .from("session_claims")
@@ -314,6 +318,7 @@ export const listTutorSessionClaimsFn = createServerFn({
       `,
     )
     .eq("tutor_id", tutorId)
+    .is("deleted_at", null)
     .order("session_date", { ascending: true })
     .order("start_time", { ascending: true });
 
@@ -585,6 +590,7 @@ export const deleteDraftSessionClaimFn = createServerFn({ method: "POST" })
       .select("id, status")
       .eq("id", data.claimId)
       .eq("tutor_id", tutorId)
+      .is("deleted_at", null)
       .maybeSingle();
 
     if (selErr) throw new Error(selErr.message);
@@ -617,6 +623,7 @@ export const deleteDraftSessionClaimsFn = createServerFn({ method: "POST" })
         .from("session_claims")
         .select("id, status")
         .eq("tutor_id", tutorId)
+        .is("deleted_at", null)
         .in("id", batch);
 
       if (selErr) throw new Error(selErr.message);
