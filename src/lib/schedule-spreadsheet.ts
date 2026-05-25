@@ -117,6 +117,9 @@ export function classifySessionTypeValue(
     /^(lecture|lab|class|seminar|workshop|exam|test|other|practical|break)\b/.test(
       s,
     ) ||
+    s.includes("holiday") ||
+    s.includes("examination") ||
+    /^exam\b/.test(s) ||
     s.startsWith("meridian") ||
     s.startsWith("student experience")
   ) {
