@@ -97,3 +97,33 @@ export const SESSION_METRICS = [
 ] as const;
 
 export type SessionMetricsKey = (typeof SESSION_METRICS)[number]["key"];
+
+/** Thematic stat shown under each board column legend tile. */
+export const COLUMN_HIGHLIGHT: Partial<
+  Record<
+    SessionKanbanColumnId,
+    {
+      label: string;
+      key: SessionMetricsKey;
+      tone?: "amber" | "emerald" | "lagoon";
+      suffix?: string;
+    }
+  >
+> = {
+  claimsPending: {
+    label: "Needs review",
+    key: "pendingClaims",
+    tone: "amber",
+  },
+  today: {
+    label: "Attendance logged",
+    key: "attendanceRate",
+    tone: "emerald",
+    suffix: "%",
+  },
+  upcoming: {
+    label: "Upcoming",
+    key: "upcomingSessions",
+    tone: "lagoon",
+  },
+};

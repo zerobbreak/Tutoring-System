@@ -36,7 +36,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Calendar } from "#/components/ui/calendar";
-import { Card, CardContent } from "#/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -45,13 +44,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "#/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "#/components/ui/dropdown-menu";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import { ScrollArea } from "#/components/ui/scroll-area";
@@ -82,8 +74,6 @@ import {
   motion,
 } from "#/components/tutor/sessions/tutor-session-kanban-card";
 import {
-  TutorSessionsHourBudget,
-  TutorSessionsMetricsStrip,
   TutorSessionsPageHeader,
   TutorSessionsToolbar,
 } from "#/components/tutor/sessions/tutor-sessions-page-chrome";
@@ -784,100 +774,108 @@ export function TutorSessionsWorkspace({
     <TooltipProvider delayDuration={200}>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <ScrollArea className="min-h-0 flex-1">
-        <div className="shrink-0 space-y-4 border-b border-border/60 p-3 sm:space-y-5 sm:p-4 md:p-6 lg:p-8">
-          <TutorSessionsPageHeader onCreateSession={() => setCreateOpen(true)} />
-
-          <TutorSessionsHourBudget loading={loading} hourBudget={hourBudget} />
-
-          <TutorSessionsToolbar
-            searchText={searchText}
-            onSearchChange={setSearchText}
-            moduleFilter={moduleFilter}
-            onModuleFilter={setModuleFilter}
-            moduleOptions={moduleOptions}
-            dateFilter={dateFilter}
-            onDateFilter={setDateFilter}
-            datePickOpen={datePickOpen}
-            onDatePickOpen={setDatePickOpen}
-            datePickTemp={datePickTemp}
-            onDatePickTemp={setDatePickTemp}
-            statusFilters={statusFilters}
-            onToggleStatus={toggleStatus}
-            workspaceTab={workspaceTab}
-            onWorkspaceTabChange={onWorkspaceTabChange}
-            onClearFilters={() => {
-              setModuleFilter("all");
-              setDateFilter(undefined);
-              setStatusFilters(new Set(ALL_STATUSES));
+        <div className="space-y-4 p-3 sm:space-y-5 sm:p-4 md:p-6 lg:p-8">
+          <TutorSessionsPageHeader
+            onCreateSession={() => setCreateOpen(true)}
+            loading={loading}
+            hourBudget={hourBudget}
+            stats={stats}
+            columnCounts={{
+              claimsPending: columns.claimsPending.length,
+              today: columns.today.length,
+              upcoming: columns.upcoming.length,
+              completed: columns.completed.length,
             }}
-            draftSelectSlot={
-              visibleDrafts.length > 0 ? (
-                <Button
-                  type="button"
-                  variant={draftSelectMode ? "secondary" : "outline"}
-                  size="sm"
-                  className="h-8 gap-1.5"
-                  onClick={() => {
-                    if (draftSelectMode) exitDraftSelectMode();
-                    else setDraftSelectMode(true);
-                  }}
-                >
-                  <CheckSquare className="size-4" />
-                  {draftSelectMode ? "Cancel" : "Select drafts"}
-                </Button>
-              ) : null
-            }
           />
 
-          {draftSelectMode && visibleDrafts.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-lagoon-deep/25 bg-lagoon/5 px-3 py-2 text-sm">
-              <span className="font-medium text-foreground">
-                {selectedDraftIds.size} of {visibleDrafts.length} selected
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  setSelectedDraftIds(new Set(visibleDrafts.map((c) => c.id)))
-                }
-              >
-                Select all visible
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setSelectedDraftIds(new Set())}
-              >
-                Clear
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                className="ml-auto gap-1.5"
-                disabled={selectedDraftIds.size === 0}
-                onClick={() => openDiscard([...selectedDraftIds])}
-              >
-                <Trash2 className="size-4" />
-                Discard selected
-              </Button>
-            </div>
-          ) : null}
+          <div className="overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm">
+            <TutorSessionsToolbar
+              embedded
+              searchText={searchText}
+              onSearchChange={setSearchText}
+              moduleFilter={moduleFilter}
+              onModuleFilter={setModuleFilter}
+              moduleOptions={moduleOptions}
+              dateFilter={dateFilter}
+              onDateFilter={setDateFilter}
+              datePickOpen={datePickOpen}
+              onDatePickOpen={setDatePickOpen}
+              datePickTemp={datePickTemp}
+              onDatePickTemp={setDatePickTemp}
+              statusFilters={statusFilters}
+              onToggleStatus={toggleStatus}
+              workspaceTab={workspaceTab}
+              onWorkspaceTabChange={onWorkspaceTabChange}
+              onClearFilters={() => {
+                setModuleFilter("all");
+                setDateFilter(undefined);
+                setStatusFilters(new Set(ALL_STATUSES));
+              }}
+              draftSelectSlot={
+                visibleDrafts.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant={draftSelectMode ? "secondary" : "outline"}
+                    size="sm"
+                    className="h-8 gap-1.5"
+                    onClick={() => {
+                      if (draftSelectMode) exitDraftSelectMode();
+                      else setDraftSelectMode(true);
+                    }}
+                  >
+                    <CheckSquare className="size-4" />
+                    {draftSelectMode ? "Cancel" : "Select drafts"}
+                  </Button>
+                ) : null
+              }
+            />
 
-          <TutorSessionsMetricsStrip loading={loading} stats={stats} />
-        </div>
+            {draftSelectMode && visibleDrafts.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-2 border-t border-border/60 bg-lagoon/5 px-3 py-2 text-sm sm:px-4">
+                <span className="font-medium text-foreground">
+                  {selectedDraftIds.size} of {visibleDrafts.length} selected
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    setSelectedDraftIds(new Set(visibleDrafts.map((c) => c.id)))
+                  }
+                >
+                  Select all visible
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSelectedDraftIds(new Set())}
+                >
+                  Clear
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="ml-auto gap-1.5"
+                  disabled={selectedDraftIds.size === 0}
+                  onClick={() => openDiscard([...selectedDraftIds])}
+                >
+                  <Trash2 className="size-4" />
+                  Discard selected
+                </Button>
+              </div>
+            ) : null}
 
-        <div className="flex min-w-0 flex-col px-3 pb-4 sm:px-4 md:px-6 lg:px-8">
+            <div className="border-t border-border/60">
           <Tabs
             value={workspaceTab}
             onValueChange={onWorkspaceTabChange}
-            className="flex flex-col pt-2"
+            className="flex flex-col"
           >
             <TabsContent
               value="kanban"
-              className="mt-0 flex flex-col data-[state=inactive]:hidden"
+              className="mt-0 flex flex-col p-3 data-[state=inactive]:hidden sm:p-4"
             >
               {loading ? (
                 <div className="grid grid-cols-2 gap-3 2xl:grid-cols-4">
@@ -996,8 +994,6 @@ export function TutorSessionsWorkspace({
               value="table"
               className="mt-0 flex flex-col data-[state=inactive]:hidden"
             >
-              <Card className="flex flex-col overflow-hidden border-border/70 shadow-sm">
-                <CardContent className="flex flex-col p-0">
                     <div className="min-w-0 overflow-x-auto">
                       <Table className="min-w-[48rem] [&_[data-slot=table-container]]:overflow-visible">
                         <TableHeader className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm">
@@ -1237,7 +1233,7 @@ export function TutorSessionsWorkspace({
                       </Table>
                     </div>
                   {tableSortedClaims.length > 0 && !loading ? (
-                    <div className="shrink-0 border-t border-border/60 bg-muted/10 px-4 py-2.5 text-xs text-muted-foreground">
+                    <div className="shrink-0 border-t border-border/60 bg-muted/10 px-4 py-2.5 text-xs text-muted-foreground sm:px-5">
                       Showing{" "}
                       <span className="font-medium tabular-nums text-foreground">
                         {tableSortedClaims.length}
@@ -1246,10 +1242,10 @@ export function TutorSessionsWorkspace({
                       first
                     </div>
                   ) : null}
-                </CardContent>
-              </Card>
             </TabsContent>
           </Tabs>
+            </div>
+          </div>
         </div>
         </ScrollArea>
 
