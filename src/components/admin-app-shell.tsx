@@ -24,7 +24,7 @@ const ADMIN_NAV_GROUPS: readonly AppShellNavGroup[] = [
   {
     label: "Overview",
     items: [
-      { to: "/admin", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/admin/", label: "Dashboard", icon: LayoutDashboard },
       { to: "/admin/approvals", label: "Approvals", icon: ClipboardCheck },
     ],
   },
@@ -71,7 +71,7 @@ export function AdminAppShell({
 
   return (
     <AppShell
-      homePath="/admin"
+      homePath="/admin/"
       brandMark={<span className="text-xs font-bold">EL</span>}
       brandTitle="Emeris Admin"
       brandSubtitle="Operations"

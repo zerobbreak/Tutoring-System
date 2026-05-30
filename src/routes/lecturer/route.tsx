@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { IncomingMessagesListener } from "#/components/messaging/incoming-messages-listener";
 import { LecturerAppShell } from "#/components/lecturer-app-shell";
+import { ScrollArea } from "#/components/ui/scroll-area";
 import type { AppShellUser } from "#/components/app-shell";
 import { gateAuthenticatedSession } from "#/lib/mfa-auth";
 import { isLecturerDashboardRole } from "#/lib/user-role";
@@ -47,7 +48,7 @@ function LecturerLayout() {
   if (loading || !user) {
     return (
       <div className="flex min-h-svh items-center justify-center bg-background">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--lagoon-deep)] border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-(--lagoon-deep) border-t-transparent" />
       </div>
     );
   }
@@ -58,7 +59,9 @@ function LecturerLayout() {
         messagingPath="/lecturer/messages"
         conversationSearchParam
       />
-      <Outlet />
+      <ScrollArea className="min-h-0 flex-1">
+        <Outlet />
+      </ScrollArea>
     </LecturerAppShell>
   );
 }

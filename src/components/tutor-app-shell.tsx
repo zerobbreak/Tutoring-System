@@ -19,9 +19,9 @@ const TUTOR_NAV_GROUPS: readonly AppShellNavGroup[] = [
   {
     label: "Overview",
     items: [
-      { to: "/tutor", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/tutor/", label: "Dashboard", icon: LayoutDashboard },
       { to: "/tutor/sessions", label: "Sessions", icon: Video },
-      { to: "/tutor/claims", label: "Claims", icon: ClipboardCheck },
+      { to: "/tutor/claims/", label: "Claims", icon: ClipboardCheck },
       { to: "/tutor/earnings", label: "Earnings", icon: Coins },
     ],
   },
@@ -49,7 +49,7 @@ export function TutorAppShell({
 }) {
   return (
     <AppShell
-      homePath="/tutor"
+      homePath="/tutor/"
       helpPath="/tutor/help"
       notificationsPath="/tutor/notifications"
       brandMark={<span className="text-xs font-bold">TS</span>}

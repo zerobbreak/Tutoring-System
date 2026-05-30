@@ -515,7 +515,7 @@ function DraggableSessionCard({
                   type="checkbox"
                   checked={draftSelected}
                   onChange={onToggleDraftSelect}
-                  className="size-4 rounded border-input accent-[var(--lagoon-deep)]"
+                  className="size-4 rounded border-input accent-(--lagoon-deep)"
                   aria-label={`Select ${mod?.code ?? "session"} draft`}
                 />
               </label>
@@ -982,11 +982,11 @@ export function TutorSessionsWorkspace({
       } catch {
         if (!cancelled && search.claim) {
           recentlyDiscardedClaimIds.current.add(search.claim);
-          void navigate({
-            to: "/tutor/sessions",
-            search: { claim: undefined },
-            replace: true,
-          });
+          // If the claim cannot be loaded (e.g. deleted or inaccessible),
+          // leave the URL alone and just keep the workspace closed instead
+          // of navigating away and clearing the `claim` parameter.
+          setDetailClaim(null);
+          setDetailOpen(false);
         }
       }
     })();

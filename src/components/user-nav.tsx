@@ -41,14 +41,14 @@ export function UserNav({ user }: UserNavProps) {
     <div className="relative" ref={dropdownRef}>
       <Button
         variant="ghost"
-        className="relative h-10 w-10 rounded-full ring-offset-background transition-all hover:ring-2 hover:ring-[var(--lagoon)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className="relative h-10 w-10 rounded-full ring-offset-background transition-all hover:ring-2 hover:ring-(--lagoon) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         onClick={() => setOpen(!open)}
       >
         <Avatar className="h-10 w-10">
           {user.user_metadata?.avatar_url ? (
             <AvatarImage src={user.user_metadata.avatar_url} alt={user.email} />
           ) : (
-            <AvatarFallback className="bg-[var(--lagoon)] text-white">{initials}</AvatarFallback>
+            <AvatarFallback className="bg-(--lagoon) text-white">{initials}</AvatarFallback>
           )}
         </Avatar>
       </Button>
@@ -60,7 +60,7 @@ export function UserNav({ user }: UserNavProps) {
               {user.user_metadata?.full_name || "User"}
             </p>
             <p className="text-xs text-gray-500 truncate">{user.email}</p>
-            <span className="mt-1 inline-block rounded-full bg-[var(--lagoon)]/10 px-2 py-0.5 text-[10px] font-bold uppercase text-[var(--lagoon-deep)]">
+            <span className="mt-1 inline-block rounded-full bg-(--lagoon)/10 px-2 py-0.5 text-[10px] font-bold uppercase text-(--lagoon-deep)">
               {roleLabel}
             </span>
           </div>
@@ -73,7 +73,7 @@ export function UserNav({ user }: UserNavProps) {
               Dashboard
             </a>
             <a
-              href="/settings"
+              href="/settings/"
               className="flex w-full items-center px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
               onClick={() => setOpen(false)}
             >

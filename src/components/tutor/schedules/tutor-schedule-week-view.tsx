@@ -40,7 +40,7 @@ export function TutorScheduleWeekView({
   return (
     <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border/60">
       <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
-        <div className="grid h-full min-h-[22rem] min-w-[42rem] grid-cols-7 gap-px bg-border/60">
+        <div className="grid h-full min-h-[18rem] min-w-[36rem] sm:min-h-[22rem] sm:min-w-[42rem] grid-cols-7 gap-px bg-border/60">
           {days.map((day) => {
             const key = dayKeyFromUiDate(day);
             const dayEvents = byDay.get(key) ?? [];

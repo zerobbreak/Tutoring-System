@@ -45,8 +45,8 @@ export function TutorScheduleDayPanel({
 
   return (
     <>
-      <aside className="flex min-h-0 w-full shrink-0 flex-col bg-background lg:w-[min(100%,28rem)]">
-        <header className="shrink-0 border-b border-border/40 px-4 py-4 md:px-6">
+      <aside className="flex min-h-0 w-full flex-1 flex-col bg-background lg:w-[min(100%,28rem)] lg:flex-none">
+        <header className="shrink-0 border-b border-border/40 px-3 py-3 sm:px-4 sm:py-4 md:px-6">
           <h3 className="text-lg font-semibold leading-snug tracking-tight text-foreground md:text-xl">
             {selectedDay ? dayHeadingLong(selectedDay) : "Pick a day"}
           </h3>
@@ -58,7 +58,7 @@ export function TutorScheduleDayPanel({
         </header>
 
         <ScrollArea className="min-h-0 flex-1">
-          <div className="px-4 pb-8 md:px-6">
+          <div className="px-3 pb-8 sm:px-4 md:px-6">
             {!selectedDay ? (
               <p className="py-12 text-center text-sm text-muted-foreground">
                 Select a day in the timetable

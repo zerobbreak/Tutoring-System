@@ -20,7 +20,7 @@ const LECTURER_NAV_GROUPS: readonly AppShellNavGroup[] = [
   {
     label: "Overview",
     items: [
-      { to: "/lecturer", label: "Dashboard", icon: LayoutDashboard },
+      { to: "/lecturer/", label: "Dashboard", icon: LayoutDashboard },
       {
         to: "/lecturer/verification-queue",
         label: "Verification Queue",
@@ -61,7 +61,7 @@ export function LecturerAppShell({
 }) {
   return (
     <AppShell
-      homePath="/lecturer"
+      homePath="/lecturer/"
       brandMark={<span className="text-xs font-bold">EL</span>}
       brandTitle="Lecturer Hub"
       brandSubtitle="Emeris Learning"

@@ -365,7 +365,7 @@ export function TutorSchedulesPage() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-auto lg:overflow-hidden">
       <TutorScheduleToolbar
         focusDate={focusDate}
         view={view}
@@ -390,8 +390,8 @@ export function TutorSchedulesPage() {
 
       <TutorScheduleParseAlert issues={result.rowIssues} />
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-4 pt-3 md:p-6 md:pt-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-auto lg:flex-row lg:overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-3 pt-2 sm:p-4 sm:pt-3 md:p-6 md:pt-4">
           {view === "week" ? (
             <TutorScheduleWeekView
               focusDate={focusDate}

@@ -75,7 +75,7 @@ export function TutorScheduleToolbar({
   };
 
   return (
-    <div className="shrink-0 space-y-3 border-b border-border/40 px-4 py-3 md:px-6">
+    <div className="shrink-0 space-y-3 border-b border-border/40 px-3 py-2 sm:px-4 sm:py-3 md:px-6">
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-0.5">
           <Button
