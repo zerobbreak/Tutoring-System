@@ -43,6 +43,7 @@ import {
 import { purgeExpiredDraftClaimsForTutor } from "#/server-actions/tutor-sessions/purge-expired-drafts";
 import { assertScheduledSessionActiveForClaimLink } from "#/server-actions/scheduled-sessions/session-lifecycle";
 import { requireStepUpMfa } from "#/lib/mfa-auth-server";
+import { syncTutorDraftClaimsFromSchedule } from "#/lib/schedule-claims/ensure-scheduled-session-claim";
 
 async function requireUserId(
   supabase: ReturnType<typeof createSupabaseServerClient>,
@@ -278,6 +279,12 @@ export const listTutorSessionClaimsFn = createServerFn({
     await purgeExpiredDraftClaimsForTutor(supabase, tutorId);
   } catch {
     /* Best-effort purge — do not block sessions/claims workspace load */
+  }
+
+  try {
+    await syncTutorDraftClaimsFromSchedule(supabase, tutorId);
+  } catch {
+    /* Best-effort — keep listing when schedule sync fails */
   }
 
   const { data, error } = await supabase

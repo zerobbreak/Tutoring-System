@@ -10,6 +10,8 @@ type ClaimRow = {
   frozen_at: string | null;
 };
 
+const MAX_SYNC_DRAFT_CLAIMS_PER_LIST = 40;
+
 const SESSION_SELECT = `
   id,
   module_id,
@@ -77,6 +79,39 @@ async function findTombstonedClaimForSession(
 
   if (error) throw new Error(error.message);
   return data as ClaimRow | null;
+}
+
+/** Align DRAFT schedule-linked claims with current `scheduled_sessions` rows (best-effort). */
+export async function syncTutorDraftClaimsFromSchedule(
+  db: SupabaseClient,
+  tutorId: string,
+): Promise<void> {
+  const { data, error } = await db
+    .from("session_claims")
+    .select("source_scheduled_session_id")
+    .eq("tutor_id", tutorId)
+    .eq("status", "DRAFT")
+    .is("frozen_at", null)
+    .is("deleted_at", null)
+    .not("source_scheduled_session_id", "is", null);
+
+  if (error || !data?.length) return;
+
+  const sessionIds = [
+    ...new Set(
+      data
+        .map((r) => r.source_scheduled_session_id as string | null)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ].slice(0, MAX_SYNC_DRAFT_CLAIMS_PER_LIST);
+
+  for (const sessionId of sessionIds) {
+    try {
+      await ensureScheduledSessionClaim(db, sessionId);
+    } catch {
+      /* best-effort */
+    }
+  }
 }
 
 /** Create or return session_claim for a published occurrence; sync DRAFT fields from schedule. */

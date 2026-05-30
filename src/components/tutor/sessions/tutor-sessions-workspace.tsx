@@ -8,53 +8,35 @@ import {
   PointerSensor,
   TouchSensor,
   pointerWithin,
-  useDraggable,
-  useDroppable,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
 import { Link } from "@tanstack/react-router";
-import { format, parseISO, startOfDay } from "date-fns";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { format, parseISO } from "date-fns";
+import { useReducedMotion } from "framer-motion";
 import {
-  AlertTriangle,
   CalendarDays,
-  CalendarRange,
   CheckCircle2,
   Clock,
   MapPin,
   CheckSquare,
-  ChevronDown,
   ChevronRight,
-  CircleDot,
   ClipboardList,
   FileWarning,
-  GripVertical,
-  LayoutGrid,
   Loader2,
-  MoreHorizontal,
   Plus,
-  Search,
   Send,
   StickyNote,
-  Table2,
   Trash2,
   Upload,
   Video,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Avatar, AvatarFallback } from "#/components/ui/avatar";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "#/components/ui/card";
 import { Calendar } from "#/components/ui/calendar";
+import { Card, CardContent } from "#/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -65,16 +47,14 @@ import {
 } from "#/components/ui/dialog";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "#/components/ui/dropdown-menu";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
-import { ScrollArea, ScrollBar } from "#/components/ui/scroll-area";
+import { ScrollArea } from "#/components/ui/scroll-area";
 import { Skeleton } from "#/components/ui/skeleton";
 import {
   Table,
@@ -84,11 +64,29 @@ import {
   TableHeader,
   TableRow,
 } from "#/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
+import { Tabs, TabsContent } from "#/components/ui/tabs";
 import { TooltipProvider } from "#/components/ui/tooltip";
 import { StudentCardScanner } from "#/components/tutor/attendance/student-card-scanner";
 import { PrivateSessionFeedbackReadBlock } from "#/components/private-session-feedback/private-session-feedback-read-block";
 import { SubmitClaimDialog } from "#/components/tutor/sessions/submit-claim-dialog";
+import {
+  DROP_PREFIX,
+  COLUMN_META,
+} from "#/components/tutor/sessions/tutor-sessions-board-meta";
+import {
+  DroppableColumn,
+  DraggableSessionCard,
+  KanbanColumnHeader,
+  KanbanDragOverlay,
+  AnimatePresence,
+  motion,
+} from "#/components/tutor/sessions/tutor-session-kanban-card";
+import {
+  TutorSessionsHourBudget,
+  TutorSessionsMetricsStrip,
+  TutorSessionsPageHeader,
+  TutorSessionsToolbar,
+} from "#/components/tutor/sessions/tutor-sessions-page-chrome";
 import {
   attendanceScanWindowLabel,
   canTutorScanAttendanceForClaim,
@@ -110,9 +108,11 @@ import type { TutorHourBudgetSummary } from "#/lib/tutor-hour-budget";
 import { getTutorHourBudgetFn } from "#/server-actions/tutor-allocations";
 import { cn } from "#/lib/utils";
 import {
+  isTutorManualRequestInPendingColumn,
   SESSION_REQUEST_STATUS,
-  sessionRequestStatusLabel,
 } from "#/lib/session-request-status";
+import { subscribeToTutorSessionClaims } from "#/lib/tutor-sessions-realtime";
+import { useSessionUser } from "#/lib/use-session-user";
 import {
   createSessionClaimFn,
   deleteDraftSessionClaimFn,
@@ -158,8 +158,6 @@ function workspaceClaimFromDetails(detail: ClaimDetailsDTO): TutorSessionClaimDT
   };
 }
 
-const DROP_PREFIX = "kanban-drop:";
-
 const ALL_STATUSES: ClaimStatus[] = [
   "DRAFT",
   "PENDING_VERIFICATION",
@@ -169,86 +167,12 @@ const ALL_STATUSES: ClaimStatus[] = [
   "APPROVED",
 ];
 
-const COLUMN_META: Record<
-  SessionKanbanColumnId,
-  {
-    title: string;
-    description: string;
-    accentBorder: string;
-    headerBg: string;
-    countClass: string;
-    emptyHint: string;
-  }
-> = {
-  claimsPending: {
-    title: "Pending",
-    description: "Session requests and claims awaiting review",
-    accentBorder: "border-t-amber-500",
-    headerBg: "bg-gradient-to-b from-amber-500/8 to-transparent",
-    countClass: "bg-amber-500/15 text-amber-900 dark:text-amber-100",
-    emptyHint: "No claims in review right now.",
-  },
-  today: {
-    title: "Today's sessions",
-    description: "On your timetable today",
-    accentBorder: "border-t-emerald-500",
-    headerBg: "bg-gradient-to-b from-emerald-500/8 to-transparent",
-    countClass: "bg-emerald-500/15 text-emerald-900 dark:text-emerald-100",
-    emptyHint: "Nothing scheduled for today.",
-  },
-  upcoming: {
-    title: "Upcoming",
-    description: "Scheduled ahead",
-    accentBorder: "border-t-[var(--lagoon-deep)]",
-    headerBg: "bg-gradient-to-b from-lagoon/10 to-transparent",
-    countClass: "bg-lagoon/15 text-lagoon-deep",
-    emptyHint: "Drag sessions here or create one below.",
-  },
-  completed: {
-    title: "Completed",
-    description: "Already delivered",
-    accentBorder: "border-t-border",
-    headerBg: "bg-gradient-to-b from-muted/50 to-transparent",
-    countClass: "bg-muted text-muted-foreground",
-    emptyHint: "Finished sessions land here.",
-  },
-};
-
-const SESSION_STAT_CARDS = [
-  {
-    label: "Total sessions",
-    key: "total" as const,
-    icon: ClipboardList,
-    cardClass: "border-border/70 bg-card/80",
-    iconWrap: "bg-muted text-muted-foreground",
-    valueClass: "",
-  },
-  {
-    label: "Pending claims",
-    key: "pendingClaims" as const,
-    icon: AlertTriangle,
-    cardClass: "border-amber-500/25 bg-amber-500/5",
-    iconWrap: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-    valueClass: "text-amber-700 dark:text-amber-300",
-  },
-  {
-    label: "Attendance coverage",
-    key: "attendanceRate" as const,
-    icon: CheckCircle2,
-    cardClass: "border-emerald-500/25 bg-emerald-500/5",
-    iconWrap: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-    valueClass: "text-emerald-700 dark:text-emerald-300",
-    suffix: "%",
-  },
-  {
-    label: "Upcoming sessions",
-    key: "upcomingSessions" as const,
-    icon: CalendarRange,
-    cardClass: "border-lagoon/30 bg-lagoon/5",
-    iconWrap: "bg-lagoon/15 text-lagoon-deep",
-    valueClass: "",
-  },
-] as const;
+function claimTimes(claim: TutorSessionClaimDTO) {
+  return {
+    start: claim.start_time ?? "09:00",
+    end: claim.end_time ?? "10:00",
+  };
+}
 
 function claimStatusRail(status: ClaimStatus): string {
   switch (status) {
@@ -263,13 +187,6 @@ function claimStatusRail(status: ClaimStatus): string {
     default:
       return "border-l-muted-foreground/30";
   }
-}
-
-function claimTimes(claim: TutorSessionClaimDTO) {
-  return {
-    start: claim.start_time ?? "09:00",
-    end: claim.end_time ?? "10:00",
-  };
 }
 
 function isSessionLive(claim: TutorSessionClaimDTO, now: Date): boolean {
@@ -328,414 +245,6 @@ const kanbanCollisionDetection: CollisionDetection = (args) => {
   return cornerHits;
 };
 
-function KanbanDragOverlay({ claim }: { claim: TutorSessionClaimDTO }) {
-  const mod = claim.module;
-  const status = claim.status as ClaimStatus;
-  return (
-    <Card
-      className={cn(
-        "w-[min(300px,calc(100vw-2rem))] cursor-grabbing border-l-[3px] bg-card shadow-2xl ring-2 ring-lagoon-deep/20",
-        claimStatusRail(status),
-      )}
-    >
-      <CardHeader className="gap-2 p-4 pb-2">
-        {mod?.code ? (
-          <span className="w-fit rounded-md bg-lagoon/10 px-2 py-0.5 text-[10px] font-bold tracking-wide text-lagoon-deep uppercase">
-            {mod.code}
-          </span>
-        ) : null}
-        <CardTitle className="text-sm leading-snug font-semibold">
-          {mod?.name ?? "Unknown module"}
-        </CardTitle>
-        <CardDescription className="text-xs">
-          {format(parseISO(`${claim.session_date}T12:00:00`), "EEE d MMM")}{" "}
-          · {formatClock(claim.start_time)}–{formatClock(claim.end_time)}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="pb-4">
-        <Badge variant={claimBadgeVariant(status)}>
-          {claimBadgeLabel(status)}
-        </Badge>
-      </CardContent>
-    </Card>
-  );
-}
-
-function DroppableColumn({
-  id,
-  children,
-  className,
-}: {
-  id: SessionKanbanColumnId;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: `${DROP_PREFIX}${id}`,
-    disabled: id === "claimsPending",
-    data: { columnId: id },
-  });
-  return (
-    <div
-      ref={setNodeRef}
-      className={cn(
-        "flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border border-border/70 bg-muted/15 shadow-sm transition-all duration-200",
-        COLUMN_META[id].accentBorder,
-        "border-t-[3px]",
-        isOver &&
-          id !== "claimsPending" &&
-          "border-lagoon-deep/60 bg-lagoon/8 shadow-md ring-1 ring-lagoon-deep/15",
-        className,
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
-function DraggableSessionCard({
-  claim,
-  columnId,
-  onOpen,
-  onQr,
-  onUpload,
-  onAttendance,
-  onSubmit,
-  onWorkspace,
-  onDiscard,
-  onEditRequest,
-  draftSelectMode,
-  draftSelected,
-  onToggleDraftSelect,
-  now,
-}: {
-  claim: TutorSessionClaimDTO;
-  columnId: SessionKanbanColumnId;
-  onOpen: () => void;
-  onQr: () => void;
-  onUpload: () => void;
-  onAttendance: () => void;
-  onSubmit: () => void;
-  onWorkspace: () => void;
-  onDiscard?: () => void;
-  onEditRequest?: () => void;
-  draftSelectMode: boolean;
-  draftSelected: boolean;
-  onToggleDraftSelect: () => void;
-  now: Date;
-}) {
-  const reduceMotion = useReducedMotion();
-  const isDraft = claim.status === "DRAFT";
-  const pendingRequest =
-    claim.request_status === SESSION_REQUEST_STATUS.PENDING ||
-    claim.request_status === SESSION_REQUEST_STATUS.CHANGES_REQUESTED ||
-    claim.request_status === SESSION_REQUEST_STATUS.REJECTED;
-  const canWorkSession = !pendingRequest;
-  const dragDisabled = columnId === "claimsPending" || draftSelectMode || pendingRequest;
-  const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({
-      id: claim.id,
-      disabled: dragDisabled,
-      data: { columnId },
-    });
-
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      }
-    : undefined;
-
-  const mod = claim.module;
-  const status = claim.status as ClaimStatus;
-  const lecturerName = mod?.lecturer?.full_name ?? "Lecturer";
-  const initials = lecturerName
-    .split(/\s+/)
-    .map((p) => p[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-
-  const expected = claim.attendance_expected_count;
-  const present = claim.attendance_present_count;
-  const hasHeadcount =
-    expected != null && expected > 0 && present != null && present >= 0;
-  const progressRatio = hasHeadcount
-    ? Math.min(1, (present as number) / (expected as number))
-    : claim.evidenceCount > 0
-      ? 1
-      : 0;
-  const progressLabel = hasHeadcount
-    ? `${present}/${expected} students`
-    : claim.evidenceCount > 0
-      ? "Register on file"
-      : "Attendance —";
-
-  const progressPct = Math.round(progressRatio * 100);
-  const live = isSessionLive(claim, now);
-  const urgent = isSessionUrgent(claim, now);
-
-  return (
-    <motion.div
-      ref={setNodeRef}
-      style={style}
-      layout={!reduceMotion && !isDragging}
-      initial={false}
-      animate={
-        reduceMotion
-          ? undefined
-          : { opacity: isDragging ? 0.35 : 1, scale: isDragging ? 0.98 : 1 }
-      }
-      transition={{ type: "spring", stiffness: 420, damping: 32 }}
-      className={cn(isDragging && "relative z-0")}
-    >
-      <Card
-        className={cn(
-          "group/card cursor-pointer border-l-[3px] bg-card shadow-sm transition-all hover:shadow-md",
-          claimStatusRail(status),
-          urgent && "ring-1 ring-amber-500/20",
-          live && "ring-1 ring-emerald-500/25",
-          draftSelectMode && draftSelected && "ring-2 ring-lagoon-deep/40",
-        )}
-        onClick={() => {
-          if (draftSelectMode && isDraft) {
-            onToggleDraftSelect();
-            return;
-          }
-          onOpen();
-        }}
-      >
-        <CardHeader className="gap-2 p-3 pb-2">
-          <div className="flex items-start gap-2">
-            {draftSelectMode && isDraft ? (
-              <label
-                className="mt-0.5 flex shrink-0 cursor-pointer items-center"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <input
-                  type="checkbox"
-                  checked={draftSelected}
-                  onChange={onToggleDraftSelect}
-                  className="size-4 rounded border-input accent-(--lagoon-deep)"
-                  aria-label={`Select ${mod?.code ?? "session"} draft`}
-                />
-              </label>
-            ) : null}
-            {!dragDisabled ? (
-              <button
-                type="button"
-                className="mt-0.5 shrink-0 cursor-grab touch-none rounded-md bg-muted/60 p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:cursor-grabbing"
-                aria-label="Drag to reschedule"
-                onClick={(e) => e.stopPropagation()}
-                {...listeners}
-                {...attributes}
-              >
-                <GripVertical className="size-3.5" />
-              </button>
-            ) : (
-              <span className="mt-0.5 inline-flex shrink-0 rounded-md bg-muted/40 p-1.5 text-muted-foreground/35">
-                <GripVertical className="size-3.5" />
-              </span>
-            )}
-            <div className="min-w-0 flex-1 space-y-1">
-              <div className="flex flex-wrap items-center gap-1.5">
-                {live ? (
-                  <Badge variant="success" className="gap-0.5 px-1.5 py-0 text-[10px]">
-                    <CircleDot className="size-3" />
-                    Live
-                  </Badge>
-                ) : null}
-                {urgent && !live ? (
-                  <Badge variant="warning" className="gap-0.5 px-1.5 py-0 text-[10px]">
-                    <AlertTriangle className="size-3" />
-                    Urgent
-                  </Badge>
-                ) : null}
-                {mod?.code ? (
-                  <span className="rounded bg-lagoon/10 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-lagoon-deep uppercase">
-                    {mod.code}
-                  </span>
-                ) : null}
-                {pendingRequest ? (
-                  <Badge variant="warning" className="px-1.5 py-0 text-[10px]">
-                    {sessionRequestStatusLabel(
-                      claim.request_status as
-                        | "PENDING"
-                        | "CHANGES_REQUESTED"
-                        | "REJECTED"
-                        | "APPROVED"
-                        | null,
-                    )}
-                  </Badge>
-                ) : null}
-              </div>
-              <CardTitle className="line-clamp-2 text-sm leading-snug font-semibold">
-                {mod?.name ?? "Unknown module"}
-              </CardTitle>
-              <p className="mt-1 text-xs text-muted-foreground">
-                <span className="font-medium text-foreground/80">
-                  {format(parseISO(`${claim.session_date}T12:00:00`), "EEE d MMM")}
-                </span>
-                {" · "}
-                {formatClock(claim.start_time)}–{formatClock(claim.end_time)}
-                {claim.venue ? (
-                  <span className="text-muted-foreground"> · {claim.venue}</span>
-                ) : null}
-              </p>
-              {claim.review_feedback ? (
-                <p className="mt-1 rounded-md bg-amber-500/10 px-2 py-1 text-xs text-amber-900 dark:text-amber-100">
-                  {claim.review_feedback}
-                </p>
-              ) : null}
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  className="shrink-0 opacity-70 group-hover/card:opacity-100"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <MoreHorizontal className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
-                <DropdownMenuItem onSelect={onWorkspace}>
-                  Open session
-                </DropdownMenuItem>
-                {onEditRequest ? (
-                  <DropdownMenuItem onSelect={onEditRequest}>
-                    Update request
-                  </DropdownMenuItem>
-                ) : null}
-                {canWorkSession ? (
-                  <>
-                    <DropdownMenuItem onSelect={onUpload}>
-                      Upload register
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onSelect={onQr}>Generate QR</DropdownMenuItem>
-                    <DropdownMenuItem onSelect={onAttendance}>
-                      View attendance
-                    </DropdownMenuItem>
-                  </>
-                ) : null}
-                {claim.status === "DRAFT" && canWorkSession ? (
-                  <DropdownMenuItem onSelect={onSubmit}>
-                    Submit claim
-                  </DropdownMenuItem>
-                ) : null}
-                {isDraft && onDiscard ? (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      className="text-destructive focus:text-destructive"
-                      onSelect={onDiscard}
-                    >
-                      <Trash2 className="size-4" />
-                      Discard draft
-                    </DropdownMenuItem>
-                  </>
-                ) : null}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link
-                    to="/tutor/notes"
-                    search={{ claim: claim.id, focus: Date.now() }}
-                  >
-                    Add notes
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link
-                    to="/tutor/messaging"
-                    search={
-                      mod?.lecturer_id
-                        ? { lecturer: mod.lecturer_id }
-                        : undefined
-                    }
-                  >
-                    Message lecturer
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3 px-3 pt-0 pb-3">
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between gap-2 text-xs">
-              <span className="text-muted-foreground">{progressLabel}</span>
-              {hasHeadcount || claim.evidenceCount > 0 ? (
-                <span className="font-semibold tabular-nums text-foreground">
-                  {progressPct}%
-                </span>
-              ) : null}
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-              <div
-                className={cn(
-                  "h-full rounded-full transition-all",
-                  progressPct >= 100
-                    ? "bg-emerald-500"
-                    : progressPct > 0
-                      ? "bg-lagoon-deep"
-                      : "bg-transparent",
-                )}
-                style={{ width: `${progressPct}%` }}
-              />
-            </div>
-          </div>
-          <div className="flex items-center justify-between gap-2 border-t border-border/50 pt-2">
-            <div className="flex min-w-0 items-center gap-2">
-              <Avatar className="size-7 shrink-0 border border-border/60">
-                <AvatarFallback className="text-[9px] font-medium">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0">
-                <p className="truncate text-xs font-medium text-foreground">
-                  {lecturerName}
-                </p>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <Badge
-                    variant={claimBadgeVariant(status)}
-                    className="px-1.5 py-0 text-[10px]"
-                  >
-                    {claimBadgeLabel(status)}
-                  </Badge>
-                  {claim.evidenceCount > 0 ? (
-                    <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
-                      <CheckCircle2 className="size-3 text-emerald-600" />
-                      Evidence
-                    </span>
-                  ) : null}
-                  {(claim.notes?.trim() || claim.topics_covered?.trim()) && (
-                    <StickyNote className="size-3 text-lagoon-deep" aria-hidden />
-                  )}
-                </div>
-              </div>
-            </div>
-            {isDraft ? (
-              <Button
-                type="button"
-                size="xs"
-                className="shrink-0 gap-1.5"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSubmit();
-                }}
-              >
-                <Send className="size-3.5" />
-                Submit claim
-              </Button>
-            ) : (
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground/50 transition-transform group-hover/card:translate-x-0.5 group-hover/card:text-lagoon-deep" />
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
-}
 
 type SessionsSearch = { claim?: string };
 
@@ -753,6 +262,9 @@ export function TutorSessionsWorkspace({
   navigate,
 }: TutorSessionsWorkspaceProps) {
   const reduceMotion = useReducedMotion();
+  const { user } = useSessionUser();
+  const tutorId = user?.id ?? null;
+  const reloadDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [claims, setClaims] = useState<TutorSessionClaimDTO[]>([]);
   const [loading, setLoading] = useState(true);
@@ -838,24 +350,50 @@ export function TutorSessionsWorkspace({
   }, []);
 
 
-  const reload = useCallback(async () => {
-    setLoading(true);
+  const reload = useCallback(async (options?: { silent?: boolean }) => {
+    if (!options?.silent) setLoading(true);
     try {
       const rows = await listTutorSessionClaimsFn();
       setClaims(rows);
     } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : "Could not load teaching sessions",
-      );
-      setClaims([]);
+      if (!options?.silent) {
+        toast.error(
+          e instanceof Error ? e.message : "Could not load teaching sessions",
+        );
+        setClaims([]);
+      }
     } finally {
-      setLoading(false);
+      if (!options?.silent) setLoading(false);
     }
   }, []);
+
+  const scheduleSilentReload = useCallback(() => {
+    if (reloadDebounceRef.current) {
+      clearTimeout(reloadDebounceRef.current);
+    }
+    reloadDebounceRef.current = setTimeout(() => {
+      void reload({ silent: true });
+    }, 400);
+  }, [reload]);
 
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    if (!tutorId) return;
+
+    const unsubRealtime = subscribeToTutorSessionClaims(tutorId, scheduleSilentReload);
+    const poll = window.setInterval(() => {
+      if (document.visibilityState === "visible") scheduleSilentReload();
+    }, 20_000);
+
+    return () => {
+      unsubRealtime();
+      window.clearInterval(poll);
+      if (reloadDebounceRef.current) clearTimeout(reloadDebounceRef.current);
+    };
+  }, [tutorId, scheduleSilentReload]);
 
   useEffect(() => {
     void getTutorHourBudgetFn()
@@ -865,11 +403,17 @@ export function TutorSessionsWorkspace({
 
   useEffect(() => {
     const onVisible = () => {
-      if (document.visibilityState === "visible") void reload();
+      if (document.visibilityState === "visible") void reload({ silent: true });
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [reload]);
+
+  useEffect(() => {
+    if (!detailClaim) return;
+    const hit = claims.find((c) => c.id === detailClaim.id);
+    if (hit) setDetailClaim(hit);
+  }, [claims, detailClaim?.id]);
 
   const loadAttendanceForClaim = useCallback(async (claimId: string) => {
     const rows = await getAttendanceDataFn({ data: { claimId } });
@@ -1088,11 +632,7 @@ export function TutorSessionsWorkspace({
       completed: [],
     };
     for (const c of filteredClaims) {
-      if (
-        c.request_status === SESSION_REQUEST_STATUS.PENDING ||
-        c.request_status === SESSION_REQUEST_STATUS.CHANGES_REQUESTED ||
-        c.request_status === SESSION_REQUEST_STATUS.REJECTED
-      ) {
+      if (isTutorManualRequestInPendingColumn(c)) {
         buckets.claimsPending.push(c);
         continue;
       }
@@ -1245,158 +785,38 @@ export function TutorSessionsWorkspace({
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <ScrollArea className="min-h-0 flex-1">
         <div className="shrink-0 space-y-4 border-b border-border/60 p-3 sm:space-y-5 sm:p-4 md:p-6 lg:p-8">
-          <header className="flex min-w-0 gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-lagoon/10 text-lagoon-deep sm:size-11">
-              <Video className="size-5 sm:size-6" aria-hidden />
-            </span>
-            <div className="min-w-0 space-y-1">
-              <h1 className="font-display text-xl font-semibold tracking-tight text-foreground sm:text-2xl md:text-3xl">
-                Sessions workspace
-              </h1>
-              <p className="max-w-2xl text-sm text-muted-foreground">
-                Operational hub for live teaching: attendance, claims, registers,
-                and quick hand-offs to notes or messaging.
-              </p>
-            </div>
-          </header>
+          <TutorSessionsPageHeader onCreateSession={() => setCreateOpen(true)} />
 
-          {hourBudget && hourBudget.totals.allocatedHours > 0 ? (
-            <div
-              className={cn(
-                "rounded-lg border px-3 py-2 text-sm",
-                hourBudget.totals.availableHours < 0
-                  ? "border-destructive/40 bg-destructive/5 text-destructive"
-                  : "border-border/70 bg-muted/20 text-muted-foreground",
-              )}
-            >
-              <span className="font-medium text-foreground">Hour allocation: </span>
-              {hourBudget.totals.reservedHours}h reserved of{" "}
-              {hourBudget.totals.allocatedHours}h
-              {hourBudget.totals.availableHours >= 0
-                ? ` (${hourBudget.totals.availableHours}h available)`
-                : ` (${Math.abs(hourBudget.totals.availableHours)}h over cap)`}
-              . Worked: {hourBudget.totals.workedHours}h.
-            </div>
-          ) : null}
+          <TutorSessionsHourBudget loading={loading} hourBudget={hourBudget} />
 
-          <div className="rounded-xl border border-border/70 bg-muted/15 p-3 sm:p-4">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-4">
-            <div className="relative min-w-0 sm:col-span-2 lg:col-span-1">
-              <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                placeholder="Search sessions..."
-                className="w-full pl-9"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:col-span-2 sm:flex sm:flex-wrap lg:col-span-1 lg:justify-end">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1">
-                    Module
-                    <ChevronDown className="size-4 opacity-70" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-64">
-                  <DropdownMenuItem onSelect={() => setModuleFilter("all")}>
-                    All modules
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  {moduleOptions.map(([id, label]) => (
-                    <DropdownMenuItem key={id} onSelect={() => setModuleFilter(id)}>
-                      {label}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1">
-                    Date
-                    <ChevronDown className="size-4 opacity-70" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-52">
-                  <DropdownMenuItem onSelect={() => setDateFilter(undefined)}>
-                    Any date
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onSelect={() => setDateFilter(startOfDay(new Date()))}
-                  >
-                    Today only
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setDatePickTemp(dateFilter ?? new Date());
-                      setDatePickOpen(true);
-                    }}
-                  >
-                    Pick date…
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <Dialog open={datePickOpen} onOpenChange={setDatePickOpen}>
-                <DialogContent className="sm:max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Filter by date</DialogTitle>
-                    <DialogDescription>
-                      Only sessions on this day are shown in the board and stats.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <Calendar
-                    mode="single"
-                    selected={datePickTemp}
-                    onSelect={setDatePickTemp}
-                    className="mx-auto rounded-md border p-2"
-                  />
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setDatePickOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        if (datePickTemp) setDateFilter(datePickTemp);
-                        setDatePickOpen(false);
-                      }}
-                    >
-                      Apply
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="gap-1">
-                    Claim status
-                    <ChevronDown className="size-4 opacity-70" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-56">
-                  <DropdownMenuLabel>Visible statuses</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {ALL_STATUSES.map((s) => (
-                    <DropdownMenuCheckboxItem
-                      key={s}
-                      checked={statusFilters.has(s)}
-                      onCheckedChange={() => toggleStatus(s)}
-                    >
-                      {claimBadgeLabel(s)}
-                    </DropdownMenuCheckboxItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {visibleDrafts.length > 0 ? (
+          <TutorSessionsToolbar
+            searchText={searchText}
+            onSearchChange={setSearchText}
+            moduleFilter={moduleFilter}
+            onModuleFilter={setModuleFilter}
+            moduleOptions={moduleOptions}
+            dateFilter={dateFilter}
+            onDateFilter={setDateFilter}
+            datePickOpen={datePickOpen}
+            onDatePickOpen={setDatePickOpen}
+            datePickTemp={datePickTemp}
+            onDatePickTemp={setDatePickTemp}
+            statusFilters={statusFilters}
+            onToggleStatus={toggleStatus}
+            workspaceTab={workspaceTab}
+            onWorkspaceTabChange={onWorkspaceTabChange}
+            onClearFilters={() => {
+              setModuleFilter("all");
+              setDateFilter(undefined);
+              setStatusFilters(new Set(ALL_STATUSES));
+            }}
+            draftSelectSlot={
+              visibleDrafts.length > 0 ? (
                 <Button
                   type="button"
                   variant={draftSelectMode ? "secondary" : "outline"}
                   size="sm"
-                  className="gap-1.5"
+                  className="h-8 gap-1.5"
                   onClick={() => {
                     if (draftSelectMode) exitDraftSelectMode();
                     else setDraftSelectMode(true);
@@ -1405,9 +825,9 @@ export function TutorSessionsWorkspace({
                   <CheckSquare className="size-4" />
                   {draftSelectMode ? "Cancel" : "Select drafts"}
                 </Button>
-              ) : null}
-            </div>
-            </div>
+              ) : null
+            }
+          />
 
           {draftSelectMode && visibleDrafts.length > 0 ? (
             <div className="flex flex-wrap items-center gap-2 rounded-lg border border-lagoon-deep/25 bg-lagoon/5 px-3 py-2 text-sm">
@@ -1446,80 +866,15 @@ export function TutorSessionsWorkspace({
             </div>
           ) : null}
 
-          {dateFilter ? (
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span>
-                Filtered to {format(dateFilter, "d MMM yyyy")} ·{" "}
-                <button
-                  type="button"
-                  className="font-medium text-lagoon-deep underline-offset-2 hover:underline"
-                  onClick={() => setDateFilter(undefined)}
-                >
-                  Clear date
-                </button>
-              </span>
-            </div>
-          ) : null}
-
-          <ScrollArea className="w-full mt-4">
-            <div className="flex gap-3 pb-3 min-w-max lg:grid lg:grid-cols-4 lg:min-w-0 lg:pb-0">
-              {SESSION_STAT_CARDS.map((card) => {
-                const { label, key, icon: Icon, cardClass, iconWrap, valueClass } = card;
-                const suffix = "suffix" in card ? card.suffix : undefined;
-                const raw = stats[key];
-                const display =
-                  loading ? "—" : suffix ? `${raw}${suffix}` : String(raw);
-                  return (
-                    <Card
-                      key={key}
-                      className={cn("w-[230px] shrink-0 shadow-sm transition-shadow hover:shadow-md lg:w-auto", cardClass)}
-                    >
-                      <CardHeader className="flex flex-row items-start justify-between gap-3 pb-2">
-                        <div className="min-w-0 space-y-1">
-                          <CardDescription className="text-xs">{label}</CardDescription>
-                          <CardTitle
-                            className={cn("text-2xl tabular-nums tracking-tight", valueClass)}
-                          >
-                            {display}
-                          </CardTitle>
-                        </div>
-                        <span
-                          className={cn(
-                            "flex size-9 shrink-0 items-center justify-center rounded-lg",
-                            iconWrap,
-                          )}
-                        >
-                          <Icon className="size-4" aria-hidden />
-                        </span>
-                      </CardHeader>
-                    </Card>
-                  );
-              })}
-            </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </div>
+          <TutorSessionsMetricsStrip loading={loading} stats={stats} />
         </div>
 
         <div className="flex min-w-0 flex-col px-3 pb-4 sm:px-4 md:px-6 lg:px-8">
           <Tabs
             value={workspaceTab}
             onValueChange={onWorkspaceTabChange}
-            className="flex flex-col pt-4"
+            className="flex flex-col pt-2"
           >
-            <div className="mb-3 flex shrink-0 flex-wrap items-center justify-between gap-3">
-              <TabsList className="h-10 gap-0.5 p-1">
-                <TabsTrigger value="kanban" className="h-8 gap-1.5 px-4">
-                  <LayoutGrid className="size-4" />
-                  Kanban
-                </TabsTrigger>
-                <TabsTrigger value="table" className="h-8 gap-1.5 px-4">
-                  <Table2 className="size-4" />
-                  Table
-                </TabsTrigger>
-              </TabsList>
-            </div>
-
             <TabsContent
               value="kanban"
               className="mt-0 flex flex-col data-[state=inactive]:hidden"
@@ -1546,31 +901,10 @@ export function TutorSessionsWorkspace({
                         id={colId}
                         className="flex h-[min(65vh,640px)] min-h-[280px] w-[min(88vw,19rem)] shrink-0 snap-center flex-col sm:w-[min(42vw,20rem)] 2xl:h-[min(70vh,720px)] 2xl:w-auto 2xl:min-w-0 2xl:max-w-none"
                       >
-                        <div
-                          className={cn(
-                            "shrink-0 border-b border-border/60 px-3 py-2.5",
-                            COLUMN_META[colId].headerBg,
-                          )}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="text-xs font-semibold tracking-tight text-foreground">
-                                {COLUMN_META[colId].title}
-                              </p>
-                              <p className="text-[11px] text-muted-foreground">
-                                {COLUMN_META[colId].description}
-                              </p>
-                            </div>
-                            <span
-                              className={cn(
-                                "inline-flex min-w-7 items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
-                                COLUMN_META[colId].countClass,
-                              )}
-                            >
-                              {columns[colId].length}
-                            </span>
-                          </div>
-                        </div>
+                        <KanbanColumnHeader
+                          colId={colId}
+                          count={columns[colId].length}
+                        />
                         <ScrollArea className="min-h-0 flex-1">
                           <div className="flex min-h-full flex-col gap-2 px-2 pb-3 pt-2">
                             <AnimatePresence initial={false}>
@@ -1593,6 +927,8 @@ export function TutorSessionsWorkspace({
                                     claim={c}
                                     columnId={colId}
                                     now={now}
+                                    isSessionLive={isSessionLive}
+                                    isSessionUrgent={isSessionUrgent}
                                     onOpen={() => openWorkspace(c)}
                                     onQr={() => {
                                       setQrClaim(c);
@@ -1920,12 +1256,12 @@ export function TutorSessionsWorkspace({
         <Button
           type="button"
           size="lg"
-          aria-label="Create session"
-          className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-30 h-12 gap-2 rounded-full px-4 shadow-lg sm:px-5"
+          aria-label="Request session"
+          className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-30 inline-flex h-12 gap-2 rounded-full bg-(--lagoon-deep) px-4 text-white shadow-lg hover:bg-(--lagoon-deep)/90 sm:hidden"
           onClick={() => setCreateOpen(true)}
         >
           <Plus className="size-5 shrink-0" />
-          <span className="hidden sm:inline">Create session</span>
+          Request
         </Button>
 
         <Dialog
@@ -2501,7 +1837,7 @@ export function TutorSessionsWorkspace({
                       }
                       setCreateOpen(false);
                       setResubmitClaimId(null);
-                      await reload();
+                      await reload({ silent: true });
                     } catch (e) {
                       toast.error(
                         e instanceof Error ? e.message : "Could not save request",
