@@ -6,6 +6,7 @@ import { OnboardingDocumentsCard } from "#/components/settings/onboarding-docume
 import { NotificationsSettings } from "#/components/settings/notifications-settings";
 import { SecuritySettings } from "#/components/settings/security-settings";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
+import { APP_PATHS } from "#/lib/app-paths";
 import { getPostAuthDashboardPath } from "#/lib/user-role";
 import {
   getSettingsProfileFn,
@@ -38,7 +39,7 @@ function SettingsPage() {
 
   useEffect(() => {
     if (!sessionData?.user) {
-      navigate({ to: "/auth/login" });
+      navigate({ to: APP_PATHS.auth.login });
     }
   }, [sessionData, navigate]);
 

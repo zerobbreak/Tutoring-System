@@ -7,27 +7,12 @@ import {
 import { scheduleClaimTimesFromTimestamps } from "#/lib/schedule-claim-times";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { ensureClaimForScheduledSession } from "#/server-actions/lecturer-schedule/ensure-claim-for-session";
-import type { TutorSessionClaimDTO } from "./index";
-
-async function requireUserId(
-  supabase: ReturnType<typeof createSupabaseServerClient>,
-): Promise<string> {
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-  if (error || !user) throw new Error("Unauthorized");
-  return user.id;
-}
-
-type LecturerRow = { id: string; full_name: string; email: string };
-
-function mapLecturer(
-  lecturer: LecturerRow | LecturerRow[] | null,
-): LecturerRow | null {
-  if (lecturer == null) return null;
-  return Array.isArray(lecturer) ? (lecturer[0] ?? null) : lecturer;
-}
+import { requireUserId } from "#/server-actions/tutor-sessions/helpers";
+import {
+  mapLecturer,
+  type LecturerRow,
+} from "#/server-actions/tutor-sessions/mappers";
+import type { TutorSessionClaimDTO } from "#/server-actions/tutor-sessions/types";
 
 const CLAIM_SELECT = `
   id,

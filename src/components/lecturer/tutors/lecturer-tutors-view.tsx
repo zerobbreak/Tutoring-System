@@ -1,5 +1,5 @@
 import type { NavigateOptions } from "@tanstack/react-router";
-import { Loader2, Plus, Search, Users } from "lucide-react";
+import { Plus, Search, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "#/components/ui/button";
 import {

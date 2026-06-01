@@ -1,4 +1,9 @@
 import {
+  closestCorners,
+  pointerWithin,
+  type CollisionDetection,
+} from "@dnd-kit/core";
+import {
   AlertTriangle,
   CalendarRange,
   CheckCircle2,
@@ -6,6 +11,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { SessionKanbanColumnId } from "#/lib/session-kanban-column";
+import type { TutorSessionClaimDTO } from "#/server-actions/tutor-sessions";
 
 export const DROP_PREFIX = "kanban-drop:";
 
@@ -126,4 +132,37 @@ export const COLUMN_HIGHLIGHT: Partial<
     key: "upcomingSessions",
     tone: "lagoon",
   },
+};
+
+export function resolveKanbanDropColumn(
+  overId: string,
+  columns: Record<SessionKanbanColumnId, TutorSessionClaimDTO[]>,
+): SessionKanbanColumnId | null {
+  if (overId.startsWith(DROP_PREFIX)) {
+    return overId.slice(DROP_PREFIX.length) as SessionKanbanColumnId;
+  }
+  for (const colId of Object.keys(columns) as SessionKanbanColumnId[]) {
+    if (columns[colId].some((c) => c.id === overId)) {
+      return colId;
+    }
+  }
+  return null;
+}
+
+/** Prefer column drop zones so empty lanes and headers register reliably. */
+export const kanbanCollisionDetection: CollisionDetection = (args) => {
+  const pointerHits = pointerWithin(args);
+  if (pointerHits.length > 0) {
+    const dropZone = pointerHits.find((c) =>
+      String(c.id).startsWith(DROP_PREFIX),
+    );
+    if (dropZone) return [dropZone];
+    return pointerHits;
+  }
+  const cornerHits = closestCorners(args);
+  const dropZone = cornerHits.find((c) =>
+    String(c.id).startsWith(DROP_PREFIX),
+  );
+  if (dropZone) return [dropZone];
+  return cornerHits;
 };

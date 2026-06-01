@@ -2,18 +2,21 @@ import {
   HeadContent,
   Link,
   Scripts,
-  createRootRoute,
+  createRootRouteWithContext,
   useLocation,
-  useRouter,
 } from "@tanstack/react-router";
-import { lazy, Suspense, useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
-import { UserNav } from "../components/user-nav";
-import { Toaster } from "../components/ui/sonner";
+import type { QueryClient } from "@tanstack/react-query";
+import { lazy, Suspense } from "react";
+import { RootPublicNav } from "#/components/root-public-nav";
+import { Toaster } from "#/components/ui/sonner";
+import { getCurrentUserFn } from "#/lib/auth-server";
+import { APP_PATHS } from "#/lib/app-paths";
+import type { RootLoaderData } from "#/lib/root-session";
+import { resolveRootShellLayout } from "#/lib/root-shell-layout";
+import { useRootAuthSync } from "#/lib/use-root-auth-sync";
+import { getPostAuthDashboardPath } from "#/lib/user-role";
 
 import appCss from "../styles.css?url";
-
-import { getCurrentUserFn } from "../lib/auth-server";
 
 const AppDevtools = import.meta.env.DEV
   ? lazy(() =>
@@ -22,10 +25,13 @@ const AppDevtools = import.meta.env.DEV
       })),
     )
   : null;
-import { getPostAuthDashboardPath } from "../lib/user-role";
 
-export const Route = createRootRoute({
-  loader: async () => {
+export type RouterContext = {
+  queryClient: QueryClient;
+};
+
+export const Route = createRootRouteWithContext<RouterContext>()({
+  loader: async (): Promise<RootLoaderData> => {
     try {
       const sessionData = await getCurrentUserFn();
       return { sessionData };
@@ -43,7 +49,7 @@ export const Route = createRootRoute({
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "TanStack Start Starter",
+        title: "Tutoring System",
       },
     ],
     links: [
@@ -60,7 +66,10 @@ export const Route = createRootRoute({
       <p className="mt-2 text-gray-600">
         The page you are looking for does not exist.
       </p>
-      <Link to="/auth/login" className="mt-4 text-indigo-600 hover:underline">
+      <Link
+        to={APP_PATHS.auth.login}
+        className="mt-4 text-indigo-600 hover:underline"
+      >
         Go to sign in
       </Link>
     </div>
@@ -68,96 +77,27 @@ export const Route = createRootRoute({
 });
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const loaderData = Route.useLoaderData();
-  const sessionData = loaderData?.sessionData;
-  const [session, setSession] = useState<any>(sessionData?.session ?? null);
+  const { sessionData } = Route.useLoaderData();
+  const sessionUser = useRootAuthSync(sessionData);
+  const { pathname } = useLocation();
+  const layout = resolveRootShellLayout(pathname);
 
-  useEffect(() => {
-    if (sessionData?.session) {
-      setSession(sessionData.session);
-    }
-  }, [sessionData]);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-      if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
-        void router.invalidate();
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [router]);
-
-  const location = useLocation();
-  const isAuthPage = location.pathname.startsWith("/auth");
-  const isPublicStudentPage = location.pathname.startsWith("/student");
-  const isTutorShell =
-    location.pathname === "/tutor" || location.pathname.startsWith("/tutor/");
-  const isAdminShell =
-    location.pathname === "/admin" || location.pathname.startsWith("/admin/");
-  const isLecturerShell =
-    location.pathname === "/lecturer" ||
-    location.pathname.startsWith("/lecturer/");
-  const isDashboardShell = isTutorShell || isAdminShell || isLecturerShell;
-
-  const brandTo = session?.user
+  const brandTo = sessionUser
     ? getPostAuthDashboardPath(
-        session.user.user_metadata?.role as string | undefined,
+        sessionUser.user_metadata?.role as string | undefined,
       )
-    : "/auth/login";
+    : APP_PATHS.auth.login;
 
   return (
     <html lang="en">
       <head>
         <HeadContent />
       </head>
-      <body
-        className={`bg-gray-50 ${isDashboardShell ? "flex h-screen flex-col overflow-hidden" : "min-h-screen"}`}
-      >
-        {!isAuthPage && !isDashboardShell && !isPublicStudentPage && (
-          <nav className="border-b bg-white px-4 py-3 shadow-sm">
-            <div className="mx-auto flex max-w-7xl items-center justify-between">
-              <Link to={brandTo} className="text-xl font-bold text-indigo-600">
-                Tutoring System
-              </Link>
-              <div className="flex items-center gap-4">
-                {session ? (
-                  <UserNav user={session.user} />
-                ) : (
-                  <>
-                    <Link
-                      to="/auth/login"
-                      className="text-sm font-medium text-gray-700 hover:text-indigo-600"
-                    >
-                      Login
-                    </Link>
-                    <Link
-                      to="/auth/register"
-                      className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
-                    >
-                      Register
-                    </Link>
-                  </>
-                )}
-              </div>
-            </div>
-          </nav>
-        )}
-        <main
-          className={
-            isDashboardShell ? "flex min-h-0 flex-1 flex-col" : undefined
-          }
-        >
-          {children}
-        </main>
+      <body className={`bg-gray-50 ${layout.bodyClassName}`}>
+        {layout.showPublicNav ? (
+          <RootPublicNav sessionUser={sessionUser} brandTo={brandTo} />
+        ) : null}
+        <main className={layout.mainClassName}>{children}</main>
         <Toaster richColors closeButton />
         {AppDevtools ? (
           <Suspense fallback={null}>

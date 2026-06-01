@@ -10,6 +10,7 @@ import { getSupabaseAdmin } from "./supabase-admin";
 import { PENDING_LIFECYCLE } from "./user-status";
 import { fetchAuthUserLifecycle } from "./user-lifecycle-server";
 import { getPostAuthDestination } from "./user-role";
+import type { RootSessionData } from "./root-session";
 
 const signUpInputSchema = z.object({
   email: z.email(),
@@ -169,7 +170,7 @@ export const getAuthUserLifecycleFn = createServerFn({ method: "GET" }).handler(
 );
 
 export const getCurrentUserFn = createServerFn({ method: "GET" }).handler(
-  async () => {
+  async (): Promise<RootSessionData | null> => {
     const supabase = createSupabaseServerClient();
 
     const {

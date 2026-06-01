@@ -1,7 +1,8 @@
 import { createFileRoute, getRouteApi } from "@tanstack/react-router";
 import { endOfDay, startOfDay } from "date-fns";
-import { useCallback, useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { LecturerScheduleView } from "#/components/lecturer/schedule/lecturer-schedule-view";
+import { useLecturerScheduleData } from "#/components/lecturer/schedule/use-lecturer-schedule-data";
 import { rangeForView } from "#/components/lecturer/schedule/schedule-range";
 import type { ScheduleCalendarView } from "#/components/lecturer/schedule/types";
 import { toast } from "#/lib/toast";
@@ -12,11 +13,9 @@ import {
   createOneOffScheduleSeriesFn,
   createScheduleSeriesFn,
   deleteScheduleSeriesFn,
-  getLecturerSchedulePageDataFn,
   publishScheduleSeriesFn,
   reviewScheduleChangeRequestFn,
   reviewTutorSessionRequestFn,
-  type LecturerSchedulePageDataDTO,
 } from "#/server-actions/lecturer-schedule";
 
 const rootRouteApi = getRouteApi("__root__");
@@ -29,43 +28,20 @@ function SchedulePage() {
   const { sessionData } = rootRouteApi.useLoaderData();
   const user = sessionData?.user;
 
-  const [booting, setBooting] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [data, setData] = useState<LecturerSchedulePageDataDTO | null>(null);
   const [view, setView] = useState<ScheduleCalendarView>("month");
   const [focusDate, setFocusDate] = useState(() => startOfDay(new Date()));
   const [formBusy, setFormBusy] = useState(false);
   const [reviewBusyId, setReviewBusyId] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    if (!user) return;
-    const range = rangeForView(view, focusDate);
-    setBooting(true);
-    setLoadError(null);
-    try {
-      const result = await getLecturerSchedulePageDataFn({
-        data: {
-          from: range.from.toISOString(),
-          to: endOfDay(range.to).toISOString(),
-        },
-      });
-      setData(result);
-    } catch (e) {
-      setLoadError(
-        e instanceof Error ? e.message : "Failed to load schedule",
-      );
-    } finally {
-      setBooting(false);
-    }
-  }, [user, view, focusDate]);
+  const range = useMemo(() => rangeForView(view, focusDate), [view, focusDate]);
+  const from = range.from.toISOString();
+  const to = endOfDay(range.to).toISOString();
 
-  useEffect(() => {
-    if (!user) {
-      setBooting(false);
-      return;
-    }
-    void load();
-  }, [user?.id, load]);
+  const { data, isLoading, error, invalidate } = useLecturerScheduleData({
+    enabled: !!user,
+    from,
+    to,
+  });
 
   const handleCreateSeries = async (values: {
     moduleId: string;
@@ -104,7 +80,7 @@ function SchedulePage() {
         },
       });
       toast.success("Tutorial series saved as draft — publish when ready.");
-      await load();
+      invalidate();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not create series");
       throw e;
@@ -146,7 +122,7 @@ function SchedulePage() {
         },
       });
       toast.success(`Published one-off session (${sessionCount} occurrence).`);
-      await load();
+      invalidate();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Could not create session");
       throw e;
@@ -162,7 +138,7 @@ function SchedulePage() {
         data: { seriesId },
       });
       toast.success(`Published ${sessionCount} session(s).`);
-      await load();
+      invalidate();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Publish failed");
     } finally {
@@ -175,7 +151,7 @@ function SchedulePage() {
     try {
       await deleteScheduleSeriesFn({ data: { seriesId } });
       toast.success("Draft series deleted.");
-      await load();
+      invalidate();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Delete failed");
     } finally {
@@ -194,7 +170,7 @@ function SchedulePage() {
           ? `Series archived. ${cancelledSessionCount} upcoming session(s) cancelled.`
           : "Series archived.",
       );
-      await load();
+      invalidate();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Archive failed");
     } finally {
@@ -212,7 +188,7 @@ function SchedulePage() {
       toast.success(
         decision === "APPROVED" ? "Change approved" : "Change rejected",
       );
-      await load();
+      invalidate();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Review failed");
     } finally {
@@ -235,7 +211,7 @@ function SchedulePage() {
           ? "Session request rejected"
           : "Feedback sent to tutor",
       );
-      await load();
+      invalidate();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Review failed");
     } finally {
@@ -253,14 +229,16 @@ function SchedulePage() {
 
   return (
     <LecturerScheduleView
-      booting={booting}
-      loadError={loadError}
+      booting={isLoading}
+      loadError={error instanceof Error ? error.message : null}
       view={view}
       focusDate={focusDate}
       data={data}
       onViewChange={setView}
       onFocusDateChange={setFocusDate}
-      onReload={load}
+      onReload={() => {
+        invalidate();
+      }}
       onCreateSeries={handleCreateSeries}
       onCreateOneOff={handleCreateOneOff}
       onPublishSeries={handlePublishSeries}

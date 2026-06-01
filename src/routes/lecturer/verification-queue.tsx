@@ -1,12 +1,8 @@
 import { createFileRoute, getRouteApi } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import * as z from "zod";
 import { VerificationQueueView } from "#/components/lecturer/verification/verification-queue-view";
-import {
-  listVerificationQueueFn,
-  type VerificationClaimCardDTO,
-  type VerificationModuleOptionDTO,
-} from "#/server-actions/lecturer-verification";
+import { useVerificationQueueData } from "#/components/lecturer/verification/use-verification-queue-data";
 
 const rootRouteApi = getRouteApi("__root__");
 
@@ -25,56 +21,30 @@ function VerificationQueuePage() {
   const urlSearch = Route.useSearch();
   const navigate = Route.useNavigate();
 
-  const [booting, setBooting] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [moduleId, setModuleId] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [modules, setModules] = useState<VerificationModuleOptionDTO[]>([]);
-  const [pending, setPending] = useState<VerificationClaimCardDTO[]>([]);
-  const [disputed, setDisputed] = useState<VerificationClaimCardDTO[]>([]);
-  const [recentlyVerified, setRecentlyVerified] = useState<
-    VerificationClaimCardDTO[]
-  >([]);
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  const {
+    modules,
+    pending,
+    disputed,
+    recentlyVerified,
+    isLoading,
+    error,
+    invalidate,
+  } = useVerificationQueueData({
+    enabled: !!user,
+    debouncedSearch,
+    moduleId,
+  });
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
   }, [search]);
-
-  const loadQueue = useCallback(async () => {
-    if (!user) return;
-    setBooting(true);
-    setLoadError(null);
-    try {
-      const result = await listVerificationQueueFn({
-        data: {
-          search: debouncedSearch || undefined,
-          moduleId: moduleId || undefined,
-        },
-      });
-      setModules(result.modules);
-      setPending(result.pending);
-      setDisputed(result.disputed);
-      setRecentlyVerified(result.recentlyVerified);
-    } catch (e) {
-      setLoadError(
-        e instanceof Error ? e.message : "Failed to load verification queue",
-      );
-    } finally {
-      setBooting(false);
-    }
-  }, [user, debouncedSearch, moduleId]);
-
-  useEffect(() => {
-    if (!user) {
-      setBooting(false);
-      return;
-    }
-    void loadQueue();
-  }, [user?.id, loadQueue]);
 
   useEffect(() => {
     if (urlSearch.claim) {
@@ -105,10 +75,6 @@ function VerificationQueuePage() {
     }
   };
 
-  const handleActionComplete = () => {
-    void loadQueue();
-  };
-
   if (!user) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center">
@@ -119,8 +85,8 @@ function VerificationQueuePage() {
 
   return (
     <VerificationQueueView
-      booting={booting}
-      loadError={loadError}
+      booting={isLoading}
+      loadError={error instanceof Error ? error.message : null}
       search={search}
       moduleId={moduleId}
       modules={modules}
@@ -133,7 +99,9 @@ function VerificationQueuePage() {
       onModuleChange={setModuleId}
       onReview={openReview}
       onSheetOpenChange={handleSheetOpenChange}
-      onActionComplete={handleActionComplete}
+      onActionComplete={() => {
+        void invalidate();
+      }}
     />
   );
 }

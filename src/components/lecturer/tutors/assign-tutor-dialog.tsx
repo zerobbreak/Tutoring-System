@@ -164,7 +164,7 @@ export function AssignTutorDialog({
             <div className="mb-4 rounded-lg border border-amber-300/80 bg-amber-50/90 px-3 py-3 text-sm text-amber-950">
               <p>{institutionError}</p>
               <Link
-                to="/lecturer/settings"
+                to="/settings"
                 className="mt-2 inline-block font-medium underline"
                 onClick={() => onOpenChange(false)}
               >

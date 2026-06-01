@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, useRouter, Link } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -35,6 +36,7 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const {
     register,
@@ -73,6 +75,7 @@ function Login() {
 
       if (await needsMfaVerification()) {
         toast.success("Enter your authenticator code to continue.");
+        queryClient.clear();
         await router.invalidate();
         await navigate({ to: "/auth/mfa" });
         return;
@@ -80,6 +83,7 @@ function Login() {
 
       const role = data.user.user_metadata?.role as string | undefined;
       toast.success("Signed in successfully.");
+      queryClient.clear();
       await router.invalidate();
       const lifecycle = await getAuthUserLifecycleFn();
       const destination =

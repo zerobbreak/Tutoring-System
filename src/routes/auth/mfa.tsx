@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Shield } from "lucide-react";
 import { Button } from "#/components/ui/button";
@@ -13,6 +14,7 @@ import {
   verifyMfaTotpCode,
 } from "#/lib/mfa-auth";
 import { getAuthUserLifecycleFn } from "#/lib/auth-server";
+import { APP_PATHS } from "#/lib/app-paths";
 import { getPostAuthDashboardPath } from "#/lib/user-role";
 import { logSecurityEventFn } from "#/server-actions/settings";
 
@@ -23,6 +25,7 @@ export const Route = createFileRoute("/auth/mfa")({
 function MfaVerify() {
   const navigate = useNavigate();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [checking, setChecking] = useState(true);
   const [code, setCode] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -39,7 +42,7 @@ function MfaVerify() {
       if (cancelled) return;
 
       if (!user) {
-        navigate({ to: "/auth/login", replace: true });
+        navigate({ to: APP_PATHS.auth.login, replace: true });
         return;
       }
 
@@ -91,6 +94,7 @@ function MfaVerify() {
       const role = user?.user_metadata?.role as string | undefined;
 
       toast.success("Verification successful.");
+      queryClient.clear();
       await router.invalidate();
       const lifecycle = await getAuthUserLifecycleFn();
       const destination =
@@ -109,8 +113,9 @@ function MfaVerify() {
     setSigningOut(true);
     try {
       await supabase.auth.signOut();
+      queryClient.clear();
       await router.invalidate();
-      await navigate({ to: "/auth/login" });
+      await navigate({ to: APP_PATHS.auth.login });
     } finally {
       setSigningOut(false);
     }
@@ -230,8 +235,8 @@ function MfaFormPanel({
         </form>
 
         <div className="mt-8 text-center text-sm text-gray-500">
-          <Link
-            to="/settings"
+        <Link
+            to={APP_PATHS.settings}
             className="font-medium text-[#FF6F61] hover:underline"
           >
             Account settings

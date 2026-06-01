@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { ShieldOff } from "lucide-react";
 import { Button } from "#/components/ui/button";
 import sidebarImage from "#/assets/auth-sidebar.png";
+import { APP_PATHS } from "#/lib/app-paths";
 import { supabase } from "#/lib/supabase";
 import { fetchAuthUserLifecycleClient } from "#/lib/user-platform-gate";
 import { formatUserStatus, hasPlatformAccess } from "#/lib/user-status";
@@ -30,7 +31,7 @@ function AccountBlockedPage() {
       if (cancelled) return;
 
       if (!user) {
-        navigate({ to: "/auth/login", replace: true });
+        navigate({ to: APP_PATHS.auth.login, replace: true });
         return;
       }
 
@@ -38,7 +39,7 @@ function AccountBlockedPage() {
       if (cancelled) return;
 
       if (!lifecycle || hasPlatformAccess(lifecycle.user_status)) {
-        navigate({ to: "/settings", replace: true });
+        navigate({ to: APP_PATHS.settings, replace: true });
         return;
       }
 
@@ -63,7 +64,7 @@ function AccountBlockedPage() {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    navigate({ to: "/auth/login", replace: true });
+    navigate({ to: APP_PATHS.auth.login, replace: true });
   };
 
   if (loading) {
@@ -101,7 +102,7 @@ function AccountBlockedPage() {
               Sign out
             </Button>
             <Button asChild variant="ghost" className="w-full">
-              <Link to="/settings">Account settings</Link>
+              <Link to={APP_PATHS.settings}>Account settings</Link>
             </Button>
           </div>
         </div>
