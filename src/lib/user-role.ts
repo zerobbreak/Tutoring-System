@@ -33,18 +33,18 @@ export function isTutorDashboardRole(role: string | undefined): boolean {
 /** Default app entry for an authenticated user (no bare `/` home route). */
 export function getPostAuthDashboardPath(
   role: string | undefined,
-): "/admin/" | "/lecturer/" | "/tutor/" | "/settings/" {
-  if (isAdminDashboardRole(role)) return "/admin/";
-  if (isLecturerDashboardRole(role)) return "/lecturer/";
-  if (isTutorDashboardRole(role)) return "/tutor/";
-  return "/settings/";
+): "/admin" | "/lecturer" | "/tutor" | "/settings" {
+  if (isAdminDashboardRole(role)) return "/admin";
+  if (isLecturerDashboardRole(role)) return "/lecturer";
+  if (isTutorDashboardRole(role)) return "/tutor";
+  return "/settings";
 }
 
 export type PostAuthDestination =
-  | "/admin/"
-  | "/lecturer/"
-  | "/tutor/"
-  | "/settings/"
+  | "/admin"
+  | "/lecturer"
+  | "/tutor"
+  | "/settings"
   | "/auth/account-blocked";
 
 /** Route after sign-in based on role and account lifecycle. */
@@ -56,7 +56,7 @@ export function getPostAuthDestination(
     return "/auth/account-blocked";
   }
   if (userStatus && !hasPlatformAccess(userStatus)) {
-    return "/settings/";
+    return "/settings";
   }
   return getPostAuthDashboardPath(role);
 }

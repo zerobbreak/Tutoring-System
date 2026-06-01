@@ -120,7 +120,7 @@ export function AppShell({
   children,
   headerTrailing,
   helpPath,
-  settingsPath = "/settings/",
+  settingsPath = "/settings",
   notificationsPath,
 }: {
   homePath: string;
@@ -135,7 +135,7 @@ export function AppShell({
   headerTrailing?: ReactNode | null;
   /** When set, sidebar “Get Help” links here and the breadcrumb shows “Get Help”. */
   helpPath?: string;
-  /** Sidebar settings link target (default `/settings/`). */
+  /** Sidebar settings link target (default `/settings`). */
   settingsPath?: string;
   /** When set, shows a bell control beside the profile menu in the sidebar footer. */
   notificationsPath?: string;

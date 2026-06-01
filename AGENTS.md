@@ -124,6 +124,42 @@ Project rules in `.cursor/rules/` are authoritative. Key points:
 
 **Types** — Keep accurate; avoid `any` unless surrounding code already does.
 
+## Code standards
+
+Supplemental standards live in [`context/code-standards.md`](context/code-standards.md). The key principles to preserve are:
+
+- Keep components small, focused, and easy to test.
+- Prefer feature-first organization over generic type-based folders.
+- Keep UI, business logic, and data access separated.
+- Maintain strict TypeScript safety; prefer `unknown` and explicit types over `any`.
+- Use TanStack Router loaders for route-owned data instead of loading everything inside components.
+- If a client cache layer is introduced, keep query keys centralized and invalidate related data after mutations.
+- Avoid duplicated business logic, repeated fetch patterns, and premature abstraction.
+- Use React Hook Form and Zod for forms, and validate on both client and server.
+- Favor `Link` for in-app navigation and keep route paths canonical and consistent.
+- Keep server actions in `src/server-actions/<domain>/` and mirror nearby patterns before inventing new ones.
+- Never bypass RLS or trust client-side checks for authorization.
+- Remove unused imports, dead code, and stale casts when touching a file.
+
+## Theme standards
+
+Color usage is centralized in [`context/theme.md`](context/theme.md). Keep new work aligned with the existing palette instead of inventing one-off colors:
+
+- Prefer `src/styles.css` theme tokens such as `--sea-ink`, `--lagoon`, `--lagoon-deep`, `--palm`, `--sand`, and `--foam`.
+- Prefer semantic Tailwind tokens like `bg-background`, `text-foreground`, `border-border`, `bg-card`, and `text-muted-foreground` for ordinary UI.
+- Use `emerald` for success states and `amber` for warnings or pending states only when the meaning is clear.
+- Avoid adding hard-coded hex colors unless the palette file and stylesheet are updated together.
+- Keep light and dark mode values paired when introducing any new brand token.
+
+## Progress tracking
+
+Use [`context/progress.md`](context/progress.md) as the living status board for what the codebase is currently going through:
+
+- Whenever any meaningful change is made, log it in `context/progress.md` under the relevant header.
+- Keep the `To do`, `Current Phase`, `In Progress`, `Completed`, `Next up`, and `Session Notes` sections accurate.
+- Record meaningful repo-wide changes there so future agents can pick up the thread without re-scanning everything.
+- Treat the tracker as required maintenance, not optional documentation.
+
 ## Testing
 
 ```bash
