@@ -1,5 +1,7 @@
+import { lazy } from "react";
 import { ClipboardCheck, Loader2 } from "lucide-react";
 import { QueryErrorBanner } from "#/components/ui/query-fetch-feedback";
+import { LazyWhenOpened } from "#/lib/lazy-when-opened";
 import {
   Card,
   CardContent,
@@ -7,10 +9,15 @@ import {
   CardHeader,
   CardTitle,
 } from "#/components/ui/card";
-import { VerificationClaimDetailSheet } from "./verification-claim-detail-sheet";
 import { VerificationClaimsSection } from "./verification-claims-section";
 import { VerificationQueueFilters } from "./verification-queue-filters";
 import type { VerificationQueueViewProps } from "./types";
+
+const VerificationClaimDetailSheet = lazy(() =>
+  import("./verification-claim-detail-sheet").then((m) => ({
+    default: m.VerificationClaimDetailSheet,
+  })),
+);
 
 export function VerificationQueueView({
   booting,
@@ -104,12 +111,14 @@ export function VerificationQueueView({
           </div>
         )}
 
-        <VerificationClaimDetailSheet
-          claimId={selectedClaimId}
-          open={sheetOpen}
-          onOpenChange={onSheetOpenChange}
-          onActionComplete={onActionComplete}
-        />
+        <LazyWhenOpened open={sheetOpen}>
+          <VerificationClaimDetailSheet
+            claimId={selectedClaimId}
+            open={sheetOpen}
+            onOpenChange={onSheetOpenChange}
+            onActionComplete={onActionComplete}
+          />
+        </LazyWhenOpened>
       </div>
     </div>
   );

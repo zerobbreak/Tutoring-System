@@ -10,15 +10,15 @@ import {
   TrendingUp,
   UserCheck,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy } from "react";
 import { useLecturerAttendanceData } from "#/components/lecturer/attendance/use-lecturer-attendance-data";
 import {
   PageLoadingSpinner,
   QueryErrorBanner,
 } from "#/components/ui/query-fetch-feedback";
+import { LazyWhenOpened } from "#/lib/lazy-when-opened";
 import { queryLoadFeedbackProps } from "#/lib/query-route-props";
 import { AttendanceAlertsPanel } from "#/components/lecturer/dashboard/attendance-alerts-panel";
-import { LecturerSessionDetailSheet } from "#/components/lecturer/sessions/lecturer-session-detail-sheet";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import {
@@ -36,6 +36,12 @@ import {
 } from "#/server-actions/lecturer-attendance";
 import { AttendanceKpiCards } from "./attendance-kpi-cards";
 import { AttendanceTrendChart } from "./attendance-trend-chart";
+
+const LecturerSessionDetailSheet = lazy(() =>
+  import("#/components/lecturer/sessions/lecturer-session-detail-sheet").then(
+    (m) => ({ default: m.LecturerSessionDetailSheet }),
+  ),
+);
 
 const LIVE_POLL_MS = 30_000;
 
@@ -414,11 +420,13 @@ export function LecturerAttendanceView({
         </div>
       </div>
 
-      <LecturerSessionDetailSheet
-        claimId={selectedClaimId}
-        open={sheetOpen}
-        onOpenChange={handleSheetOpenChange}
-      />
+      <LazyWhenOpened open={sheetOpen}>
+        <LecturerSessionDetailSheet
+          claimId={selectedClaimId}
+          open={sheetOpen}
+          onOpenChange={handleSheetOpenChange}
+        />
+      </LazyWhenOpened>
     </div>
   );
 }

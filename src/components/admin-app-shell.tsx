@@ -6,6 +6,7 @@ import {
   ClipboardCheck,
   FileText,
   LayoutDashboard,
+  MapPin,
   MessageSquare,
   ScrollText,
 
@@ -42,6 +43,7 @@ const ADMIN_NAV_GROUPS: readonly AppShellNavGroup[] = [
         icon: Building2,
       },
       { to: APP_PATHS.admin.users, label: "Users", icon: Users },
+      { to: APP_PATHS.admin.venues, label: "Venues", icon: MapPin },
     ],
   },
   {

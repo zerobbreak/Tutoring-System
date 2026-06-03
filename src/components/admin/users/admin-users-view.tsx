@@ -1,12 +1,18 @@
 import { UserPlus, Users } from "lucide-react";
-import { useState } from "react";
+import { lazy, useState } from "react";
 import { QueryErrorBanner } from "#/components/ui/query-fetch-feedback";
 import { Button } from "#/components/ui/button";
+import { LazyWhenOpened } from "#/lib/lazy-when-opened";
 import type { AdminUserCategory, AdminUserRowDTO } from "#/server-actions/admin-users";
 import { AdminCreateUserDialog } from "./admin-create-user-dialog";
-import { AdminUserDetailSheet } from "./admin-user-detail-sheet";
 import { AdminUsersFilters } from "./admin-users-filters";
 import { AdminUsersTable } from "./admin-users-table";
+
+const AdminUserDetailSheet = lazy(() =>
+  import("./admin-user-detail-sheet").then((m) => ({
+    default: m.AdminUserDetailSheet,
+  })),
+);
 
 export type AdminUsersViewProps = {
   booting: boolean;
@@ -88,12 +94,14 @@ export function AdminUsersView({
         />
       </div>
 
-      <AdminUserDetailSheet
-        userId={selectedUserId}
-        open={sheetOpen}
-        onOpenChange={onSheetOpenChange}
-        onActionComplete={onActionComplete}
-      />
+      <LazyWhenOpened open={sheetOpen}>
+        <AdminUserDetailSheet
+          userId={selectedUserId}
+          open={sheetOpen}
+          onOpenChange={onSheetOpenChange}
+          onActionComplete={onActionComplete}
+        />
+      </LazyWhenOpened>
 
       <AdminCreateUserDialog
         open={createOpen}

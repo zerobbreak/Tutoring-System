@@ -63,12 +63,12 @@ export const Route = createRootRouteWithContext<RouterContext>()({
   notFoundComponent: () => (
     <div className="flex flex-col items-center justify-center min-h-[60vh]">
       <h1 className="text-2xl font-bold">404 - Not Found</h1>
-      <p className="mt-2 text-gray-600">
+      <p className="mt-2 text-muted-foreground">
         The page you are looking for does not exist.
       </p>
       <Link
         to={APP_PATHS.auth.login}
-        className="mt-4 text-indigo-600 hover:underline"
+        className="mt-4 text-primary hover:underline"
       >
         Go to sign in
       </Link>
@@ -91,7 +91,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       <head>
         <HeadContent />
       </head>
-      <body className={`bg-gray-50 ${layout.bodyClassName}`}>
+      <body className={`bg-background ${layout.bodyClassName}`}>
         {layout.showPublicNav ? (
           <RootPublicNav sessionUser={sessionUser} brandTo={brandTo} />
         ) : null}

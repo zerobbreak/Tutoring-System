@@ -1,12 +1,42 @@
-import { SubmitClaimDialog } from "#/components/tutor/sessions/submit-claim-dialog";
-import { TutorDiscardDraftsDialog } from "#/components/tutor/sessions/tutor-discard-drafts-dialog";
-import { TutorRequestSessionDialog } from "#/components/tutor/sessions/tutor-request-session-dialog";
-import { TutorSessionAttendanceDialog } from "#/components/tutor/sessions/tutor-session-attendance-dialog";
-import { TutorSessionQrDialog } from "#/components/tutor/sessions/tutor-session-qr-dialog";
-import { TutorSessionRegisterUploadDialog } from "#/components/tutor/sessions/tutor-session-register-upload-dialog";
-import { TutorSessionWorkspaceDialog } from "#/components/tutor/sessions/tutor-session-workspace-dialog";
+import { lazy } from "react";
+import { LazyWhenOpened } from "#/lib/lazy-when-opened";
 import type { TutorSessionClaimDTO } from "#/server-actions/tutor-sessions";
 
+const SubmitClaimDialog = lazy(() =>
+  import("#/components/tutor/sessions/submit-claim-dialog").then((m) => ({
+    default: m.SubmitClaimDialog,
+  })),
+);
+const TutorDiscardDraftsDialog = lazy(() =>
+  import("#/components/tutor/sessions/tutor-discard-drafts-dialog").then(
+    (m) => ({ default: m.TutorDiscardDraftsDialog }),
+  ),
+);
+const TutorRequestSessionDialog = lazy(() =>
+  import("#/components/tutor/sessions/tutor-request-session-dialog").then(
+    (m) => ({ default: m.TutorRequestSessionDialog }),
+  ),
+);
+const TutorSessionAttendanceDialog = lazy(() =>
+  import("#/components/tutor/sessions/tutor-session-attendance-dialog").then(
+    (m) => ({ default: m.TutorSessionAttendanceDialog }),
+  ),
+);
+const TutorSessionQrDialog = lazy(() =>
+  import("#/components/tutor/sessions/tutor-session-qr-dialog").then((m) => ({
+    default: m.TutorSessionQrDialog,
+  })),
+);
+const TutorSessionRegisterUploadDialog = lazy(() =>
+  import(
+    "#/components/tutor/sessions/tutor-session-register-upload-dialog"
+  ).then((m) => ({ default: m.TutorSessionRegisterUploadDialog })),
+);
+const TutorSessionWorkspaceDialog = lazy(() =>
+  import("#/components/tutor/sessions/tutor-session-workspace-dialog").then(
+    (m) => ({ default: m.TutorSessionWorkspaceDialog }),
+  ),
+);
 type TutorSessionsWorkspaceDialogsProps = {
   detailOpen: boolean;
   detailClaim: TutorSessionClaimDTO | null;
@@ -66,51 +96,69 @@ export function TutorSessionsWorkspaceDialogs({
 }: TutorSessionsWorkspaceDialogsProps) {
   return (
     <>
-      <TutorSessionWorkspaceDialog
-        open={detailOpen}
-        claim={detailClaim}
-        onOpenChange={onDetailOpenChange}
-        onSubmit={onSubmitClaim}
-        onDiscard={onDiscardClaim}
-      />
+      <LazyWhenOpened open={detailOpen}>
+        <TutorSessionWorkspaceDialog
+          open={detailOpen}
+          claim={detailClaim}
+          onOpenChange={onDetailOpenChange}
+          onSubmit={onSubmitClaim}
+          onDiscard={onDiscardClaim}
+        />
+      </LazyWhenOpened>
 
-      <TutorSessionQrDialog open={qrOpen} onOpenChange={onQrOpenChange} claim={qrClaim} />
+      <LazyWhenOpened open={qrOpen}>
+        <TutorSessionQrDialog
+          open={qrOpen}
+          onOpenChange={onQrOpenChange}
+          claim={qrClaim}
+        />
+      </LazyWhenOpened>
 
-      <TutorSessionRegisterUploadDialog
-        open={uploadOpen}
-        onOpenChange={onUploadOpenChange}
-        claim={uploadClaim}
-        onUploaded={onRefresh}
-      />
+      <LazyWhenOpened open={uploadOpen}>
+        <TutorSessionRegisterUploadDialog
+          open={uploadOpen}
+          onOpenChange={onUploadOpenChange}
+          claim={uploadClaim}
+          onUploaded={onRefresh}
+        />
+      </LazyWhenOpened>
 
-      <TutorSessionAttendanceDialog
-        open={attendanceOpen}
-        onOpenChange={onAttendanceOpenChange}
-        claim={attendanceClaim}
-        onUpdated={onRefresh}
-      />
+      <LazyWhenOpened open={attendanceOpen}>
+        <TutorSessionAttendanceDialog
+          open={attendanceOpen}
+          onOpenChange={onAttendanceOpenChange}
+          claim={attendanceClaim}
+          onUpdated={onRefresh}
+        />
+      </LazyWhenOpened>
 
-      <SubmitClaimDialog
-        claim={submitClaim}
-        open={submitOpen}
-        onOpenChange={onSubmitOpenChange}
-        onSubmitted={onRefresh}
-      />
+      <LazyWhenOpened open={submitOpen}>
+        <SubmitClaimDialog
+          claim={submitClaim}
+          open={submitOpen}
+          onOpenChange={onSubmitOpenChange}
+          onSubmitted={onRefresh}
+        />
+      </LazyWhenOpened>
 
-      <TutorDiscardDraftsDialog
-        open={discardOpen}
-        onOpenChange={onDiscardOpenChange}
-        targetIds={discardTargetIds}
-        confirmClaim={confirmDiscardClaim}
-        onDiscarded={onDiscarded}
-      />
+      <LazyWhenOpened open={discardOpen}>
+        <TutorDiscardDraftsDialog
+          open={discardOpen}
+          onOpenChange={onDiscardOpenChange}
+          targetIds={discardTargetIds}
+          confirmClaim={confirmDiscardClaim}
+          onDiscarded={onDiscarded}
+        />
+      </LazyWhenOpened>
 
-      <TutorRequestSessionDialog
-        open={createOpen}
-        onOpenChange={onCreateOpenChange}
-        resubmitClaim={resubmitClaim}
-        onSaved={onRefresh}
-      />
+      <LazyWhenOpened open={createOpen}>
+        <TutorRequestSessionDialog
+          open={createOpen}
+          onOpenChange={onCreateOpenChange}
+          resubmitClaim={resubmitClaim}
+          onSaved={onRefresh}
+        />
+      </LazyWhenOpened>
     </>
   );
 }

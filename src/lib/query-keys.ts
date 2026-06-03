@@ -30,6 +30,9 @@ export const queryKeys = {
     approvals: (filters: { search?: string; moduleId?: string }) =>
       ["admin", "approvals", filters] as const,
     institutions: ["admin", "institutions"] as const,
+    venues: ["admin", "venues"] as const,
+    venueSchedules: (venueId: string) =>
+      ["admin", "venue-schedules", venueId] as const,
     auditLogActors: ["admin", "audit-logs", "actors"] as const,
     auditLogs: (filters: {
       category: string;
@@ -62,6 +65,7 @@ export const queryKeys = {
     assignedSchedule: (filters: { from: string; to: string }) =>
       ["tutor", "assigned-schedule", filters] as const,
     earnings: ["tutor", "earnings"] as const,
+    notesClaims: ["tutor", "notes-claims"] as const,
   },
   settings: {
     profile: ["settings", "profile"] as const,

@@ -4,17 +4,15 @@ This file is the living status board for the codebase. Whenever any meaningful c
 
 ## To do
 
-- Refactor the largest shared route-shell and server-action modules.
-- Remove one-off hex colors where the central theme already covers the need.
+- Refactor the largest shared route-shell (`app-shell.tsx`) and any remaining monolithic server-action modules (optional backlog).
 
 ## Current Phase
 
-- Audit and standards consolidation.
-- Theme and palette normalization.
+- Foundation roadmap (Phases 1–5) complete; optional structural refactors and E2E smoke next.
 
 ## In Progress
 
-- Normalizing palette usage on auth marketing pages (login/register still use legacy hex accents).
+- (none)
 
 ## Completed
 
@@ -43,11 +41,16 @@ This file is the living status board for the codebase. Whenever any meaningful c
 - Phase 3 route-path consistency: expanded [`src/lib/app-paths.ts`](src/lib/app-paths.ts) with nested auth/admin/lecturer/tutor paths; fixed post-auth dashboard targets to TanStack-typed index routes (`/admin`, `/lecturer`, `/tutor`); wired app shells, layout messaging paths, auth redirects, quick actions, and feature navigation through `APP_PATHS`. `pnpm exec tsc --noEmit` and `pnpm test` (91 tests) pass.
 - Phase 4 query UX: added shared fetch feedback (`query-fetch-feedback.tsx`, `query-error.ts`, `query-page-gate.tsx`, `query-route-props.ts`); wired loading/blocking error/retry + inline error banners with Try again on admin/lecturer/tutor dashboards, users, sessions, schedules, approvals, institutions, audit logs, verification queue, and lecturer schedule; migrated settings profile load to TanStack Query with blocking error + retry. `pnpm exec tsc --noEmit` and `pnpm test` (91 tests) pass.
 - Post–Phase 4 tracker pass: migrated remaining manual-fetch feature views to TanStack Query (`admin` analytics/payroll/reports; `lecturer` analytics/reports/tutors/sessions/attendance; `tutor` earnings) with shared loading/error/retry UX; normalized settings + public nav palette (`text-foreground`, `bg-background`, lagoon/primary tokens). `pnpm exec tsc --noEmit` and `pnpm test` (91 tests) pass.
+- Foundation closure pass: auth marketing CSS tokens (`--auth-*`) + `AuthMarketingLayout` for all six `/auth/*` routes; tutor notes → `queryKeys.tutor.notesClaims` + `use-tutor-notes-data` with `PageLoadingSpinner`/`QueryErrorBanner`; messaging conversations load error + retry on admin/lecturer/tutor messaging; split `src/server-actions/settings/` into domain modules with thin barrel (`#/server-actions/settings` unchanged). `pnpm exec tsc --noEmit` and `pnpm test` (91 tests) pass.
+- Phase 5 theme + hygiene: auth muted/hero/border tokens + `authFooterClass`/`authMutedClass` on all `/auth/*` routes; dark-mode-safe `user-nav`, `__root`, settings cards (`bg-card`); shared `LazyWhenOpened` + lazy tutor session dialogs (7) and detail sheets (verification, admin users, lecturer sessions/attendance). `pnpm exec tsc --noEmit` and `pnpm test` (91 tests) pass.
+- Fixed duplicate sidebar active state: dashboard home (`/lecturer`, `/admin`, `/tutor`) no longer stays highlighted when a sibling nav route (e.g. verification queue) is active (`navItemActive` in `app-shell.tsx`).
+- Lecturer messages layout: full-height flex chain (`min-h-0 flex-1`), chat composer pinned to bottom (`ChatWindow` / `ConversationSidebar`), hidden horizontal tab scrollbar (`.no-scrollbar` in `styles.css`).
+- Admin analytics page: `ScrollArea` on route (matches lecturer analytics) so KPI cards, charts, and tab panels scroll within the app shell.
 
 ## Next up
 
-- Map auth marketing pages (`/auth/*`) to theme tokens or documented auth-specific CSS variables.
-- Refactor largest shared route-shell and server-action modules (audit backlog).
+- Optional: auth E2E smoke on responsive sidebar; lazy-load remaining admin dialogs (e.g. create-user).
+- Optional: structural split of `app-shell.tsx` (~411 lines).
 - Re-run `pnpm exec tsc --noEmit` after large feature work to catch regressions early.
 
 ## Session Notes
@@ -57,3 +60,4 @@ This file is the living status board for the codebase. Whenever any meaningful c
 - The app is being standardized around shared documentation for code standards, theme tokens, and progress tracking.
 - Color usage is being centralized so future UI work stays consistent with the existing palette.
 - Any future repo-wide change should be reflected here immediately under the most relevant header.
+- Foundation consolidation track (Phases 1–5) is closed; no page-level `loadClaims`/`setBooting` list fetches remain on primary tutor/admin/lecturer surfaces.

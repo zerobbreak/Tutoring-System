@@ -28,6 +28,7 @@ import {
   SidebarTrigger,
 } from "#/components/ui/sidebar";
 import { APP_PATHS } from "#/lib/app-paths";
+import { navItemActive } from "#/lib/nav-item-active";
 import { supabase } from "#/lib/supabase";
 import { SidebarNotificationsBell } from "#/components/notifications/sidebar-notifications-bell";
 import { ThemeToggle } from "./theme-toggle";
@@ -52,18 +53,6 @@ function normalizePath(path: string) {
   return path === "/" ? path : path.replace(/\/+$/, "");
 }
 
-function navItemActive(pathname: string, to: string, homePath: string) {
-  const current = normalizePath(pathname);
-  const target = normalizePath(to);
-  const home = normalizePath(homePath);
-
-  if (target === home) {
-    return current === home || current.startsWith(`${home}/`);
-  }
-
-  return current === target || current.startsWith(`${target}/`);
-}
-
 function flattenNav(navGroups: readonly AppShellNavGroup[]) {
   return navGroups.flatMap((g) => [...g.items]);
 }
@@ -72,6 +61,7 @@ function pageTitleFromPath(
   pathname: string,
   homePath: string,
   navGroups: readonly AppShellNavGroup[],
+  navPaths: readonly string[],
   helpPath?: string,
   notificationsPath?: string,
 ) {
@@ -92,7 +82,7 @@ function pageTitleFromPath(
     return "Get Help";
   }
   const hit = flattenNav(navGroups).find((n) =>
-    navItemActive(pathname, n.to, homePath),
+    navItemActive(pathname, n.to, homePath, navPaths),
   );
   return hit?.label ?? "Home";
 }
@@ -101,11 +91,12 @@ function renderNavBlock(
   pathname: string,
   homePath: string,
   items: readonly AppShellNavItem[],
+  navPaths: readonly string[],
 ) {
   return (
     <SidebarMenu>
       {items.map((item) => {
-        const active = navItemActive(pathname, item.to, homePath);
+        const active = navItemActive(pathname, item.to, homePath, navPaths);
         const Icon = item.icon;
         return (
           <SidebarMenuItem key={item.to}>
@@ -154,10 +145,12 @@ export function AppShell({
   notificationsPath?: string;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navPaths = flattenNav(navGroups).map((item) => item.to);
   const title = pageTitleFromPath(
     pathname,
     homePath,
     navGroups,
+    navPaths,
     helpPath,
     notificationsPath,
   );
@@ -211,7 +204,7 @@ export function AppShell({
             <SidebarGroup key={group.label}>
               <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
               <SidebarGroupContent>
-                {renderNavBlock(pathname, homePath, group.items)}
+                {renderNavBlock(pathname, homePath, group.items, navPaths)}
               </SidebarGroupContent>
             </SidebarGroup>
           ))}

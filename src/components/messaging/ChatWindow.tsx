@@ -164,8 +164,8 @@ export function ChatWindow({
   );
 
   return (
-    <div className="flex h-full flex-1 flex-col bg-background">
-      <div className="sticky top-0 z-10 flex h-16 shrink-0 items-center justify-between border-b bg-card/50 px-6 backdrop-blur-sm">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background">
+      <div className="flex h-16 shrink-0 items-center justify-between border-b bg-card px-4 sm:px-6">
         <div className="flex items-center gap-3">
           <Avatar className="h-9 w-9">
             <AvatarFallback className="bg-primary/10 text-primary">
@@ -216,8 +216,11 @@ export function ChatWindow({
         </DropdownMenu>
       </div>
 
-      <ScrollArea className="flex-1 px-6" viewportRef={scrollRef}>
-        <div className="space-y-6 py-6">
+      <ScrollArea
+        className="min-h-0 flex-1 px-4 sm:px-6"
+        viewportRef={scrollRef}
+      >
+        <div className="space-y-6 py-4 sm:py-6">
           {isLoading ? (
             <p className="py-20 text-center text-sm text-muted-foreground">
               Loading messages…
@@ -289,7 +292,7 @@ export function ChatWindow({
         </div>
       </ScrollArea>
 
-      <div className="shrink-0 p-6 pt-2">
+      <div className="shrink-0 border-t bg-card/80 px-4 py-3 backdrop-blur-sm sm:px-6 sm:py-4">
         {pendingFiles.length > 0 ? (
           <ul className="mb-2 flex flex-wrap gap-2">
             {pendingFiles.map((f, i) => (

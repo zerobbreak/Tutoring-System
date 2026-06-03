@@ -68,12 +68,12 @@ export function UserNav({ user }: UserNavProps) {
       </Button>
 
       {open ? (
-        <div className="absolute right-0 z-50 mt-2 w-56 origin-top-right animate-in fade-in zoom-in-95 duration-100 rounded-xl bg-white p-1 shadow-xl ring-1 ring-black/5 focus:outline-none">
-          <div className="border-b border-gray-100 px-3 py-2">
+        <div className="absolute right-0 z-50 mt-2 w-56 origin-top-right animate-in fade-in zoom-in-95 duration-100 rounded-xl bg-popover p-1 shadow-xl ring-1 ring-border focus:outline-none">
+          <div className="border-b border-border px-3 py-2">
             <p className="truncate text-sm font-bold text-foreground">
               {user.user_metadata?.full_name || "User"}
             </p>
-            <p className="truncate text-xs text-gray-500">{user.email}</p>
+            <p className="truncate text-xs text-muted-foreground">{user.email}</p>
             <span className="mt-1 inline-block rounded-full bg-(--lagoon)/10 px-2 py-0.5 text-[10px] font-bold uppercase text-(--lagoon-deep)">
               {roleLabel}
             </span>
@@ -81,20 +81,20 @@ export function UserNav({ user }: UserNavProps) {
           <div className="py-1">
             <Link
               to={getPostAuthDashboardPath(roleRaw)}
-              className="flex w-full items-center rounded-lg px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+              className="flex w-full items-center rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
               onClick={() => setOpen(false)}
             >
               Dashboard
             </Link>
             <Link
               to={APP_PATHS.settings}
-              className="flex w-full items-center rounded-lg px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-50"
+              className="flex w-full items-center rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
               onClick={() => setOpen(false)}
             >
               Settings
             </Link>
             <button
-              className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50"
+              className="flex w-full items-center rounded-lg px-3 py-2 text-left text-sm text-destructive transition-colors hover:bg-destructive/10"
               onClick={handleLogout}
             >
               Log out

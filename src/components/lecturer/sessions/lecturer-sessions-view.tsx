@@ -1,20 +1,26 @@
 import type { NavigateOptions } from "@tanstack/react-router";
 import { APP_PATHS } from "#/lib/app-paths";
 import { Loader2, Video } from "lucide-react";
-import { useEffect, useState } from "react";
+import { lazy, useEffect, useState } from "react";
 import { useLecturerSessionsData } from "#/components/lecturer/sessions/use-lecturer-sessions-data";
 import {
   PageLoadingSpinner,
   QueryErrorBanner,
 } from "#/components/ui/query-fetch-feedback";
+import { LazyWhenOpened } from "#/lib/lazy-when-opened";
 import { queryLoadFeedbackProps } from "#/lib/query-route-props";
 import { ScrollArea } from "#/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
 import type { LecturerSessionCardDTO } from "#/server-actions/lecturer-sessions";
 import { CancelledScheduleRow } from "./cancelled-schedule-row";
 import { LecturerSessionCard } from "./lecturer-session-card";
-import { LecturerSessionDetailSheet } from "./lecturer-session-detail-sheet";
 import { SessionListSection } from "./session-list-section";
+
+const LecturerSessionDetailSheet = lazy(() =>
+  import("./lecturer-session-detail-sheet").then((m) => ({
+    default: m.LecturerSessionDetailSheet,
+  })),
+);
 
 export type LecturerSessionsSearch = {
   claim?: string;
@@ -216,11 +222,13 @@ export function LecturerSessionsView({
           </Tabs>
         )}
 
-        <LecturerSessionDetailSheet
-          claimId={selectedClaimId}
-          open={sheetOpen}
-          onOpenChange={handleSheetOpenChange}
-        />
+        <LazyWhenOpened open={sheetOpen}>
+          <LecturerSessionDetailSheet
+            claimId={selectedClaimId}
+            open={sheetOpen}
+            onOpenChange={handleSheetOpenChange}
+          />
+        </LazyWhenOpened>
       </div>
       </ScrollArea>
     </div>

@@ -16,6 +16,7 @@ export const APP_PATHS = {
     approvals: "/admin/approvals",
     institutions: "/admin/institutions",
     users: "/admin/users",
+    venues: "/admin/venues",
     schedules: "/admin/schedules",
     sessions: "/admin/sessions",
     payments: "/admin/payments",

@@ -41,6 +41,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "#/components/ui/sheet";
+import { QueryErrorBanner } from "#/components/ui/query-fetch-feedback";
 import { Skeleton } from "#/components/ui/skeleton";
 import { toast } from "#/lib/toast";
 import {
@@ -102,6 +103,9 @@ export function AdminMessagingView({ search, navigate }: AdminMessagingViewProps
     messages,
     currentUserId,
     isLoading,
+    conversationsError,
+    retryConversations,
+    isConversationsFetching,
     isMessagesLoading,
     handleSendMessage,
     handleConversationCreated,
@@ -279,6 +283,13 @@ export function AdminMessagingView({ search, navigate }: AdminMessagingViewProps
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-background">
+      {conversationsError ? (
+        <QueryErrorBanner
+          message={conversationsError}
+          onRetry={retryConversations}
+          retrying={isConversationsFetching}
+        />
+      ) : null}
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b bg-card px-4 py-2">
         <p className="mr-auto text-sm text-muted-foreground">
           Institutional messaging — tutors, lecturers, notices, and disputes.

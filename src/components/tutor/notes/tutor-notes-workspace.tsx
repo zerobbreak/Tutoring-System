@@ -19,14 +19,15 @@ import {
   Target,
   Zap,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Button } from "#/components/ui/button";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTutorNotesData } from "#/components/tutor/notes/use-tutor-notes-data";
 import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "#/components/ui/card";
+  PageLoadingSpinner,
+  QueryErrorBanner,
+} from "#/components/ui/query-fetch-feedback";
+import { queryLoadFeedbackProps } from "#/lib/query-route-props";
+import { Button } from "#/components/ui/button";
+import { Card } from "#/components/ui/card";
 import { Label } from "#/components/ui/label";
 import { ScrollArea } from "#/components/ui/scroll-area";
 import { Skeleton } from "#/components/ui/skeleton";
@@ -37,11 +38,7 @@ import {
 } from "#/lib/session-claim-display";
 import { toast } from "#/lib/toast";
 import { cn } from "#/lib/utils";
-import {
-  listTutorNotesClaimsFn,
-  updateSessionNotesFn,
-  type TutorNotesClaimDTO,
-} from "#/server-actions/tutor-notes";
+import { updateSessionNotesFn } from "#/server-actions/tutor-notes";
 
 export type NotesSearch = {
   claim?: string;
@@ -58,9 +55,16 @@ export function TutorNotesWorkspace({
   focusFromSearch,
 }: TutorNotesWorkspaceProps) {
   const claimAppliedRef = useRef<string | null>(null);
-  const [claims, setClaims] = useState<TutorNotesClaimDTO[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const {
+    data: claims = [],
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+    isSuccess,
+    invalidate,
+  } = useTutorNotesData();
+  const feedback = queryLoadFeedbackProps({ error, isFetching, refetch });
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   // Form state
@@ -72,23 +76,13 @@ export function TutorNotesWorkspace({
   const [draftCoverageConfirmed, setDraftCoverageConfirmed] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const loadClaims = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
-    try {
-      const rows = await listTutorNotesClaimsFn();
-      setClaims(rows);
-      setSelectedId((prev) => {
-        if (prev && rows.some((r) => r.id === prev)) return prev;
-        return rows[0]?.id ?? null;
-      });
-    } catch (e) {
-      setLoadError(e instanceof Error ? e.message : "Failed to load sessions");
-      setClaims([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  useEffect(() => {
+    if (!claims.length) return;
+    setSelectedId((prev) => {
+      if (prev && claims.some((r) => r.id === prev)) return prev;
+      return claims[0]?.id ?? null;
+    });
+  }, [claims]);
 
   useEffect(() => {
     claimAppliedRef.current = null;
@@ -102,10 +96,6 @@ export function TutorNotesWorkspace({
     setSelectedId(claimFromSearch);
     claimAppliedRef.current = token;
   }, [claimFromSearch, focusFromSearch, claims]);
-
-  useEffect(() => {
-    void loadClaims();
-  }, [loadClaims]);
 
   const selected = useMemo(
     () => claims.find((c) => c.id === selectedId) ?? null,
@@ -146,7 +136,7 @@ export function TutorNotesWorkspace({
     if (!selected) return;
     setSaving(true);
     try {
-      const updated = await updateSessionNotesFn({
+      await updateSessionNotesFn({
         data: {
           claimId: selected.id,
           topicsCovered: draftConcepts,
@@ -158,7 +148,7 @@ export function TutorNotesWorkspace({
           existingCoverageValidatedAt: selected.coverage_validated_at,
         },
       });
-      setClaims((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+      void invalidate();
       toast.success("Academic workspace synced");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to save");
@@ -166,6 +156,12 @@ export function TutorNotesWorkspace({
       setSaving(false);
     }
   };
+
+  if (isLoading && !isSuccess) {
+    return <PageLoadingSpinner label="Loading sessions…" />;
+  }
+
+  const listLoading = isFetching && !claims.length;
 
   return (
     <div className="rise-in flex min-h-0 flex-1 flex-col gap-6 p-1 md:p-2">
@@ -202,18 +198,13 @@ export function TutorNotesWorkspace({
         </div>
       </div>
 
-      {loadError && (
-        <Card className="border-destructive/40 bg-destructive/5">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base text-destructive">
-              Workspace load failed
-            </CardTitle>
-            <CardDescription className="text-destructive/90">
-              {loadError}
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      )}
+      {feedback.loadError ? (
+        <QueryErrorBanner
+          message={feedback.loadError}
+          onRetry={feedback.onRetryLoad}
+          retrying={feedback.retryingLoad}
+        />
+      ) : null}
 
       <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[380px_1fr]">
         {/* Sidebar: Session History */}
@@ -230,7 +221,7 @@ export function TutorNotesWorkspace({
           <div className="island-shell flex flex-1 flex-col overflow-hidden rounded-2xl border-white/40 bg-white/40 backdrop-blur-md dark:bg-black/20">
             <ScrollArea className="flex-1">
               <div className="px-1 py-2">
-                {loading ? (
+                {listLoading ? (
                   <div className="space-y-3 p-4">
                     {Array.from({ length: 6 }).map((_, i) => (
                       <Skeleton key={i} className="h-20 w-full rounded-xl" />

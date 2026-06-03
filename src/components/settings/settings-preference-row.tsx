@@ -22,7 +22,7 @@ export function SettingsPreferenceRow({
   trailing,
 }: SettingsPreferenceRowProps) {
   return (
-    <div className="flex items-start justify-between gap-4 rounded-lg border border-border/60 bg-white px-4 py-3">
+    <div className="flex items-start justify-between gap-4 rounded-lg border border-border/60 bg-card px-4 py-3">
       <div className="min-w-0 flex-1 space-y-0.5">
         <Label htmlFor={id} className="text-foreground">
           {label}

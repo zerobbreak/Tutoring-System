@@ -285,7 +285,7 @@ export function SecuritySettings({
                 Scan this QR code with your authenticator app, then enter the
                 6-digit code.
               </p>
-              <div className="flex justify-center rounded-lg bg-white p-4">
+              <div className="flex justify-center rounded-lg bg-card p-4">
                 <QRCodeSVG
                   value={`otpauth://totp/TutoringSystem:${encodeURIComponent(profile.email)}?secret=${enrollSecret}&issuer=TutoringSystem`}
                   size={160}

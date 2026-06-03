@@ -1,16 +1,22 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { APP_PATHS } from "#/lib/app-paths";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
-import { cn } from "../../lib/utils";
-import sidebarImage from "../../assets/auth-sidebar.png";
-import { signUpServerFn } from "../../lib/auth-server";
-import { toast } from "../../lib/toast";
+import { AuthMarketingLayout } from "#/components/auth/auth-marketing-layout";
+import {
+  authAccentLinkClass,
+  authFooterClass,
+  authInputClassName,
+  authLabelClass,
+  authPrimaryButtonClass,
+} from "#/components/auth/auth-marketing-styles";
+import { Button } from "#/components/ui/button";
+import { Input } from "#/components/ui/input";
+import { Label } from "#/components/ui/label";
+import { APP_PATHS } from "#/lib/app-paths";
+import { signUpServerFn } from "#/lib/auth-server";
+import { toast } from "#/lib/toast";
 
 const registerSchema = z
   .object({
@@ -76,178 +82,138 @@ function Register() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#F7F7F7]">
-      <div className="hidden w-[60%] lg:block relative overflow-hidden">
-        <img
-          src={sidebarImage}
-          alt="Knowledge and Learning"
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-linear-to-tr from-[#0A1128]/90 to-[#0A1128]/20" />
-        <div className="absolute inset-0 flex flex-col justify-end p-16 text-white">
-          <h1 className="text-6xl font-serif mb-6 leading-tight">
-            Begin Your <br />
-            <span className="italic text-[#FF6F61]">Journey Today</span>
-          </h1>
-          <p className="max-w-md text-lg text-gray-300 font-light leading-relaxed">
-            Use the invite code from your institution administrator to create
-            your account.
-          </p>
-        </div>
-      </div>
-
-      <div className="flex w-full flex-col justify-center px-8 lg:w-[40%] lg:px-20">
-        <div className="mx-auto w-full max-w-sm">
-          <div className="mb-10 text-center lg:text-left">
-            <h2 className="text-3xl font-bold tracking-tight text-[#0A1128]">
-              Create Account
-            </h2>
-            <p className="mt-2 text-sm text-gray-500">
-              Registration requires an email and invite code from your admin.
+    <AuthMarketingLayout
+      heroTitle={
+        <>
+          Begin Your <br />
+          <span className="italic text-(--auth-accent)">Journey Today</span>
+        </>
+      }
+      heroDescription="Use the invite code from your institution administrator to create your account."
+      formTitle="Create Account"
+      formDescription="Registration requires an email and invite code from your admin."
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        <div className="space-y-2">
+          <Label htmlFor="fullName" className={authLabelClass}>
+            Full Name
+          </Label>
+          <Input
+            id="fullName"
+            type="text"
+            placeholder="John Doe"
+            className={authInputClassName(!!errors.fullName)}
+            {...register("fullName")}
+          />
+          {errors.fullName && (
+            <p className="text-xs font-medium text-red-500">
+              {errors.fullName.message}
             </p>
-          </div>
-
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="fullName" className="text-[#0A1128]">
-                Full Name
-              </Label>
-              <Input
-                id="fullName"
-                type="text"
-                placeholder="John Doe"
-                className={cn(
-                  "border-gray-200 focus:border-[#0A1128] focus:ring-[#0A1128]",
-                  errors.fullName && "border-red-500 focus:ring-red-500",
-                )}
-                {...register("fullName")}
-              />
-              {errors.fullName && (
-                <p className="text-xs font-medium text-red-500">
-                  {errors.fullName.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-[#0A1128]">
-                Email Address
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="name@example.com"
-                className={cn(
-                  "border-gray-200 focus:border-[#0A1128] focus:ring-[#0A1128]",
-                  errors.email && "border-red-500 focus:ring-red-500",
-                )}
-                {...register("email")}
-              />
-              {errors.email && (
-                <p className="text-xs font-medium text-red-500">
-                  {errors.email.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="inviteCode" className="text-[#0A1128]">
-                Invite code
-              </Label>
-              <Input
-                id="inviteCode"
-                type="text"
-                placeholder="XXXX-XXXX"
-                autoComplete="off"
-                className={cn(
-                  "border-gray-200 focus:border-[#0A1128] focus:ring-[#0A1128]",
-                  errors.inviteCode && "border-red-500 focus:ring-red-500",
-                )}
-                {...register("inviteCode")}
-              />
-              <p className="text-[10px] text-gray-400">
-                Use the invite code from your institution administrator. It must
-                match this email address.
-              </p>
-              {errors.inviteCode && (
-                <p className="text-xs font-medium text-red-500">
-                  {errors.inviteCode.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-[#0A1128]">
-                Password
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="new-password"
-                placeholder="••••••••"
-                className={cn(
-                  "border-gray-200 focus:border-[#0A1128] focus:ring-[#0A1128]",
-                  errors.password && "border-red-500 focus:ring-red-500",
-                )}
-                {...register("password")}
-              />
-              {errors.password && (
-                <p className="text-xs font-medium text-red-500">
-                  {errors.password.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-[#0A1128]">
-                Confirm Password
-              </Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                placeholder="••••••••"
-                className={cn(
-                  "border-gray-200 focus:border-[#0A1128] focus:ring-[#0A1128]",
-                  errors.confirmPassword && "border-red-500 focus:ring-red-500",
-                )}
-                {...register("confirmPassword")}
-              />
-              {errors.confirmPassword && (
-                <p className="text-xs font-medium text-red-500">
-                  {errors.confirmPassword.message}
-                </p>
-              )}
-            </div>
-
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-[#0A1128] py-6 text-white hover:bg-[#0A1128]/90 transition-all duration-300 transform hover:scale-[1.02]"
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                  Creating account...
-                </span>
-              ) : (
-                "Sign Up"
-              )}
-            </Button>
-          </form>
-
-          <div className="mt-8 text-center text-sm text-gray-500">
-            Already have an account?{" "}
-            <Link
-              to={APP_PATHS.auth.login}
-              className="font-semibold text-[#FF6F61] hover:underline"
-            >
-              Sign in
-            </Link>
-          </div>
+          )}
         </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="email" className={authLabelClass}>
+            Email Address
+          </Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            placeholder="name@example.com"
+            className={authInputClassName(!!errors.email)}
+            {...register("email")}
+          />
+          {errors.email && (
+            <p className="text-xs font-medium text-red-500">
+              {errors.email.message}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="inviteCode" className={authLabelClass}>
+            Invite code
+          </Label>
+          <Input
+            id="inviteCode"
+            type="text"
+            placeholder="XXXX-XXXX"
+            autoComplete="off"
+            className={authInputClassName(!!errors.inviteCode)}
+            {...register("inviteCode")}
+          />
+          <p className="text-[10px] text-(--auth-muted-subtle)">
+            Use the invite code from your institution administrator. It must
+            match this email address.
+          </p>
+          {errors.inviteCode && (
+            <p className="text-xs font-medium text-red-500">
+              {errors.inviteCode.message}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="password" className={authLabelClass}>
+            Password
+          </Label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="new-password"
+            placeholder="••••••••"
+            className={authInputClassName(!!errors.password)}
+            {...register("password")}
+          />
+          {errors.password && (
+            <p className="text-xs font-medium text-red-500">
+              {errors.password.message}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="confirmPassword" className={authLabelClass}>
+            Confirm Password
+          </Label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            autoComplete="new-password"
+            placeholder="••••••••"
+            className={authInputClassName(!!errors.confirmPassword)}
+            {...register("confirmPassword")}
+          />
+          {errors.confirmPassword && (
+            <p className="text-xs font-medium text-red-500">
+              {errors.confirmPassword.message}
+            </p>
+          )}
+        </div>
+
+        <Button
+          type="submit"
+          disabled={loading}
+          className={authPrimaryButtonClass}
+        >
+          {loading ? (
+            <span className="flex items-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              Creating account...
+            </span>
+          ) : (
+            "Sign Up"
+          )}
+        </Button>
+      </form>
+
+      <div className={authFooterClass}>
+        Already have an account?{" "}
+        <Link to={APP_PATHS.auth.login} className={authAccentLinkClass}>
+          Sign in
+        </Link>
       </div>
-    </div>
+    </AuthMarketingLayout>
   );
 }

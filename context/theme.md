@@ -104,6 +104,23 @@ The app also uses standard Tailwind semantic colors in a few places. Keep using 
 - Keep the existing font stack unchanged unless there is a deliberate typography update.
 - If two colors are effectively the same, consolidate them into one shared token or CSS variable and give that shared value a single clear name.
 
+## Auth marketing tokens
+
+Used on unauthenticated `/auth/*` routes (login, register, password recovery, MFA). Add or change these in `src/styles.css` only—do not use raw hex in auth route files.
+
+| Token | Light | Role |
+|-------|-------|------|
+| `--auth-canvas` | `#f7f7f7` | Page background |
+| `--auth-ink` | `#0a1128` | Headings, labels, primary buttons, focus rings |
+| `--auth-accent` | `#ff6f61` | Hero highlight italic text and text links |
+| `--auth-hero-overlay` | `#0a1128` | Sidebar image gradient base |
+| `--auth-muted` | `#6b7280` | Form footers, secondary copy |
+| `--auth-muted-subtle` | `#9ca3af` | Fine print, hints |
+| `--auth-hero-muted` | `rgba(255,255,255,0.72)` | Hero description on dark overlay |
+| `--auth-border` | `#e5e7eb` | Input borders on auth forms |
+
+Dark mode uses paired values on `.dark`. Prefer `text-(--auth-ink)`, `bg-(--auth-canvas)`, etc., or helpers in `src/components/auth/auth-marketing-styles.ts`.
+
 ## Design Intent
 
 The app’s visual language is a calm lagoon/sea palette:

@@ -2,6 +2,7 @@ import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { subscribeToIncomingMessages } from "#/lib/messaging-realtime";
+import { formatQueryError } from "#/lib/query-error";
 import { queryKeys } from "#/lib/query-keys";
 import { supabase } from "#/lib/supabase";
 import {
@@ -230,6 +231,11 @@ export function useMessagingPage({ initialConversationId }: UseMessagingPageOpti
 
   return {
     conversations,
+    conversationsError: formatQueryError(conversationsQuery.error),
+    retryConversations: () => {
+      void conversationsQuery.refetch();
+    },
+    isConversationsFetching: conversationsQuery.isFetching,
     setConversations: (updater: React.SetStateAction<ConversationDTO[]>) => {
       queryClient.setQueryData<ConversationDTO[]>(
         queryKeys.messaging.conversations,

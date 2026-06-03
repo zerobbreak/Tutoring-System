@@ -1,8 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ShieldOff } from "lucide-react";
+import {
+  AuthMarketingLayout,
+  AuthPageLoading,
+} from "#/components/auth/auth-marketing-layout";
+import { authMutedClass } from "#/components/auth/auth-marketing-styles";
 import { Button } from "#/components/ui/button";
-import sidebarImage from "#/assets/auth-sidebar.png";
 import { APP_PATHS } from "#/lib/app-paths";
 import { supabase } from "#/lib/supabase";
 import { fetchAuthUserLifecycleClient } from "#/lib/user-platform-gate";
@@ -68,45 +72,31 @@ function AccountBlockedPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F7F7F7]">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#0A1128] border-t-transparent" />
-      </div>
-    );
+    return <AuthPageLoading />;
   }
 
   return (
-    <div className="flex min-h-screen bg-[#F7F7F7]">
-      <div className="relative hidden w-[60%] overflow-hidden lg:block">
-        <img
-          src={sidebarImage}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-        <div className="absolute inset-0 bg-linear-to-tr from-[#0A1128]/90 to-[#0A1128]/20" />
-      </div>
-      <div className="flex w-full flex-col justify-center px-8 lg:w-[40%] lg:px-20">
-        <div className="mx-auto w-full max-w-sm text-center">
-          <ShieldOff className="mx-auto size-12 text-amber-700" />
-          <h1 className="mt-4 text-2xl font-bold text-[#0A1128]">
-            Account {statusLabel}
-          </h1>
-          <p className="mt-3 text-sm leading-relaxed text-gray-600">{detail}</p>
-          <div className="mt-8 flex flex-col gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              onClick={() => void signOut()}
-            >
-              Sign out
-            </Button>
-            <Button asChild variant="ghost" className="w-full">
-              <Link to={APP_PATHS.settings}>Account settings</Link>
-            </Button>
-          </div>
+    <AuthMarketingLayout>
+      <div className="text-center">
+        <ShieldOff className="mx-auto size-12 text-amber-700" />
+        <h1 className="mt-4 text-2xl font-bold text-(--auth-ink)">
+          Account {statusLabel}
+        </h1>
+        <p className={`mt-3 text-sm leading-relaxed ${authMutedClass}`}>{detail}</p>
+        <div className="mt-8 flex flex-col gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => void signOut()}
+          >
+            Sign out
+          </Button>
+          <Button asChild variant="ghost" className="w-full">
+            <Link to={APP_PATHS.settings}>Account settings</Link>
+          </Button>
         </div>
       </div>
-    </div>
+    </AuthMarketingLayout>
   );
 }
