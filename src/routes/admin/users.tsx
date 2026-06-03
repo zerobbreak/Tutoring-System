@@ -3,6 +3,9 @@ import { useEffect, useState } from "react";
 import * as z from "zod";
 import { AdminUsersView } from "#/components/admin/users/admin-users-view";
 import { useAdminUsersData } from "#/components/admin/users/use-admin-users-data";
+import { APP_PATHS } from "#/lib/app-paths";
+import { QueryPageGate } from "#/lib/query-page-gate";
+import { queryLoadFeedbackProps } from "#/lib/query-route-props";
 import { useSessionUser } from "#/lib/use-session-user";
 import type { AdminUserCategory } from "#/server-actions/admin-users";
 
@@ -26,11 +29,20 @@ function AdminUsersPage() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const { users, isLoading, error, invalidate } = useAdminUsersData({
+  const {
+    users,
+    isLoading,
+    isFetching,
+    isSuccess,
+    error,
+    refetch,
+    invalidate,
+  } = useAdminUsersData({
     enabled: !!user,
     category,
     debouncedSearch,
   });
+  const feedback = queryLoadFeedbackProps({ error, isFetching, refetch });
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -48,7 +60,7 @@ function AdminUsersPage() {
     setSelectedUserId(userId);
     setSheetOpen(true);
     void navigate({
-      to: "/admin/users",
+      to: APP_PATHS.admin.users,
       search: { user: userId },
       replace: true,
     });
@@ -59,25 +71,26 @@ function AdminUsersPage() {
     if (!open) {
       setSelectedUserId(null);
       void navigate({
-        to: "/admin/users",
+        to: APP_PATHS.admin.users,
         search: { user: undefined },
         replace: true,
       });
     }
   };
 
-  if (pending || !user) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
   return (
+    <QueryPageGate
+      sessionPending={pending || !user}
+      isLoading={isLoading}
+      isFetching={isFetching}
+      error={error}
+      hasData={isSuccess}
+      onRetry={() => void refetch()}
+      loadingLabel="Loading users…"
+    >
     <AdminUsersView
       booting={isLoading}
-      loadError={error instanceof Error ? error.message : null}
+      {...feedback}
       category={category}
       search={search}
       users={users}
@@ -91,5 +104,6 @@ function AdminUsersPage() {
         void invalidate();
       }}
     />
+    </QueryPageGate>
   );
 }

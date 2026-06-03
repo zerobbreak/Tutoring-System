@@ -7,6 +7,7 @@ import {
 import type { ClaimStatus } from "#/lib/session-kanban-column";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { isTutorManualSessionClaim } from "#/lib/tutor-manual-session-claim";
+import { normalizeSupabaseNestedRow } from "#/lib/supabase-nested-row";
 import { requireUserId } from "#/server-actions/tutor-sessions/helpers";
 import {
   loadSessionAttendanceRecords,
@@ -52,8 +53,12 @@ export const getClaimDetailsFn = createServerFn({
         admin_creation_approved_at,
         admin_creation_approved_by,
         session_kind,
+        request_status,
+        request_reason,
+        review_feedback,
         attendance_present_count,
         attendance_expected_count,
+        attendance_locked_at,
         qr_token,
         qr_expires_at,
         tutor:users!session_claims_tutor_id_fkey ( id, full_name, email ),
@@ -199,7 +204,18 @@ export const getClaimDetailsFn = createServerFn({
       data.claimId,
     );
 
-    const mapped = mapClaimRow(claimRow as RawClaim, evidence.length);
+    const moduleRaw = normalizeSupabaseNestedRow(claimRow.module);
+    const moduleNormalized = moduleRaw
+      ? {
+          ...moduleRaw,
+          lecturer: normalizeSupabaseNestedRow(moduleRaw.lecturer),
+        }
+      : null;
+
+    const mapped = mapClaimRow(
+      { ...claimRow, module: moduleNormalized } as RawClaim,
+      evidence.length,
+    );
 
     return {
       ...mapped,

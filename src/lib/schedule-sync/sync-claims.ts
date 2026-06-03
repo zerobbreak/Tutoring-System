@@ -182,7 +182,7 @@ export async function syncSessionClaimsFromSchedule(
     await applySnapshotToClaim(db, claim.id, snapshot, { includeTutor });
   }
 
-  if (event.type === "SESSION_TIME_CHANGED" || event.type === "SESSION_RESTORED") {
+  if (event.type === "SESSION_TIME_CHANGED") {
     await refreshClaimQrForSchedule(db, claim.id);
   }
 

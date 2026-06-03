@@ -6,11 +6,10 @@ import type { ScheduleSeriesDTO } from "#/server-actions/lecturer-schedule";
 
 type SeriesRowProps = {
   series: ScheduleSeriesDTO;
-  formBusy: boolean;
   actions: ReactNode;
 };
 
-function SeriesRow({ series, formBusy, actions }: SeriesRowProps) {
+function SeriesRow({ series, actions }: SeriesRowProps) {
   return (
     <article className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-card px-3 py-2">
       <span className="min-w-0 text-sm">
@@ -51,7 +50,6 @@ export function ScheduleDraftSeriesList({
           <SeriesRow
             key={s.id}
             series={s}
-            formBusy={formBusy}
             actions={
               <>
                 <Button
@@ -113,7 +111,6 @@ export function SchedulePublishedSeriesList({
           <SeriesRow
             key={s.id}
             series={s}
-            formBusy={formBusy}
             actions={
               <Button
                 size="sm"

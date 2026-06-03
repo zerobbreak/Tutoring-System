@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { format, parseISO } from "date-fns";
 import {
   Table,
@@ -41,7 +42,7 @@ export function ClaimsTable({
           <TableRow key={claim.id}>
             <TableCell className="font-medium">
               <Link
-                to="/lecturer/sessions"
+                to={APP_PATHS.lecturer.sessions}
                 search={{ claim: claim.id }}
                 className="hover:underline"
               >

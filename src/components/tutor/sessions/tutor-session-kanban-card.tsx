@@ -1,4 +1,5 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
+import { APP_PATHS } from "#/lib/app-paths";
 import { Link } from "@tanstack/react-router";
 import { format, parseISO } from "date-fns";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -415,7 +416,7 @@ export function DraggableSessionCard({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link
-                    to="/tutor/notes"
+                    to={APP_PATHS.tutor.notes}
                     search={{ claim: claim.id, focus: Date.now() }}
                   >
                     Session notes
@@ -423,7 +424,7 @@ export function DraggableSessionCard({
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link
-                    to="/tutor/messaging"
+                    to={APP_PATHS.tutor.messaging}
                     search={
                       mod?.lecturer_id ? { lecturer: mod.lecturer_id } : undefined
                     }

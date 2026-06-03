@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { MapPin } from "lucide-react";
 import {
   Card,
@@ -27,7 +28,7 @@ export function VenuesCampusHint() {
           semester fields until a future sync with academic terms.
         </p>
         <Link
-          to="/admin/schedules"
+          to={APP_PATHS.admin.schedules}
           className="mt-3 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
         >
           Manage schedules &amp; venues

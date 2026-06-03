@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { addWeeks, endOfDay, format, startOfDay } from "date-fns";
 import { Ban, CalendarClock, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -220,7 +221,7 @@ export function TutorAssignedSchedulePanel() {
                           variant="outline"
                           onClick={() =>
                             navigate({
-                              to: "/tutor/sessions",
+                              to: APP_PATHS.tutor.sessions,
                               search: { claim: ev.claimId! },
                             })
                           }

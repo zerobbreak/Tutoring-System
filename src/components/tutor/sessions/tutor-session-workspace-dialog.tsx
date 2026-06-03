@@ -9,6 +9,7 @@ import {
   Trash2,
   Video,
 } from "lucide-react";
+import { APP_PATHS } from "#/lib/app-paths";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import {
@@ -161,7 +162,7 @@ export function TutorSessionWorkspaceDialog({
           <div className="flex w-full flex-wrap items-center gap-2">
             <Button variant="outline" className="gap-2" asChild>
               <Link
-                to="/tutor/notes"
+                to={APP_PATHS.tutor.notes}
                 search={{
                   claim: claim?.id,
                   focus: Date.now(),

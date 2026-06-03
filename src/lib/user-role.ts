@@ -35,15 +35,25 @@ export function isTutorDashboardRole(role: string | undefined): boolean {
 export function getPostAuthDashboardPath(
   role: string | undefined,
 ): DashboardPath {
-  if (isAdminDashboardRole(role)) return APP_PATHS.admin;
-  if (isLecturerDashboardRole(role)) return APP_PATHS.lecturer;
-  if (isTutorDashboardRole(role)) return APP_PATHS.tutor;
+  if (isAdminDashboardRole(role)) return APP_PATHS.admin.home;
+  if (isLecturerDashboardRole(role)) return APP_PATHS.lecturer.home;
+  if (isTutorDashboardRole(role)) return APP_PATHS.tutor.home;
   return APP_PATHS.settings;
 }
 
 export type PostAuthDestination =
   | DashboardPath
   | typeof APP_PATHS.auth.accountBlocked;
+
+export function getUserRole(
+  user:
+    | { user_metadata?: Record<string, unknown> | null }
+    | undefined
+    | null,
+): string | undefined {
+  const role = user?.user_metadata?.role;
+  return typeof role === "string" ? role : undefined;
+}
 
 /** Route after sign-in based on role and account lifecycle. */
 export function getPostAuthDestination(

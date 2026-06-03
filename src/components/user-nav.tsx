@@ -1,12 +1,13 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { useEffect, useRef, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Button } from "./ui/button";
 import { supabase } from "../lib/supabase";
-import { APP_PATHS } from "../lib/app-paths";
 import {
   formatRoleLabel,
   getPostAuthDashboardPath,
+  getUserRole,
 } from "../lib/user-role";
 import type { AppShellUser } from "./app-shell";
 
@@ -45,7 +46,7 @@ export function UserNav({ user }: UserNavProps) {
         .toUpperCase()
     : user.email?.[0]?.toUpperCase() ?? "?";
 
-  const roleRaw = user.user_metadata?.role as string | undefined;
+  const roleRaw = getUserRole(user);
   const roleLabel = formatRoleLabel(roleRaw);
 
   return (
@@ -69,7 +70,7 @@ export function UserNav({ user }: UserNavProps) {
       {open ? (
         <div className="absolute right-0 z-50 mt-2 w-56 origin-top-right animate-in fade-in zoom-in-95 duration-100 rounded-xl bg-white p-1 shadow-xl ring-1 ring-black/5 focus:outline-none">
           <div className="border-b border-gray-100 px-3 py-2">
-            <p className="truncate text-sm font-bold text-[#0A1128]">
+            <p className="truncate text-sm font-bold text-foreground">
               {user.user_metadata?.full_name || "User"}
             </p>
             <p className="truncate text-xs text-gray-500">{user.email}</p>

@@ -6,36 +6,37 @@ import {
   MessageSquare,
   Users,
 } from "lucide-react";
+import { APP_PATHS } from "#/lib/app-paths";
 
 export const LECTURER_QUICK_ACTIONS = [
   {
     label: "Review Claims",
-    to: "/lecturer/verification-queue" as const,
+    to: APP_PATHS.lecturer.verificationQueue,
     icon: ClipboardList,
   },
   {
     label: "Manage Tutors",
-    to: "/lecturer/tutors" as const,
+    to: APP_PATHS.lecturer.tutors,
     icon: Users,
   },
   {
     label: "Open Schedule",
-    to: "/lecturer/schedule" as const,
+    to: APP_PATHS.lecturer.schedule,
     icon: Calendar,
   },
   {
     label: "Message Tutors",
-    to: "/lecturer/messages" as const,
+    to: APP_PATHS.lecturer.messages,
     icon: MessageSquare,
   },
   {
     label: "Export Attendance",
-    to: "/lecturer/attendance" as const,
+    to: APP_PATHS.lecturer.attendance,
     icon: Download,
   },
   {
     label: "Generate Report",
-    to: "/lecturer/reports" as const,
+    to: APP_PATHS.lecturer.reports,
     icon: FileText,
   },
 ] as const;

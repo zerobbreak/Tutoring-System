@@ -3,6 +3,7 @@ import { Bell } from "lucide-react";
 import { NotificationsInboxView } from "#/components/notifications/notifications-inbox-view";
 import { Card, CardContent } from "#/components/ui/card";
 import { ScrollArea } from "#/components/ui/scroll-area";
+import { APP_PATHS } from "#/lib/app-paths";
 
 export const Route = createFileRoute("/tutor/notifications")({
   component: TutorNotificationsPage,
@@ -25,7 +26,10 @@ function TutorNotificationsPage() {
 
         <Card className="w-full min-w-0">
           <CardContent className="p-4 sm:p-6 md:p-8">
-            <NotificationsInboxView sessionsLink="/tutor/sessions" limit={100} />
+            <NotificationsInboxView
+              sessionsLink={APP_PATHS.tutor.sessions}
+              limit={100}
+            />
           </CardContent>
         </Card>
       </div>

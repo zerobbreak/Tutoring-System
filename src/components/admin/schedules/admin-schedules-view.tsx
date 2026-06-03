@@ -1,3 +1,4 @@
+import { APP_PATHS } from "#/lib/app-paths";
 import {
   addDays,
   addMonths,
@@ -35,6 +36,7 @@ import {
 } from "#/components/lecturer/schedule/schedule-series-lists";
 import type { SeriesFormValues } from "#/components/lecturer/schedule/schedule-series-form-dialog";
 import type { ScheduleCalendarView } from "#/components/lecturer/schedule/types";
+import { QueryErrorBanner } from "#/components/ui/query-fetch-feedback";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Card, CardContent } from "#/components/ui/card";
@@ -88,6 +90,8 @@ export type AdminSchedulesViewProps = {
   booting: boolean;
   issuesLoading: boolean;
   loadError: string | null;
+  onRetryLoad?: () => void;
+  retryingLoad?: boolean;
   view: ScheduleCalendarView;
   focusDate: Date;
   data: AdminSchedulePageDataDTO | null;
@@ -117,6 +121,8 @@ export function AdminSchedulesView({
   booting,
   issuesLoading,
   loadError,
+  onRetryLoad,
+  retryingLoad,
   view,
   focusDate,
   data,
@@ -355,9 +361,11 @@ export function AdminSchedulesView({
         </div>
 
         {loadError ? (
-          <div className="shrink-0 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {loadError}
-          </div>
+          <QueryErrorBanner
+            message={loadError}
+            onRetry={onRetryLoad}
+            retrying={retryingLoad}
+          />
         ) : null}
 
         <div className="grid shrink-0 gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -461,7 +469,7 @@ export function AdminSchedulesView({
               manageRole="admin"
               onManageAction={openSessionManage}
               monitorHrefForClaim={(claimId) => ({
-                to: "/admin/sessions",
+                to: APP_PATHS.admin.sessions,
                 search: { claim: claimId },
               })}
             />

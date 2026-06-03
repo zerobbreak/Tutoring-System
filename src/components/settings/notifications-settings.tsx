@@ -96,7 +96,7 @@ export function NotificationsSettings({
             onCheckedChange={(v) => patch({ push_notifications: v })}
           />
           <div className="rounded-lg border border-border/60 bg-white px-4 py-3">
-            <Label className="text-[#0A1128]">Reminder frequency</Label>
+            <Label className="text-foreground">Reminder frequency</Label>
             <p className="mb-2 text-sm text-muted-foreground">
               How often to bundle non-urgent reminders.
             </p>

@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { addWeeks, endOfDay, format, startOfDay } from "date-fns";
 import { CalendarClock, ChevronRight, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -72,7 +73,7 @@ export function TutorOfficialSessionsStrip() {
           </CardDescription>
         </div>
         <Button variant="ghost" size="sm" className="shrink-0 gap-1" asChild>
-          <Link to="/tutor/schedules">
+          <Link to={APP_PATHS.tutor.schedules}>
             Full calendar
             <ChevronRight className="size-3.5" />
           </Link>
@@ -106,7 +107,7 @@ export function TutorOfficialSessionsStrip() {
                     variant="secondary"
                     onClick={() =>
                       void navigate({
-                        to: "/tutor/sessions",
+                        to: APP_PATHS.tutor.sessions,
                         search: { claim: ev.claimId! },
                       })
                     }

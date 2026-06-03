@@ -1,5 +1,5 @@
-import type { User } from "@supabase/supabase-js";
-import { formatRoleLabel } from "#/lib/user-role";
+import { formatRoleLabel, getUserRole } from "#/lib/user-role";
+import type { SessionUser } from "#/lib/root-session";
 import type {
   AcademicTermDTO,
   CampusDTO,
@@ -13,12 +13,15 @@ import { CampusesPanel } from "./campuses-panel";
 import { ModulesPanel } from "./modules-panel";
 import { InstitutionDashboardCard } from "./institution-dashboard-card";
 import { InstitutionProfileCard } from "./institution-profile-card";
+import { QueryErrorBanner } from "#/components/ui/query-fetch-feedback";
 import { VenuesCampusHint } from "./venues-campus-hint";
 
 export type InstitutionManagementViewProps = {
-  user: User;
+  user: SessionUser;
   booting: boolean;
   loadError: string | null;
+  onRetryLoad?: () => void;
+  retryingLoad?: boolean;
   institution: InstitutionProfileDTO | null;
   campuses: CampusDTO[];
   academicTerms: AcademicTermDTO[];
@@ -32,6 +35,8 @@ export function InstitutionManagementView({
   user,
   booting,
   loadError,
+  onRetryLoad,
+  retryingLoad,
   institution,
   campuses,
   academicTerms,
@@ -40,7 +45,7 @@ export function InstitutionManagementView({
   dashboard,
   onRefresh,
 }: InstitutionManagementViewProps) {
-  const role = user.user_metadata?.role as string | undefined;
+  const role = getUserRole(user);
   const displayName =
     user.user_metadata?.full_name || user.email || formatRoleLabel(role);
 
@@ -67,12 +72,11 @@ export function InstitutionManagementView({
       </div>
 
       {loadError ? (
-        <div
-          role="alert"
-          className="shrink-0 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-        >
-          {loadError}
-        </div>
+        <QueryErrorBanner
+          message={loadError}
+          onRetry={onRetryLoad}
+          retrying={retryingLoad}
+        />
       ) : null}
 
       <InstitutionProfileCard

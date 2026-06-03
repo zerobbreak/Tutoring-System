@@ -1,4 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -100,7 +101,7 @@ function RecoverPassword() {
       if (upd) throw upd;
       reset();
       await supabase.auth.signOut();
-      navigate({ to: "/auth/login", search: { recovered: "1" } });
+      navigate({ to: APP_PATHS.auth.login, search: { recovered: "1" } });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Could not update password.";
       setError(msg);
@@ -153,7 +154,7 @@ function RecoverPassword() {
                 and open the link from the same browser when you are ready.
               </p>
               <Link
-                to="/auth/forgot-password"
+                to={APP_PATHS.auth.forgotPassword}
                 className="font-semibold text-[#FF6F61] hover:underline"
               >
                 Request a new link
@@ -230,7 +231,7 @@ function RecoverPassword() {
 
           <div className="mt-8 text-center text-sm text-gray-500">
             <Link
-              to="/auth/login"
+              to={APP_PATHS.auth.login}
               className="font-semibold text-[#FF6F61] hover:underline"
             >
               Back to sign in

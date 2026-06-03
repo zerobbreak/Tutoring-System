@@ -1,4 +1,5 @@
 import { ClipboardCheck, Loader2 } from "lucide-react";
+import { QueryErrorBanner } from "#/components/ui/query-fetch-feedback";
 import {
   Card,
   CardContent,
@@ -14,6 +15,8 @@ import type { VerificationQueueViewProps } from "./types";
 export function VerificationQueueView({
   booting,
   loadError,
+  onRetryLoad,
+  retryingLoad,
   search,
   moduleId,
   modules,
@@ -43,9 +46,11 @@ export function VerificationQueueView({
         </div>
 
         {loadError ? (
-          <div className="shrink-0 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {loadError}
-          </div>
+          <QueryErrorBanner
+            message={loadError}
+            onRetry={onRetryLoad}
+            retrying={retryingLoad}
+          />
         ) : null}
 
         <Card className="shrink-0">

@@ -437,10 +437,9 @@ export async function getCheckInSessionPreview(
     | { full_name: string }[]
     | null;
   const tutorRow = Array.isArray(tutor) ? tutor[0] : tutor;
-  const scheduled = claim.scheduled as {
-    starts_at: string;
-    ends_at: string;
-  } | null;
+  const scheduled = Array.isArray(claim.scheduled)
+    ? claim.scheduled[0]
+    : claim.scheduled;
 
   let sessionWhen = "—";
   if (scheduled?.starts_at) {
@@ -492,7 +491,9 @@ export async function ensureQrTokenForClaim(
   if (error) throw new Error(error.message);
   if (!claim) throw new Error("Session not found.");
 
-  const scheduled = claim.scheduled as { starts_at: string; ends_at: string } | null;
+  const scheduled = Array.isArray(claim.scheduled)
+    ? claim.scheduled[0]
+    : claim.scheduled;
   let expiresAt: Date;
   if (scheduled?.starts_at && scheduled?.ends_at) {
     expiresAt = qrWindowForScheduledSession({

@@ -6,6 +6,8 @@ import type {
 export type VerificationQueueViewProps = {
   booting: boolean;
   loadError: string | null;
+  onRetryLoad?: () => void;
+  retryingLoad?: boolean;
   search: string;
   moduleId: string;
   modules: VerificationModuleOptionDTO[];

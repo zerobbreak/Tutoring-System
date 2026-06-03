@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import {
   ArrowUpRight,
   CalendarDays,
@@ -28,6 +29,7 @@ import {
   TutorSessionsActivityChart,
   type SessionDayPoint,
 } from "#/components/tutor-sessions-activity-chart";
+import { QueryErrorBanner } from "#/components/ui/query-fetch-feedback";
 import { Button } from "#/components/ui/button";
 import {
   Card,
@@ -52,6 +54,8 @@ type TutorDashboardViewProps = {
   };
   booting: boolean;
   loadError: string | null;
+  onRetryLoad?: () => void;
+  retryingLoad?: boolean;
   activeStudents: number;
   sessionsThisWeek: number;
   hoursThisWeek: number;
@@ -69,6 +73,8 @@ export function TutorDashboardView({
   user,
   booting,
   loadError,
+  onRetryLoad,
+  retryingLoad,
   activeStudents,
   sessionsThisWeek,
   hoursThisWeek,
@@ -180,14 +186,11 @@ export function TutorDashboardView({
       </div>
 
       {loadError ? (
-        <Card className="border-destructive/40 bg-destructive/5">
-          <CardHeader className="py-3">
-            <CardTitle className="text-sm font-medium text-destructive">
-              Could not load some data
-            </CardTitle>
-            <CardDescription className="text-destructive/90">{loadError}</CardDescription>
-          </CardHeader>
-        </Card>
+        <QueryErrorBanner
+          message={loadError}
+          onRetry={onRetryLoad}
+          retrying={retryingLoad}
+        />
       ) : null}
 
       {prefs.dashboard_show_stats ? (
@@ -231,7 +234,7 @@ export function TutorDashboardView({
               className="shrink-0 text-muted-foreground hover:text-foreground"
               asChild
             >
-              <Link to="/tutor/sessions">View all sessions</Link>
+              <Link to={APP_PATHS.tutor.sessions}>View all sessions</Link>
             </Button>
           </CardHeader>
           <CardContent className="pt-0">
@@ -256,7 +259,7 @@ export function TutorDashboardView({
               className="text-muted-foreground hover:text-foreground"
               asChild
             >
-              <Link to="/tutor/schedules">Calendar</Link>
+              <Link to={APP_PATHS.tutor.schedules}>Calendar</Link>
             </Button>
           }
           footer={
@@ -319,7 +322,7 @@ export function TutorDashboardView({
               className="text-muted-foreground hover:text-foreground"
               asChild
             >
-              <Link to="/tutor/claims">View all</Link>
+              <Link to={APP_PATHS.tutor.claims}>View all</Link>
             </Button>
           }
           footer={
@@ -347,7 +350,7 @@ export function TutorDashboardView({
                     className="flex flex-col gap-0.5 border-b border-border/60 pb-2 last:border-0 last:pb-0"
                   >
                     <Link
-                      to="/tutor/claims/$claimId"
+                      to={APP_PATHS.tutor.claimDetail}
                       params={{ claimId: c.id }}
                       className="font-medium text-foreground hover:underline"
                     >
@@ -378,7 +381,7 @@ export function TutorDashboardView({
               </p>
             )}
             <Button variant="link" className="mt-1 h-auto px-0 text-xs" asChild>
-              <Link to="/tutor/notes">Review in session notes</Link>
+              <Link to={APP_PATHS.tutor.notes}>Review in session notes</Link>
             </Button>
           </div>
         </DashboardPanelCard>
@@ -400,9 +403,9 @@ export function TutorDashboardView({
           ) : null}
           {prefs.dashboard_show_notifications ? (
             <NotificationsInboxCard
-              sessionsLink="/tutor/sessions"
+              sessionsLink={APP_PATHS.tutor.sessions}
               previewLimit={DASHBOARD_PANEL_PREVIEW_LIMIT}
-              moreHref="/tutor/notifications"
+              moreHref={APP_PATHS.tutor.notifications}
             />
           ) : null}
         </div>
@@ -418,7 +421,7 @@ export function TutorDashboardView({
             className="text-muted-foreground hover:text-foreground"
             asChild
           >
-            <Link to="/tutor/claims">View all</Link>
+            <Link to={APP_PATHS.tutor.claims}>View all</Link>
           </Button>
         }
         footer={

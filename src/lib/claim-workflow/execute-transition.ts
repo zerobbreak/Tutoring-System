@@ -10,8 +10,8 @@ import {
 import {
   assertClaimNotFrozen,
   assertStatusIn,
-  assertTransitionAllowed,
 } from "./guards";
+import { assertTransitionAllowed } from "./transitions";
 import type {
   AttestationMethod,
   ClaimWorkflowAction,

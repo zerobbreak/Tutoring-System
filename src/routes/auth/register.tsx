@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -62,7 +63,7 @@ function Register() {
           "Check your email to confirm your address. You will be redirected to sign in.",
         duration: 5000,
       });
-      setTimeout(() => navigate({ to: "/auth/login" }), 4000);
+      setTimeout(() => navigate({ to: APP_PATHS.auth.login }), 4000);
     } catch (error: unknown) {
       toast.error(
         error instanceof Error
@@ -239,7 +240,7 @@ function Register() {
           <div className="mt-8 text-center text-sm text-gray-500">
             Already have an account?{" "}
             <Link
-              to="/auth/login"
+              to={APP_PATHS.auth.login}
               className="font-semibold text-[#FF6F61] hover:underline"
             >
               Sign in

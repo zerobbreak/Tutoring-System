@@ -1,4 +1,5 @@
 import type { NavigateOptions } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { format, parseISO } from "date-fns";
 import {
   Loader2,
@@ -127,7 +128,7 @@ export function AdminMessagingView({ search, navigate }: AdminMessagingViewProps
     if (search.compose === "broadcast") openNoticeDialog("broadcast");
     else openNoticeDialog();
     void navigate({
-      to: "/admin/messaging",
+      to: APP_PATHS.admin.messaging,
       search: {
         conversation: search.conversation,
         dispute: search.dispute,
@@ -148,7 +149,7 @@ export function AdminMessagingView({ search, navigate }: AdminMessagingViewProps
         setSelectedConvId(conversationId);
         await handleConversationCreated(conversationId);
         void navigate({
-          to: "/admin/messaging",
+          to: APP_PATHS.admin.messaging,
           search: { conversation: conversationId, dispute: undefined },
           replace: true,
         });
@@ -183,7 +184,7 @@ export function AdminMessagingView({ search, navigate }: AdminMessagingViewProps
   const handleSelectConversation = (id: string) => {
     setSelectedConvId(id);
     void navigate({
-      to: "/admin/messaging",
+      to: APP_PATHS.admin.messaging,
       search: { conversation: id },
       replace: true,
     });
@@ -211,7 +212,7 @@ export function AdminMessagingView({ search, navigate }: AdminMessagingViewProps
       setNoticeOpen(false);
       await handleConversationCreated(conversationId);
       void navigate({
-        to: "/admin/messaging",
+        to: APP_PATHS.admin.messaging,
         search: { conversation: conversationId },
         replace: true,
       });
@@ -231,7 +232,7 @@ export function AdminMessagingView({ search, navigate }: AdminMessagingViewProps
       setDisputesOpen(false);
       await handleConversationCreated(conversationId);
       void navigate({
-        to: "/admin/messaging",
+        to: APP_PATHS.admin.messaging,
         search: { conversation: conversationId },
         replace: true,
       });

@@ -1,5 +1,10 @@
 import { BarChart3, Loader2, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useLecturerAnalyticsData } from "#/components/lecturer/analytics/use-lecturer-analytics-data";
+import {
+  PageLoadingSpinner,
+  QueryErrorBanner,
+} from "#/components/ui/query-fetch-feedback";
+import { queryLoadFeedbackProps } from "#/lib/query-route-props";
 import { AttendanceTrendChart } from "#/components/lecturer/attendance/attendance-trend-chart";
 import { Button } from "#/components/ui/button";
 import {
@@ -11,10 +16,6 @@ import {
 } from "#/components/ui/card";
 import { ScrollArea, ScrollBar } from "#/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
-import {
-  getLecturerAnalyticsFn,
-  type LecturerAnalyticsDTO,
-} from "#/server-actions/lecturer-analytics";
 import { AnalyticsClaimsVolumeChart } from "./analytics-claims-volume-chart";
 import { AnalyticsKpiCards } from "./analytics-kpi-cards";
 import { AnalyticsModuleHeatmap } from "./analytics-module-heatmap";
@@ -29,30 +30,15 @@ import {
 } from "./analytics-workflow-charts";
 
 export function LecturerAnalyticsView() {
-  const [booting, setBooting] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [data, setData] = useState<LecturerAnalyticsDTO | null>(null);
-
-  const load = useCallback(async () => {
-    setBooting(true);
-    setLoadError(null);
-    try {
-      const result = await getLecturerAnalyticsFn();
-      setData(result);
-    } catch (e) {
-      setLoadError(
-        e instanceof Error ? e.message : "Failed to load analytics",
-      );
-    } finally {
-      setBooting(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
+  const { data, isLoading, isFetching, error, refetch, isSuccess } =
+    useLecturerAnalyticsData();
+  const feedback = queryLoadFeedbackProps({ error, isFetching, refetch });
+  const booting = isLoading;
   const lookbackDays = data?.lookbackDays ?? 90;
+
+  if (isLoading && !isSuccess) {
+    return <PageLoadingSpinner label="Loading analytics…" />;
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-6 pb-10 md:p-8">
@@ -71,10 +57,10 @@ export function LecturerAnalyticsView() {
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => void load()}
-          disabled={booting}
+          onClick={() => void refetch()}
+          disabled={isFetching}
         >
-          {booting ? (
+          {isFetching ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
             <RefreshCw className="size-4" />
@@ -83,12 +69,12 @@ export function LecturerAnalyticsView() {
         </Button>
       </div>
 
-      {loadError ? (
-        <Card className="border-destructive/50 bg-destructive/5">
-          <CardContent className="pt-6 text-sm text-destructive">
-            {loadError}
-          </CardContent>
-        </Card>
+      {feedback.loadError ? (
+        <QueryErrorBanner
+          message={feedback.loadError}
+          onRetry={feedback.onRetryLoad}
+          retrying={feedback.retryingLoad}
+        />
       ) : null}
 
       <AnalyticsKpiCards

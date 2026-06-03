@@ -1,7 +1,13 @@
 import { format } from "date-fns";
+import { APP_PATHS } from "#/lib/app-paths";
 import { Link } from "@tanstack/react-router";
 import { ClipboardCheck, Loader2, Wallet } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useAdminPayrollData } from "#/components/admin/payroll/use-admin-payroll-data";
+import {
+  PageLoadingSpinner,
+  QueryErrorBanner,
+} from "#/components/ui/query-fetch-feedback";
+import { queryLoadFeedbackProps } from "#/lib/query-route-props";
 import { AdminPayrollExportBar } from "#/components/admin/approvals/admin-payroll-export-bar";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
@@ -20,39 +26,18 @@ import {
   TableHeader,
   TableRow,
 } from "#/components/ui/table";
-import {
-  getPayrollSummaryFn,
-  listPayrollExportsFn,
-  type PayrollExportRowDTO,
-  type PayrollSummaryDTO,
-} from "#/server-actions/admin-payroll";
 
 export function AdminPayrollView() {
-  const [booting, setBooting] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [summary, setSummary] = useState<PayrollSummaryDTO | null>(null);
-  const [exports, setExports] = useState<PayrollExportRowDTO[]>([]);
+  const { data, isLoading, isFetching, error, refetch, isSuccess, invalidate } =
+    useAdminPayrollData();
+  const feedback = queryLoadFeedbackProps({ error, isFetching, refetch });
+  const summary = data?.summary ?? null;
+  const exports = data?.exports ?? [];
+  const booting = isLoading;
 
-  const load = useCallback(async () => {
-    setBooting(true);
-    setLoadError(null);
-    try {
-      const [summaryRes, exportsRes] = await Promise.all([
-        getPayrollSummaryFn(),
-        listPayrollExportsFn(),
-      ]);
-      setSummary(summaryRes);
-      setExports(exportsRes.exports);
-    } catch (e) {
-      setLoadError(e instanceof Error ? e.message : "Failed to load payroll data");
-    } finally {
-      setBooting(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  if (isLoading && !isSuccess) {
+    return <PageLoadingSpinner label="Loading payroll…" />;
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -69,20 +54,19 @@ export function AdminPayrollView() {
             </p>
           </div>
           <Button variant="outline" asChild className="shrink-0">
-            <Link to="/admin/approvals">
+            <Link to={APP_PATHS.admin.approvals}>
               <ClipboardCheck className="mr-2 size-4" />
               Approvals queue
             </Link>
           </Button>
         </div>
 
-        {loadError ? (
-          <div
-            role="alert"
-            className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-          >
-            {loadError}
-          </div>
+        {feedback.loadError ? (
+          <QueryErrorBanner
+            message={feedback.loadError}
+            onRetry={feedback.onRetryLoad}
+            retrying={feedback.retryingLoad}
+          />
         ) : null}
 
         {booting ? (
@@ -123,7 +107,7 @@ export function AdminPayrollView() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <AdminPayrollExportBar onExported={() => void load()} />
+                <AdminPayrollExportBar onExported={() => void invalidate()} />
               </CardContent>
             </Card>
 

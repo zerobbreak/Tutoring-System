@@ -1,3 +1,5 @@
+import type { User } from "@supabase/supabase-js";
+
 /** User snapshot returned by the root loader session bootstrap. */
 export type RootSessionUser = {
   id: string;
@@ -22,3 +24,6 @@ export type RootSessionData = {
 export type RootLoaderData = {
   sessionData: RootSessionData | null;
 };
+
+/** Signed-in user from SSR snapshot or live Supabase auth. */
+export type SessionUser = RootSessionUser | User;

@@ -2,6 +2,7 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { IncomingMessagesListener } from "#/components/messaging/incoming-messages-listener";
 import { AdminAppShell } from "#/components/admin-app-shell";
 import { isAdminDashboardRole } from "#/lib/user-role";
+import { APP_PATHS } from "#/lib/app-paths";
 import { useDashboardLayoutAccess } from "#/lib/use-dashboard-layout-access";
 
 export const Route = createFileRoute("/admin")({
@@ -22,7 +23,7 @@ function AdminLayout() {
   return (
     <AdminAppShell user={user}>
       <IncomingMessagesListener
-        messagingPath="/admin/messaging"
+        messagingPath={APP_PATHS.admin.messaging}
         conversationSearchParam
       />
       <Outlet />

@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { format, parseISO } from "date-fns";
 import {
   BookOpen,
@@ -244,7 +245,7 @@ export function TutorNotesWorkspace({
                       No sessions found. Log your first session to begin.
                     </p>
                     <Button variant="outline" size="sm" asChild className="mt-2">
-                      <Link to="/tutor/sessions">View Sessions</Link>
+                      <Link to={APP_PATHS.tutor.sessions}>View Sessions</Link>
                     </Button>
                   </div>
                 ) : (

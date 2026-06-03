@@ -1,7 +1,13 @@
 import { format, parseISO } from "date-fns";
+import { APP_PATHS } from "#/lib/app-paths";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, Coins, Loader2, TrendingUp } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useTutorEarningsData } from "#/components/tutor/earnings/use-tutor-earnings-data";
+import {
+  PageLoadingSpinner,
+  QueryErrorBanner,
+} from "#/components/ui/query-fetch-feedback";
+import { queryLoadFeedbackProps } from "#/lib/query-route-props";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import {
@@ -24,31 +30,16 @@ import {
   type ClaimPayrollStageId,
 } from "#/lib/claim-payroll-stage";
 import { formatZarFromCents } from "#/lib/money";
-import {
-  getTutorEarningsFn,
-  type TutorEarningsDTO,
-} from "#/server-actions/tutor-earnings";
 
 export function TutorEarningsView() {
-  const [booting, setBooting] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [data, setData] = useState<TutorEarningsDTO | null>(null);
+  const { data, isLoading, isFetching, error, refetch, isSuccess } =
+    useTutorEarningsData();
+  const feedback = queryLoadFeedbackProps({ error, isFetching, refetch });
+  const booting = isLoading;
 
-  const load = useCallback(async () => {
-    setBooting(true);
-    setLoadError(null);
-    try {
-      setData(await getTutorEarningsFn());
-    } catch (e) {
-      setLoadError(e instanceof Error ? e.message : "Failed to load earnings");
-    } finally {
-      setBooting(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  if (isLoading && !isSuccess) {
+    return <PageLoadingSpinner label="Loading earnings…" />;
+  }
 
   const issues = data?.issues;
   const hasIssues =
@@ -71,13 +62,12 @@ export function TutorEarningsView() {
         </p>
       </div>
 
-      {loadError ? (
-        <div
-          role="alert"
-          className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-        >
-          {loadError}
-        </div>
+      {feedback.loadError ? (
+        <QueryErrorBanner
+          message={feedback.loadError}
+          onRetry={feedback.onRetryLoad}
+          retrying={feedback.retryingLoad}
+        />
       ) : null}
 
       {booting ? (
@@ -108,7 +98,7 @@ export function TutorEarningsView() {
                   </span>
                 ) : null}
                 <Button variant="link" className="h-auto p-0 text-amber-950" asChild>
-                  <Link to="/tutor/claims">Review claims</Link>
+                  <Link to={APP_PATHS.tutor.claims}>Review claims</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -173,7 +163,7 @@ export function TutorEarningsView() {
                       <TableRow key={claim.id}>
                         <TableCell>
                           <Link
-                            to="/tutor/claims/$claimId"
+                            to={APP_PATHS.tutor.claimDetail}
                             params={{ claimId: claim.id }}
                             className="font-medium hover:underline"
                           >

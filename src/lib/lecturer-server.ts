@@ -1,4 +1,5 @@
 import { ensurePublicUserProfile } from "#/lib/ensure-public-user";
+import { getUserRole } from "#/lib/user-role";
 import type { createSupabaseServerClient } from "#/lib/supabase-server";
 
 export async function requireLecturerId(
@@ -10,7 +11,7 @@ export async function requireLecturerId(
   } = await supabase.auth.getUser();
   if (error || !user) throw new Error("Unauthorized");
 
-  const role = user.user_metadata?.role as string | undefined;
+  const role = getUserRole(user);
   if (role !== "LECTURER") {
     throw new Error("Lecturer access required.");
   }

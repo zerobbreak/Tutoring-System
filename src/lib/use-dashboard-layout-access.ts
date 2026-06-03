@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { AppShellUser } from "#/components/app-shell";
+import { APP_PATHS } from "#/lib/app-paths";
 import { applyPlatformGate } from "#/lib/apply-platform-gate";
 import { gateAuthenticatedSession } from "#/lib/mfa-auth";
+import { getUserRole } from "#/lib/user-role";
 
 type DashboardRoleGuard = (role: string | undefined) => boolean;
 
@@ -30,18 +32,18 @@ export function useDashboardLayoutAccess(
         if (cancelled) return;
 
         if (gate.status === "unauthenticated") {
-          navigate({ to: "/auth/login" });
+          navigate({ to: APP_PATHS.auth.login });
           return;
         }
 
         if (gate.status === "mfa_required") {
-          navigate({ to: "/auth/mfa" });
+          navigate({ to: APP_PATHS.auth.mfa });
           return;
         }
 
-        const role = gate.user.user_metadata?.role as string | undefined;
+        const role = getUserRole(gate.user);
         if (!hasAccessToRole(role)) {
-          navigate({ to: "/auth/login" });
+          navigate({ to: APP_PATHS.auth.login });
           return;
         }
 

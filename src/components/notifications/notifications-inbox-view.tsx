@@ -8,6 +8,7 @@ import {
   type NotificationCategory,
 } from "#/lib/notification-category";
 import { toast } from "#/lib/toast";
+import { APP_PATHS } from "#/lib/app-paths";
 import { cn } from "#/lib/utils";
 import {
   listNotificationsForUserFn,
@@ -26,7 +27,7 @@ export type NotificationsInboxViewProps = {
 };
 
 export function NotificationsInboxView({
-  sessionsLink = "/tutor/sessions",
+  sessionsLink = APP_PATHS.tutor.sessions,
   limit = 100,
   previewLimit,
   className,

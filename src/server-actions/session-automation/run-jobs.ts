@@ -7,11 +7,8 @@ import {
 } from "#/lib/schedule-materialize";
 import { processJobOutbox } from "#/lib/job-outbox/process-outbox";
 import { repairDraftClaimScheduleMismatches } from "#/lib/schedule-sync/repair-draft-mismatches";
-import {
-  ATTENDANCE_LOCK_GRACE_MINUTES,
-  isAttendanceLocked,
-  qrWindowForScheduledSession,
-} from "#/lib/session-qr-window";
+import { isAttendanceLocked, qrWindowForScheduledSession } from "#/lib/session-qr-window";
+import { normalizeSupabaseNestedRow } from "#/lib/supabase-nested-row";
 
 const AUTO_SUBMIT_GRACE_HOURS = 2;
 const DRAFT_REMINDER_HOURS = 48;
@@ -52,7 +49,9 @@ async function lockEndedAttendance(db: SupabaseClient): Promise<number> {
   const now = new Date();
 
   for (const row of rows ?? []) {
-    const scheduled = row.scheduled as { starts_at: string; ends_at: string } | null;
+    const scheduled = normalizeSupabaseNestedRow(
+      row.scheduled as { starts_at: string; ends_at: string } | { starts_at: string; ends_at: string }[] | null,
+    );
     let bounds: { startsAt: string; endsAt: string } | null = null;
     if (scheduled?.starts_at && scheduled?.ends_at) {
       bounds = { startsAt: scheduled.starts_at, endsAt: scheduled.ends_at };
@@ -294,7 +293,9 @@ async function runSessionReminders(db: SupabaseClient): Promise<number> {
   if (upErr) throw new Error(upErr.message);
 
   for (const s of upcomingSessions ?? []) {
-    const mod = s.module as { code: string } | null;
+    const mod = normalizeSupabaseNestedRow(
+      s.module as { code: string } | { code: string }[] | null,
+    );
     const { data: claim } = await db
       .from("session_claims")
       .select("id")
@@ -325,7 +326,9 @@ async function runSessionReminders(db: SupabaseClient): Promise<number> {
   for (const c of staleDrafts ?? []) {
     const sessionEnd = `${c.session_date}T23:59:59`;
     if (sessionEnd > draftCutoff) continue;
-    const mod = c.module as { code: string } | null;
+    const mod = normalizeSupabaseNestedRow(
+      c.module as { code: string } | { code: string }[] | null,
+    );
     const ok = await insertReminderIfNew(db, {
       recipientId: c.tutor_id as string,
       claimId: c.id as string,
@@ -355,14 +358,21 @@ async function runSessionReminders(db: SupabaseClient): Promise<number> {
   for (const c of pendingClaims ?? []) {
     const submittedAt = c.submitted_at as string | null;
     if (!submittedAt || submittedAt > pendingCutoff) continue;
-    const mod = c.module as { code: string; lecturer_id: string | null } | null;
-    if (!mod?.lecturer_id) continue;
+    const mod = normalizeSupabaseNestedRow(
+      c.module as
+        | { code: string; lecturer_id: string | null }
+        | { code: string; lecturer_id: string | null }[]
+        | null,
+    );
+    const lecturerId = mod?.lecturer_id;
+    if (!lecturerId) continue;
+    const moduleCode = mod.code ?? "";
     const ok = await insertReminderIfNew(db, {
-      recipientId: mod.lecturer_id,
+      recipientId: lecturerId,
       claimId: c.id as string,
       type: "CLAIM_PENDING_REMINDER",
       subject: "Claim awaiting verification",
-      body: `A claim for ${mod.code} on ${c.session_date} has been pending for over 72 hours.`,
+      body: `A claim for ${moduleCode} on ${c.session_date} has been pending for over 72 hours.`,
     });
     if (ok) sent += 1;
   }
@@ -392,8 +402,11 @@ async function repairDraftClaimsAllInstitutions(
 }
 
 export async function runSessionAutomationJobs(
-  db: SupabaseClient = getSupabaseAdmin(),
+  db: SupabaseClient | null = getSupabaseAdmin(),
 ): Promise<SessionAutomationJobResult> {
+  if (!db) {
+    throw new Error("Supabase admin client is not configured.");
+  }
   const { seriesExtended } = await extendAllPublishedSeries(db);
   const attendanceLocked = await lockEndedAttendance(db);
   const qrTokensRefreshed = await refreshQrTokensInWindow(db);

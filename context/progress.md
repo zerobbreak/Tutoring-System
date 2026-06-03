@@ -4,25 +4,17 @@ This file is the living status board for the codebase. Whenever any meaningful c
 
 ## To do
 
-- Fix the highest-priority TypeScript errors.
-- Align route destinations to one canonical path style.
 - Refactor the largest shared route-shell and server-action modules.
 - Remove one-off hex colors where the central theme already covers the need.
 
 ## Current Phase
 
 - Audit and standards consolidation.
-- Type safety cleanup.
 - Theme and palette normalization.
-- Route/path consistency cleanup.
 
 ## In Progress
 
-- Consolidating route and redirect path conventions.
-- Cleaning up type mismatches and weakly typed auth/session usage.
-- Normalizing palette usage across the app.
-- Reducing duplicated auth-shell and loading logic.
-- Converting remaining `useEffect` fetch pages (e.g. admin approvals) to query/loader patterns.
+- Normalizing palette usage on auth marketing pages (login/register still use legacy hex accents).
 
 ## Completed
 
@@ -46,13 +38,17 @@ This file is the living status board for the codebase. Whenever any meaningful c
 - Split `src/server-actions/admin-analytics/get-admin-analytics.ts` per audit §2.4 into load/context/build modules (`empty-admin-analytics`, `build-comparison-slice`, `admin-analytics-context`, `load-admin-analytics-data`, `build-admin-kpis-and-trends`, `build-admin-workflow`, `build-admin-tutor-analytics`, `build-admin-module-analytics`, `build-admin-lecturer-analytics`, `build-admin-comparisons`, `build-admin-institution-snapshot`); slim orchestrator (~57 lines); `index.ts` API unchanged.
 - Split UI components per audit §2.4: `tutor-sessions-workspace.tsx` (~528-line orchestrator + `use-tutor-sessions-workspace-data.ts`) → helpers, kanban board meta (drop/collision), kanban/table views, and seven dialog modules. Lecturer detail sheets → shared `src/components/lecturer/sheets/` primitives plus verification/session section extracts; fixed `EmptyHint` className on session sheet.
 - Implemented audit §3 TanStack Query compliance: added `@tanstack/react-query`, `query-client.ts`, centralized `query-keys.ts`, router SSR query integration (`setupRouterSsrQueryIntegration`), typed root route context (`createRootRouteWithContext`). Replaced manual `useEffect` fetches with query hooks + route loaders on admin/lecturer/tutor dashboards, admin users/sessions/schedules, lecturer verification queue and schedule. Updated messaging, tutor assigned schedule, and tutor sessions workspace hooks to use query cache + invalidation. Auth sign-in/out clears query cache alongside router invalidation.
+- Phase 1 typecheck/workflow cleanup: removed unused `SIGN_AND_APPROVE` lecturer verification path; required `stepUpCode` + `requireStepUpMfa` on `performVerificationActionFn`; added `SessionUser` type and fixed `useSessionUser`; added `normalizeSupabaseNestedRow` helper and normalized Supabase nested joins in schedule/claim/attendance loaders; fixed admin user detail sheet duplicate hero, tutor sessions dialog props, and related import/type issues. `pnpm exec tsc --noEmit` and `pnpm test` (91 tests) pass.
+- Phase 2 TanStack Query migration: added `queryKeys.admin.approvals`, `institutions`, `auditLogActors`, and `auditLogs`; migrated `admin/approvals`, `admin/institutions`, and `admin/audit-logs` routes to `use-admin-approvals-data`, `use-admin-institutions-data`, and `use-admin-audit-logs-data` (no route-level `booting`/`loadQueue` fetch lifecycle).
+- Phase 3 route-path consistency: expanded [`src/lib/app-paths.ts`](src/lib/app-paths.ts) with nested auth/admin/lecturer/tutor paths; fixed post-auth dashboard targets to TanStack-typed index routes (`/admin`, `/lecturer`, `/tutor`); wired app shells, layout messaging paths, auth redirects, quick actions, and feature navigation through `APP_PATHS`. `pnpm exec tsc --noEmit` and `pnpm test` (91 tests) pass.
+- Phase 4 query UX: added shared fetch feedback (`query-fetch-feedback.tsx`, `query-error.ts`, `query-page-gate.tsx`, `query-route-props.ts`); wired loading/blocking error/retry + inline error banners with Try again on admin/lecturer/tutor dashboards, users, sessions, schedules, approvals, institutions, audit logs, verification queue, and lecturer schedule; migrated settings profile load to TanStack Query with blocking error + retry. `pnpm exec tsc --noEmit` and `pnpm test` (91 tests) pass.
+- Post–Phase 4 tracker pass: migrated remaining manual-fetch feature views to TanStack Query (`admin` analytics/payroll/reports; `lecturer` analytics/reports/tutors/sessions/attendance; `tutor` earnings) with shared loading/error/retry UX; normalized settings + public nav palette (`text-foreground`, `bg-background`, lagoon/primary tokens). `pnpm exec tsc --noEmit` and `pnpm test` (91 tests) pass.
 
 ## Next up
 
-- Keep the audit findings prioritized by impact and effort.
-- Continue route-path cleanup until canonical destinations are consistent everywhere.
-- Consolidate palette usage so new UI work stays aligned with the defined theme tokens.
-- Watch for new typecheck errors while the core cleanup is in flight.
+- Map auth marketing pages (`/auth/*`) to theme tokens or documented auth-specific CSS variables.
+- Refactor largest shared route-shell and server-action modules (audit backlog).
+- Re-run `pnpm exec tsc --noEmit` after large feature work to catch regressions early.
 
 ## Session Notes
 

@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { Activity, AlertTriangle, CheckCircle2, Clock, Loader2 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
+import { LecturerSessionDetailSheetHeader } from "#/components/lecturer/sessions/lecturer-session-detail-sheet-header";
 import {
   Sheet,
   SheetContent,
@@ -10,32 +10,17 @@ import {
   SheetHeader,
   SheetTitle,
 } from "#/components/ui/sheet";
-import { WorkflowMessageButton } from "#/components/messaging/workflow-message-button";
 import { ClaimEvidenceSection } from "#/components/lecturer/sheets/claim-evidence-section";
-import {
-  ClaimVerificationTimelineSection,
-  type ClaimTimelineEntry,
-} from "#/components/lecturer/sheets/claim-verification-timeline-section";
+import { ClaimVerificationTimelineSection } from "#/components/lecturer/sheets/claim-verification-timeline-section";
 import { DetailSection } from "#/components/lecturer/sheets/detail-section";
 import { SessionDateTimeVenue } from "#/components/lecturer/sheets/session-datetime-venue";
 import { LecturerSessionAttendanceSection } from "#/components/lecturer/sessions/lecturer-session-attendance-section";
 import { LecturerSessionNotesSection } from "#/components/lecturer/sessions/lecturer-session-notes-section";
 import { LecturerSessionQrSection } from "#/components/lecturer/sessions/lecturer-session-qr-section";
 import { SessionActivityTimeline } from "#/components/sessions/session-activity-timeline";
-import {
-  claimBadgeLabel,
-  claimBadgeVariant,
-} from "#/lib/session-claim-display";
-import { toast } from "#/lib/toast";
 import { cn } from "#/lib/utils";
-import {
-  getLecturerSessionDetailFn,
-  type LecturerSessionDetailDTO,
-} from "#/server-actions/lecturer-sessions";
-import {
-  getSessionTimelineFn,
-  type SessionTimelineEntryDTO,
-} from "#/server-actions/scheduled-sessions";
+import { useLecturerSessionDetail } from "#/components/lecturer/sessions/use-lecturer-session-detail";
+import type { LecturerSessionDetailDTO } from "#/server-actions/lecturer-sessions";
 
 type LecturerSessionDetailSheetProps = {
   claimId: string | null;
@@ -60,46 +45,11 @@ export function LecturerSessionDetailSheet({
   open,
   onOpenChange,
 }: LecturerSessionDetailSheetProps) {
-  const [session, setSession] = useState<LecturerSessionDetailDTO | null>(null);
-  const [activity, setActivity] = useState<SessionTimelineEntryDTO[]>([]);
-  const [loading, setLoading] = useState(false);
-
-  const load = useCallback(async () => {
-    if (!claimId) return;
-    setLoading(true);
-    try {
-      const [data, timeline] = await Promise.all([
-        getLecturerSessionDetailFn({ data: { claimId } }),
-        getSessionTimelineFn({ data: { claimId } }),
-      ]);
-      setSession(data);
-      setActivity(timeline);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load session");
-      onOpenChange(false);
-    } finally {
-      setLoading(false);
-    }
-  }, [claimId, onOpenChange]);
-
-  useEffect(() => {
-    if (open && claimId) void load();
-    else setSession(null);
-  }, [open, claimId, load]);
-
-  const qrUrl = useMemo(() => {
-    if (!session?.qr_token || typeof window === "undefined") return null;
-    return `${window.location.origin}/tutor/sessions?claim=${session.id}`;
-  }, [session?.id, session?.qr_token]);
-
-  const timeline: ClaimTimelineEntry[] =
-    session?.timeline.map((item) => ({
-      id: item.id,
-      action_type: item.action_type,
-      acted_at: item.acted_at,
-      comment: item.comment,
-      actorLabel: item.actor_name ?? "System",
-    })) ?? [];
+  const { loading, session, activity, qrUrl, timeline } = useLecturerSessionDetail(
+    claimId,
+    open,
+    onOpenChange,
+  );
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -117,31 +67,7 @@ export function LecturerSessionDetailSheet({
           </div>
         ) : (
           <>
-            <div className="shrink-0 border-b bg-linear-to-br from-(--lagoon-deep)/10 via-background to-background px-6 py-5">
-              <div className="min-w-0">
-                <h2 className="text-lg font-semibold tracking-tight">
-                  {session.tutor?.full_name ?? "Tutor"}
-                </h2>
-                <p className="mt-0.5 text-sm leading-snug text-muted-foreground">
-                  <span className="font-medium text-foreground">
-                    {session.module?.code}
-                  </span>
-                  {" — "}
-                  {session.module?.name}
-                </p>
-                <div className="mt-2.5">
-                  <Badge variant={claimBadgeVariant(session.status)}>
-                    {claimBadgeLabel(session.status)}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                <WorkflowMessageButton kind="session" claimId={session.id} />
-                <WorkflowMessageButton kind="attendance" claimId={session.id} />
-                <WorkflowMessageButton kind="claim" claimId={session.id} />
-              </div>
-            </div>
+            <LecturerSessionDetailSheetHeader session={session} />
 
             <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-6 py-5">
               <section className="rounded-xl border border-border/80 bg-card p-4 shadow-sm">
@@ -236,7 +162,7 @@ export function LecturerSessionDetailSheet({
               {session.can_verify ? (
                 <Button asChild className="w-full">
                   <Link
-                    to="/lecturer/verification-queue"
+                    to={APP_PATHS.lecturer.verificationQueue}
                     search={{ claim: session.id }}
                   >
                     <CheckCircle2 className="size-4" />

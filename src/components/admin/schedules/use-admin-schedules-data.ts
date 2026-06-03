@@ -61,12 +61,19 @@ export function useAdminSchedulesData({
     void queryClient.invalidateQueries({ queryKey: queryKeys.admin.all });
   };
 
+  const refetch = async () => {
+    await Promise.all([pageQuery.refetch(), issuesQuery.refetch()]);
+  };
+
   return {
     data: pageQuery.data ?? null,
     issues: issuesQuery.data ?? [],
     isLoading: pageQuery.isLoading,
     issuesLoading: issuesQuery.isLoading,
-    error: pageQuery.error,
+    isFetching: pageQuery.isFetching || issuesQuery.isFetching,
+    isSuccess: pageQuery.isSuccess,
+    error: pageQuery.error ?? issuesQuery.error,
+    refetch,
     invalidate,
   };
 }

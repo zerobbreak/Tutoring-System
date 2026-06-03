@@ -113,9 +113,9 @@ export const listTutorAssignedScheduleFn = createServerFn({ method: "GET" })
         }
       }
 
-      const module = row.module as { code: string } | null;
-      const series = row.series as { title: string } | null;
-      const venue = row.venue as { name: string } | null;
+      const module = Array.isArray(row.module) ? row.module[0] : row.module;
+      const series = Array.isArray(row.series) ? row.series[0] : row.series;
+      const venue = Array.isArray(row.venue) ? row.venue[0] : row.venue;
       const startsAt = row.starts_at as string;
       const endsAt = row.ends_at as string;
       const venueLabel =

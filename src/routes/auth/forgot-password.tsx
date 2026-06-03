@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,7 +38,7 @@ function ForgotPassword() {
     setLoading(true);
     setError(null);
     try {
-      const redirectTo = `${window.location.origin}/auth/recover-password`;
+      const redirectTo = `${window.location.origin}${APP_PATHS.auth.recoverPassword}`;
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(
         values.email,
         { redirectTo },
@@ -92,7 +93,7 @@ function ForgotPassword() {
                 device.
               </p>
               <Link
-                to="/auth/login"
+                to={APP_PATHS.auth.login}
                 className="inline-block font-semibold text-[#FF6F61] hover:underline"
               >
                 Back to sign in
@@ -147,7 +148,7 @@ function ForgotPassword() {
 
           <div className="mt-8 text-center text-sm text-gray-500">
             <Link
-              to="/auth/login"
+              to={APP_PATHS.auth.login}
               className="font-semibold text-[#FF6F61] hover:underline"
             >
               Return to sign in

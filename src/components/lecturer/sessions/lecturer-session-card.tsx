@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { format, parseISO } from "date-fns";
 import { Clock, MapPin, User } from "lucide-react";
 import { Badge } from "#/components/ui/badge";
@@ -42,7 +43,7 @@ export function LecturerSessionCard({
             <User className="size-3.5 shrink-0" />
             {session.tutor?.id ? (
               <Link
-                to="/lecturer/tutors"
+                to={APP_PATHS.lecturer.tutors}
                 search={{ tutor: session.tutor.id }}
                 onClick={(e) => e.stopPropagation()}
                 className="truncate hover:underline"

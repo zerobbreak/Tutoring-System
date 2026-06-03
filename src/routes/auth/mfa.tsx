@@ -15,7 +15,7 @@ import {
 } from "#/lib/mfa-auth";
 import { getAuthUserLifecycleFn } from "#/lib/auth-server";
 import { APP_PATHS } from "#/lib/app-paths";
-import { getPostAuthDashboardPath } from "#/lib/user-role";
+import { getPostAuthDashboardPath, getUserRole } from "#/lib/user-role";
 import { logSecurityEventFn } from "#/server-actions/settings";
 
 export const Route = createFileRoute("/auth/mfa")({
@@ -50,7 +50,7 @@ function MfaVerify() {
       if (cancelled) return;
 
       if (!pending) {
-        const role = user.user_metadata?.role as string | undefined;
+        const role = getUserRole(user);
         const lifecycle = await getAuthUserLifecycleFn();
         const destination =
           lifecycle?.destination ?? getPostAuthDashboardPath(role);
@@ -91,7 +91,7 @@ function MfaVerify() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      const role = user?.user_metadata?.role as string | undefined;
+      const role = getUserRole(user);
 
       toast.success("Verification successful.");
       queryClient.clear();

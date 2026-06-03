@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, useRouter, Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -13,7 +14,7 @@ import { supabase } from "../../lib/supabase";
 import { toast } from "../../lib/toast";
 import { needsMfaVerification } from "../../lib/mfa-auth";
 import { getAuthUserLifecycleFn } from "../../lib/auth-server";
-import { getPostAuthDashboardPath } from "../../lib/user-role";
+import { getPostAuthDashboardPath, getUserRole } from "../../lib/user-role";
 
 const loginSchema = z.object({
   email: z.email("Invalid email address"),
@@ -77,11 +78,11 @@ function Login() {
         toast.success("Enter your authenticator code to continue.");
         queryClient.clear();
         await router.invalidate();
-        await navigate({ to: "/auth/mfa" });
+        await navigate({ to: APP_PATHS.auth.mfa });
         return;
       }
 
-      const role = data.user.user_metadata?.role as string | undefined;
+      const role = getUserRole(data.user);
       toast.success("Signed in successfully.");
       queryClient.clear();
       await router.invalidate();
@@ -89,8 +90,12 @@ function Login() {
       const destination =
         lifecycle?.destination ?? getPostAuthDashboardPath(role);
       await navigate({ to: destination });
-    } catch (error: any) {
-      toast.error(error.message || "Invalid email or password.");
+    } catch (error: unknown) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Invalid email or password.",
+      );
     } finally {
       setLoading(false);
     }
@@ -165,7 +170,7 @@ function Login() {
                   Password
                 </Label>
                 <Link
-                  to="/auth/forgot-password"
+                  to={APP_PATHS.auth.forgotPassword}
                   className="text-xs text-[#FF6F61] hover:underline"
                 >
                   Forgot password?
@@ -208,7 +213,7 @@ function Login() {
           <div className="mt-8 text-center text-sm text-gray-500">
             Have an invite code?{" "}
             <Link
-              to="/auth/register"
+              to={APP_PATHS.auth.register}
               className="font-semibold text-[#FF6F61] hover:underline"
             >
               Create account

@@ -1,7 +1,5 @@
-import { format, formatDistanceToNow, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Loader2, MessageSquare } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { Badge } from "#/components/ui/badge";
 import {
   Sheet,
   SheetContent,
@@ -9,27 +7,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "#/components/ui/sheet";
-import { WorkflowMessageButton } from "#/components/messaging/workflow-message-button";
 import { ClaimEvidenceSection } from "#/components/lecturer/sheets/claim-evidence-section";
-import {
-  ClaimVerificationTimelineSection,
-  type ClaimTimelineEntry,
-} from "#/components/lecturer/sheets/claim-verification-timeline-section";
+import { ClaimVerificationTimelineSection } from "#/components/lecturer/sheets/claim-verification-timeline-section";
 import { DetailSection } from "#/components/lecturer/sheets/detail-section";
 import { PrivateSessionFeedbackForm } from "#/components/private-session-feedback/private-session-feedback-form";
 import { VerificationDecisionPanel } from "#/components/lecturer/verification/verification-decision-panel";
 import { VerificationScheduleComparisonSection } from "#/components/lecturer/verification/verification-schedule-comparison-section";
-import { ELIGIBLE_FEEDBACK_CLAIM_STATUSES } from "#/lib/private-session-feedback";
-import {
-  claimBadgeLabel,
-  claimBadgeVariant,
-  type ClaimStatus,
-} from "#/lib/session-claim-display";
-import { toast } from "#/lib/toast";
-import {
-  getVerificationClaimFn,
-  type VerificationClaimDetailDTO,
-} from "#/server-actions/lecturer-verification";
+import { VerificationClaimDetailSheetHeader } from "#/components/lecturer/verification/verification-claim-detail-sheet-header";
+import { useVerificationClaimDetail } from "#/components/lecturer/verification/use-verification-claim-detail";
 
 type VerificationClaimDetailSheetProps = {
   claimId: string | null;
@@ -44,45 +29,14 @@ export function VerificationClaimDetailSheet({
   onOpenChange,
   onActionComplete,
 }: VerificationClaimDetailSheetProps) {
-  const [claim, setClaim] = useState<VerificationClaimDetailDTO | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const loadClaim = useCallback(async () => {
-    if (!claimId) return;
-    setLoading(true);
-    try {
-      setClaim(await getVerificationClaimFn({ data: { claimId } }));
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load claim");
-      onOpenChange(false);
-    } finally {
-      setLoading(false);
-    }
-  }, [claimId, onOpenChange]);
-
-  useEffect(() => {
-    if (open && claimId) void loadClaim();
-    else setClaim(null);
-  }, [open, claimId, loadClaim]);
-
-  const canAct =
-    claim && ["PENDING_VERIFICATION", "DISPUTED"].includes(claim.status);
-
-  const showPrivateFeedback =
-    claim &&
-    ELIGIBLE_FEEDBACK_CLAIM_STATUSES.includes(
-      claim.status as (typeof ELIGIBLE_FEEDBACK_CLAIM_STATUSES)[number],
-    );
-
-  const timeline: ClaimTimelineEntry[] =
-    claim?.timeline.map((item) => ({
-      id: item.id,
-      action_type: item.action_type,
-      acted_at: item.acted_at,
-      comment: item.comment,
-      actorLabel: item.actor?.full_name ?? "System",
-      digitallySigned: item.digitally_signed,
-    })) ?? [];
+  const {
+    claim,
+    loading,
+    timeline,
+    canAct,
+    showPrivateFeedback,
+    loadClaim,
+  } = useVerificationClaimDetail(claimId, open, onOpenChange);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -101,44 +55,7 @@ export function VerificationClaimDetailSheet({
           </div>
         ) : (
           <>
-            <div className="shrink-0 border-b bg-linear-to-br from-(--lagoon-deep)/10 via-background to-background px-6 py-5">
-              <div className="min-w-0">
-                <h2 className="text-lg font-semibold tracking-tight">
-                  {claim.tutor?.full_name ?? "Tutor"}
-                </h2>
-                <p className="mt-0.5 text-sm leading-snug text-muted-foreground">
-                  <span className="font-medium text-foreground">
-                    {claim.module?.code}
-                  </span>
-                  {" — "}
-                  {claim.module?.name}
-                </p>
-                <div className="mt-2.5 flex flex-wrap items-center gap-2">
-                  <Badge variant={claimBadgeVariant(claim.status as ClaimStatus)}>
-                    {claimBadgeLabel(claim.status as ClaimStatus)}
-                  </Badge>
-                  {claim.submitted_at ? (
-                    <span className="text-xs text-muted-foreground">
-                      Submitted{" "}
-                      {formatDistanceToNow(parseISO(claim.submitted_at), {
-                        addSuffix: true,
-                      })}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                <WorkflowMessageButton kind="claim" claimId={claim.id} />
-                <WorkflowMessageButton kind="session" claimId={claim.id} />
-                {claim.open_dispute ? (
-                  <WorkflowMessageButton
-                    kind="dispute"
-                    disputeId={claim.open_dispute.id}
-                  />
-                ) : null}
-              </div>
-            </div>
+            <VerificationClaimDetailSheetHeader claim={claim} />
 
             <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto overscroll-contain px-6 py-5">
               <section className="rounded-xl border border-border/80 bg-card p-4 shadow-sm">

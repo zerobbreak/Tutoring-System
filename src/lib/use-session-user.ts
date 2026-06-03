@@ -1,6 +1,6 @@
 import { getRouteApi } from "@tanstack/react-router";
-import type { User } from "@supabase/supabase-js";
 import { useEffect, useState } from "react";
+import type { SessionUser } from "#/lib/root-session";
 import { supabase } from "#/lib/supabase";
 
 const rootRouteApi = getRouteApi("__root__");
@@ -10,13 +10,13 @@ const rootRouteApi = getRouteApi("__root__");
  * Root loader session can be stale after client sign-in; fall back to the browser session.
  */
 export function useSessionUser(): {
-  user: User | null;
+  user: SessionUser | null;
   /** True until root loader user or client `getUser()` has been checked. */
   pending: boolean;
 } {
   const { sessionData } = rootRouteApi.useLoaderData();
   const rootUser = sessionData?.user ?? null;
-  const [clientUser, setClientUser] = useState<User | null | undefined>(
+  const [clientUser, setClientUser] = useState<SessionUser | null | undefined>(
     rootUser ? rootUser : undefined,
   );
 

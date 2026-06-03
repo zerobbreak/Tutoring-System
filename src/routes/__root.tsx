@@ -14,7 +14,7 @@ import { APP_PATHS } from "#/lib/app-paths";
 import type { RootLoaderData } from "#/lib/root-session";
 import { resolveRootShellLayout } from "#/lib/root-shell-layout";
 import { useRootAuthSync } from "#/lib/use-root-auth-sync";
-import { getPostAuthDashboardPath } from "#/lib/user-role";
+import { getPostAuthDashboardPath, getUserRole } from "#/lib/user-role";
 
 import appCss from "../styles.css?url";
 
@@ -83,9 +83,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
   const layout = resolveRootShellLayout(pathname);
 
   const brandTo = sessionUser
-    ? getPostAuthDashboardPath(
-        sessionUser.user_metadata?.role as string | undefined,
-      )
+    ? getPostAuthDashboardPath(getUserRole(sessionUser))
     : APP_PATHS.auth.login;
 
   return (

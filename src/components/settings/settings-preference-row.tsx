@@ -24,7 +24,7 @@ export function SettingsPreferenceRow({
   return (
     <div className="flex items-start justify-between gap-4 rounded-lg border border-border/60 bg-white px-4 py-3">
       <div className="min-w-0 flex-1 space-y-0.5">
-        <Label htmlFor={id} className="text-[#0A1128]">
+        <Label htmlFor={id} className="text-foreground">
           {label}
         </Label>
         {description ? (

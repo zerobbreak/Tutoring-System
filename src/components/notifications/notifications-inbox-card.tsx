@@ -9,6 +9,7 @@ import {
 } from "#/components/ui/card";
 import { NotificationsInboxView } from "#/components/notifications/notifications-inbox-view";
 import { DASHBOARD_PANEL_LIST_MIN_H } from "#/components/tutor/dashboard/dashboard-panel-card";
+import { APP_PATHS } from "#/lib/app-paths";
 import { cn } from "#/lib/utils";
 
 type NotificationsInboxCardProps = {
@@ -21,11 +22,11 @@ type NotificationsInboxCardProps = {
 };
 
 export function NotificationsInboxCard({
-  sessionsLink = "/tutor/sessions",
+  sessionsLink = APP_PATHS.tutor.sessions,
   title = "Notifications",
   description = "Schedule changes, approvals, and reminders",
   previewLimit,
-  moreHref = "/tutor/notifications",
+  moreHref = APP_PATHS.tutor.notifications,
 }: NotificationsInboxCardProps) {
   const isPreview = previewLimit != null && previewLimit > 0;
 

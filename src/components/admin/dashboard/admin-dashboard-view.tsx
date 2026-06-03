@@ -1,5 +1,5 @@
-import type { User } from "@supabase/supabase-js";
-import { formatRoleLabel } from "#/lib/user-role";
+import { formatRoleLabel, getUserRole } from "#/lib/user-role";
+import type { SessionUser } from "#/lib/root-session";
 import type {
   AdminAnalyticsSummaryDTO,
   AdminDeadlineDTO,
@@ -15,12 +15,15 @@ import { SystemAnalyticsPanel } from "./system-analytics-panel";
 import { UpcomingDeadlinesPanel } from "./upcoming-deadlines-panel";
 import { AdminTutorSessionCreationsPanel } from "#/components/admin/sessions/admin-tutor-session-creations-panel";
 import type { PendingTutorSessionCreationDTO } from "#/server-actions/admin-sessions";
+import { QueryErrorBanner } from "#/components/ui/query-fetch-feedback";
 import { WorkflowHealthPanel } from "./workflow-health-panel";
 
 export type AdminDashboardViewProps = {
-  user: User;
+  user: SessionUser;
   booting: boolean;
   loadError: string | null;
+  onRetryLoad?: () => void;
+  retryingLoad?: boolean;
   institutionName: string | null;
   pendingApprovalsCount: number;
   verifiedClaimsCount: number;
@@ -41,6 +44,8 @@ export function AdminDashboardView({
   user,
   booting,
   loadError,
+  onRetryLoad,
+  retryingLoad,
   institutionName,
   pendingApprovalsCount,
   verifiedClaimsCount,
@@ -56,7 +61,7 @@ export function AdminDashboardView({
   pendingTutorSessionCreations,
   onTutorSessionApprovalsChanged,
 }: AdminDashboardViewProps) {
-  const role = user.user_metadata?.role as string | undefined;
+  const role = getUserRole(user);
   const displayName =
     user.user_metadata?.full_name || user.email || formatRoleLabel(role);
 
@@ -81,9 +86,11 @@ export function AdminDashboardView({
       </div>
 
       {loadError ? (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {loadError}
-        </div>
+        <QueryErrorBanner
+          message={loadError}
+          onRetry={onRetryLoad}
+          retrying={retryingLoad}
+        />
       ) : null}
 
       <AdminKpiCards

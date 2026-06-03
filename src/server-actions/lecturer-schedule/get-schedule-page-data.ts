@@ -5,6 +5,7 @@ import {
   extendSeriesHorizon,
   needsHorizonExtension,
 } from "#/lib/schedule-materialize";
+import { normalizeSupabaseNestedRow } from "#/lib/supabase-nested-row";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { SCHEDULED_SESSION_SELECT, SERIES_SELECT } from "./constants";
 import { mapChangeRequestRow, mapScheduleEventRow, mapSeriesRow } from "./mappers";
@@ -95,9 +96,18 @@ export const getLecturerSchedulePageDataFn = createServerFn({ method: "GET" })
         }
       }
 
-      events = (sessions ?? []).map((row) =>
-        mapScheduleEventRow(row as Parameters<typeof mapScheduleEventRow>[0], claimIdBySession),
-      );
+      events = (sessions ?? [])
+        .map((row) => {
+          const normalized = {
+            ...row,
+            module: normalizeSupabaseNestedRow(row.module),
+            tutor: normalizeSupabaseNestedRow(row.tutor),
+            series: normalizeSupabaseNestedRow(row.series),
+            venue: normalizeSupabaseNestedRow(row.venue),
+          };
+          return mapScheduleEventRow(normalized, claimIdBySession);
+        })
+        .filter(Boolean);
     }
 
     let seriesRows: Parameters<typeof mapSeriesRow>[0][] = [];
@@ -109,7 +119,11 @@ export const getLecturerSchedulePageDataFn = createServerFn({ method: "GET" })
         .order("created_at", { ascending: false });
 
       if (seriesErr) throw new Error(seriesErr.message);
-      seriesRows = (rows ?? []) as Parameters<typeof mapSeriesRow>[0][];
+      seriesRows = (rows ?? []).map((row) => ({
+        ...row,
+        module: normalizeSupabaseNestedRow(row.module),
+        tutor: normalizeSupabaseNestedRow(row.tutor),
+      }));
 
       for (const s of rows ?? []) {
         if (
@@ -166,9 +180,21 @@ export const getLecturerSchedulePageDataFn = createServerFn({ method: "GET" })
 
         if (changeErr) throw new Error(changeErr.message);
 
-        pendingChangeRequests = (changeRows ?? []).map((r) =>
-          mapChangeRequestRow(r as Parameters<typeof mapChangeRequestRow>[0]),
-        );
+        pendingChangeRequests = (changeRows ?? []).map((r) => {
+          const sessionRaw = normalizeSupabaseNestedRow(r.session);
+          const session = sessionRaw
+            ? {
+                ...sessionRaw,
+                series: normalizeSupabaseNestedRow(sessionRaw.series),
+                module: normalizeSupabaseNestedRow(sessionRaw.module),
+              }
+            : null;
+          return mapChangeRequestRow({
+            ...r,
+            requested_by_user: normalizeSupabaseNestedRow(r.requested_by_user),
+            session,
+          });
+        });
       }
     }
 

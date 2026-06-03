@@ -1,20 +1,13 @@
-import { format, formatDistanceToNow, parseISO } from "date-fns";
 import {
   BookOpen,
   Calendar,
-  CheckCircle2,
   ExternalLink,
   FileText,
   KeyRound,
   Loader2,
   Shield,
   UserCog,
-  XCircle,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { Avatar, AvatarFallback } from "#/components/ui/avatar";
-import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
@@ -35,31 +28,23 @@ import {
 import {
   ONBOARDING_DOCUMENT_LABELS,
   canReviewOnboarding,
-  formatApprovalStatus,
 } from "#/lib/onboarding-documents";
-import type { UserStatus } from "#/lib/user-status";
 import { formatRoleLabel, USER_ROLES, type UserRole } from "#/lib/user-role";
-import { toast } from "#/lib/toast";
 import { cn } from "#/lib/utils";
 import {
   assignModuleLecturerFn,
-  getAdminUserDetailFn,
-  listInstitutionModulesFn,
-  resetUserMfaFn,
   reviewOnboardingFn,
+  resetUserMfaFn,
   setUserActiveFn,
   updateUserRoleFn,
-  type AdminUserDetailDTO,
-  type AdminUserRowDTO,
-  type InstitutionModuleOptionDTO,
 } from "#/server-actions/admin-users";
+import { useAdminUserDetailSheet } from "#/components/admin/users/use-admin-user-detail-sheet";
+import {
+  DetailSection,
+  selectContentProps,
+  UserDetailHero,
+} from "#/components/admin/users/admin-user-detail-sheet-sections";
 import { AdminTutorHourAllocationsPanel } from "./admin-tutor-hour-allocations-panel";
-
-const selectContentProps = {
-  position: "popper" as const,
-  sideOffset: 4,
-  className: "z-[100] max-h-60",
-};
 
 type AdminUserDetailSheetProps = {
   userId: string | null;
@@ -68,142 +53,30 @@ type AdminUserDetailSheetProps = {
   onActionComplete: () => void;
 };
 
-function getInitials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
-}
-
-function statusBadgeClass(status: string): string {
-  switch (status as UserStatus) {
-    case "ACTIVE":
-      return "border-emerald-200 bg-emerald-50 text-emerald-800";
-    case "REJECTED":
-    case "SUSPENDED":
-      return "border-destructive/30 bg-destructive/10 text-destructive";
-    case "PENDING_APPROVAL":
-      return "border-amber-200 bg-amber-50 text-amber-900";
-    default:
-      return "";
-  }
-}
-
-function DetailSection({
-  title,
-  description,
-  icon: Icon,
-  children,
-  className,
-}: {
-  title: string;
-  description?: string;
-  icon: LucideIcon;
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <section
-      className={cn(
-        "rounded-xl border border-border/80 bg-card p-4 shadow-sm",
-        className,
-      )}
-    >
-      <div className="mb-4 flex items-start gap-3">
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-(--lagoon-deep)/10">
-          <Icon className="size-4 text-(--lagoon-deep)" aria-hidden />
-        </span>
-        <div className="min-w-0 pt-0.5">
-          <h3 className="text-sm font-semibold leading-none">{title}</h3>
-          {description ? (
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {description}
-            </p>
-          ) : null}
-        </div>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function StatItem({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string;
-  value: ReactNode;
-  icon: LucideIcon;
-}) {
-  return (
-    <div className="min-w-0">
-      <dt className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-        <Icon className="size-3 shrink-0" aria-hidden />
-        {label}
-      </dt>
-      <dd className="mt-0.5 truncate text-sm font-medium text-foreground">
-        {value}
-      </dd>
-    </div>
-  );
-}
-
 export function AdminUserDetailSheet({
   userId,
   open,
   onOpenChange,
   onActionComplete,
 }: AdminUserDetailSheetProps) {
-  const [detail, setDetail] = useState<AdminUserDetailDTO | null>(null);
-  const [modules, setModules] = useState<InstitutionModuleOptionDTO[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [note, setNote] = useState("");
-  const [role, setRole] = useState<UserRole>("TUTOR");
-  const [moduleId, setModuleId] = useState("");
-
-  const load = useCallback(async () => {
-    if (!userId) return;
-    setLoading(true);
-    try {
-      const [userDetail, modList] = await Promise.all([
-        getAdminUserDetailFn({ data: { userId } }),
-        listInstitutionModulesFn(),
-      ]);
-      setDetail(userDetail);
-      setModules(modList.modules);
-      setRole(userDetail.user.role);
-      setNote("");
-      setModuleId("");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to load user");
-      onOpenChange(false);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId, onOpenChange]);
-
-  useEffect(() => {
-    if (open && userId) void load();
-    else setDetail(null);
-  }, [open, userId, load]);
-
-  const run = async (fn: () => Promise<unknown>, success: string) => {
-    setSubmitting(true);
-    try {
-      await fn();
-      toast.success(success);
-      onActionComplete();
-      if (userId) await load();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Action failed");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const {
+    detail,
+    modules,
+    loading,
+    submitting,
+    note,
+    setNote,
+    role,
+    setRole,
+    moduleId,
+    setModuleId,
+    run,
+  } = useAdminUserDetailSheet({
+    userId,
+    open,
+    onOpenChange,
+    onActionComplete,
+  });
 
   const user = detail?.user;
   const canReview = user && canReviewOnboarding(user.user_status);
@@ -507,77 +380,5 @@ export function AdminUserDetailSheet({
         )}
       </SheetContent>
     </Sheet>
-  );
-}
-
-function UserDetailHero({ user }: { user: AdminUserRowDTO }) {
-  const joinedLabel = user.created_at
-    ? format(parseISO(user.created_at), "PP")
-    : "—";
-  const lastActiveLabel = user.last_login_at
-    ? formatDistanceToNow(parseISO(user.last_login_at), { addSuffix: true })
-    : "Never";
-
-  return (
-    <div className="shrink-0 border-b bg-linear-to-br from-(--lagoon-deep)/10 via-background to-background px-6 py-5">
-      <div className="flex items-start gap-4">
-        <Avatar className="size-14 ring-2 ring-(--lagoon-deep)/15">
-          <AvatarFallback className="text-lg">
-            {getInitials(user.full_name) || "?"}
-          </AvatarFallback>
-        </Avatar>
-        <div className="min-w-0 flex-1 pt-0.5">
-          <h2 className="truncate text-lg font-semibold tracking-tight">
-            {user.full_name}
-          </h2>
-          <p className="truncate text-sm text-muted-foreground">{user.email}</p>
-          <div className="mt-2.5 flex flex-wrap gap-1.5">
-            <Badge className="bg-(--lagoon-deep) text-white hover:bg-(--lagoon-deep)">
-              {formatRoleLabel(user.role)}
-            </Badge>
-            <Badge
-              variant="outline"
-              className={statusBadgeClass(user.user_status)}
-            >
-              {formatApprovalStatus(user.user_status, user.onboarding_step)}
-            </Badge>
-            {user.user_status === "SUSPENDED" || user.user_status === "REJECTED" ? (
-              <Badge variant="destructive">Disabled</Badge>
-            ) : null}
-          </div>
-        </div>
-      </div>
-
-      <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
-        <StatItem label="Joined" value={joinedLabel} icon={Calendar} />
-        <StatItem label="Last active" value={lastActiveLabel} icon={UserCog} />
-        <StatItem
-          label="MFA"
-          value={
-            user.mfa_enabled ? (
-              <span className="inline-flex items-center gap-1 text-emerald-700">
-                <CheckCircle2 className="size-3.5" />
-                Enabled
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-muted-foreground">
-                <XCircle className="size-3.5" />
-                Off
-              </span>
-            )
-          }
-          icon={KeyRound}
-        />
-        {user.institution_name ? (
-          <div className="col-span-2 sm:col-span-3">
-            <StatItem
-              label="Institution"
-              value={user.institution_name}
-              icon={Shield}
-            />
-          </div>
-        ) : null}
-      </dl>
-    </div>
   );
 }

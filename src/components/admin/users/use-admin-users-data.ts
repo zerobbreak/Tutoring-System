@@ -34,7 +34,10 @@ export function useAdminUsersData({
   return {
     users: query.data?.users ?? [],
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    isSuccess: query.isSuccess,
     error: query.error,
+    refetch: query.refetch,
     invalidate,
   };
 }

@@ -195,7 +195,7 @@ export const updateAccountProfileFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => accountProfileSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
-    const userId = await requireUserId(supabase);
+    await requireUserId(supabase);
     const { fullName, phone, department, officeLocation } = data;
 
     const { error: authError } = await supabase.auth.updateUser({
@@ -217,7 +217,7 @@ export const updateInstitutionFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => institutionSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
-    const userId = await requireUserId(supabase);
+    await requireUserId(supabase);
 
     const profile = await ensurePublicUserProfile(supabase);
     if (profile.institution_id) {

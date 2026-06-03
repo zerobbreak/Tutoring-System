@@ -4,7 +4,32 @@ import {
   diffClaimFromSnapshot,
   type ScheduledSessionForClaim,
 } from "#/lib/schedule-claims";
+import { normalizeSupabaseNestedRow } from "#/lib/supabase-nested-row";
 import type { ScheduleMismatchRow } from "./build-integrity-issues";
+
+function toScheduledSessionForClaim(
+  scheduled: Record<string, unknown>,
+): ScheduledSessionForClaim {
+  const venue = normalizeSupabaseNestedRow(
+    scheduled.venue as { name: string } | { name: string }[] | null,
+  );
+  const series = normalizeSupabaseNestedRow(
+    scheduled.series as
+      | { session_kind: string }
+      | { session_kind: string }[]
+      | null,
+  );
+  return {
+    id: scheduled.id as string,
+    module_id: scheduled.module_id as string,
+    tutor_id: scheduled.tutor_id as string,
+    starts_at: scheduled.starts_at as string,
+    ends_at: scheduled.ends_at as string,
+    venue_text: (scheduled.venue_text as string | null) ?? null,
+    venue,
+    series,
+  };
+}
 
 export async function loadScheduleMismatches(
   db: SupabaseClient,
@@ -45,10 +70,14 @@ export async function loadScheduleMismatches(
   const out: ScheduleMismatchRow[] = [];
 
   for (const row of rows ?? []) {
-    const scheduled = row.scheduled as ScheduledSessionForClaim | null;
-    if (!scheduled?.starts_at || !scheduled?.ends_at) continue;
+    const scheduledRaw = normalizeSupabaseNestedRow(
+      row.scheduled as Record<string, unknown> | Record<string, unknown>[] | null,
+    );
+    if (!scheduledRaw?.starts_at || !scheduledRaw?.ends_at) continue;
 
-    const snapshot = claimSnapshotFromScheduledSession(scheduled);
+    const snapshot = claimSnapshotFromScheduledSession(
+      toScheduledSessionForClaim(scheduledRaw),
+    );
     const mismatches = diffClaimFromSnapshot(
       {
         session_date: row.session_date as string,
@@ -62,8 +91,10 @@ export async function loadScheduleMismatches(
 
     if (!mismatches.length) continue;
 
-    const mod = Array.isArray(row.module) ? row.module[0] : row.module;
-    const moduleCode = (mod as { code: string } | null)?.code ?? "—";
+    const mod = normalizeSupabaseNestedRow(
+      row.module as { code: string } | { code: string }[] | null,
+    );
+    const moduleCode = mod?.code ?? "—";
 
     out.push({
       claimId: row.id as string,

@@ -2,6 +2,7 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { IncomingMessagesListener } from "#/components/messaging/incoming-messages-listener";
 import { LecturerAppShell } from "#/components/lecturer-app-shell";
 import { ScrollArea } from "#/components/ui/scroll-area";
+import { APP_PATHS } from "#/lib/app-paths";
 import { isLecturerDashboardRole } from "#/lib/user-role";
 import { useDashboardLayoutAccess } from "#/lib/use-dashboard-layout-access";
 
@@ -23,7 +24,7 @@ function LecturerLayout() {
   return (
     <LecturerAppShell user={user}>
       <IncomingMessagesListener
-        messagingPath="/lecturer/messages"
+        messagingPath={APP_PATHS.lecturer.messages}
         conversationSearchParam
       />
       <ScrollArea className="min-h-0 flex-1">

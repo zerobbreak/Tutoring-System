@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { Loader2, MessageSquare } from "lucide-react";
 import { Button } from "#/components/ui/button";
 import {
@@ -31,7 +32,7 @@ export function DashboardRecentMessages({
           className="text-muted-foreground hover:text-foreground"
           asChild
         >
-          <Link to="/tutor/notifications">More</Link>
+          <Link to={APP_PATHS.tutor.notifications}>More</Link>
         </Button>
       }
       footer={
@@ -71,7 +72,7 @@ export function DashboardRecentMessages({
                   />
                   <div className="min-w-0 flex-1">
                     <Link
-                      to="/tutor/messaging"
+                      to={APP_PATHS.tutor.messaging}
                       className="font-medium text-foreground hover:underline"
                     >
                       {title}

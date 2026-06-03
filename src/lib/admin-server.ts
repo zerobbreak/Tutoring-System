@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ensurePublicUserProfile } from "#/lib/ensure-public-user";
 import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import type { createSupabaseServerClient } from "#/lib/supabase-server";
-import { isAdminDashboardRole } from "#/lib/user-role";
+import { getUserRole, isAdminDashboardRole } from "#/lib/user-role";
 
 export type AdminContext = {
   userId: string;
@@ -19,7 +19,7 @@ export async function requireAdminContext(
   } = await supabase.auth.getUser();
   if (error || !user) throw new Error("Unauthorized");
 
-  const role = user.user_metadata?.role as string | undefined;
+  const role = getUserRole(user);
   if (!isAdminDashboardRole(role)) {
     throw new Error("Admin access required.");
   }

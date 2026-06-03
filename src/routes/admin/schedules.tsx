@@ -7,6 +7,8 @@ import { rangeForView } from "#/components/lecturer/schedule/schedule-range";
 import type { ScheduleCalendarView } from "#/components/lecturer/schedule/types";
 import { buildDtstartFromDateAndTime } from "#/lib/schedule-recurrence";
 import { toast } from "#/lib/toast";
+import { QueryPageGate } from "#/lib/query-page-gate";
+import { queryLoadFeedbackProps } from "#/lib/query-route-props";
 import { useSessionUser } from "#/lib/use-session-user";
 import {
   adminArchiveScheduleSeriesFn,
@@ -43,7 +45,10 @@ function AdminSchedulesPage() {
     issues,
     isLoading,
     issuesLoading,
+    isFetching,
+    isSuccess,
     error,
+    refetch,
     invalidate,
   } = useAdminSchedulesData({
     enabled: dataEnabled,
@@ -53,6 +58,7 @@ function AdminSchedulesPage() {
     scope,
     scopeEntityId,
   });
+  const feedback = queryLoadFeedbackProps({ error, isFetching, refetch });
 
   useEffect(() => {
     if (academicTermId === null && data?.currentTermId) {
@@ -178,19 +184,20 @@ function AdminSchedulesPage() {
     }
   };
 
-  if (pending || !user) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
   return (
+    <QueryPageGate
+      sessionPending={pending || !user}
+      isLoading={dataEnabled && isLoading}
+      isFetching={isFetching}
+      error={error}
+      hasData={!dataEnabled || isSuccess}
+      onRetry={() => void refetch()}
+      loadingLabel="Loading schedules…"
+    >
     <AdminSchedulesView
       booting={dataEnabled ? isLoading : false}
       issuesLoading={dataEnabled ? issuesLoading : false}
-      loadError={error instanceof Error ? error.message : null}
+      {...feedback}
       view={view}
       focusDate={focusDate}
       data={dataEnabled ? data : null}
@@ -214,5 +221,6 @@ function AdminSchedulesPage() {
         invalidate();
       }}
     />
+    </QueryPageGate>
   );
 }

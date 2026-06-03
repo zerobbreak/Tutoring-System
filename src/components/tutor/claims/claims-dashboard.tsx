@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { format, parseISO } from "date-fns";
 import {
   AlertCircle,
@@ -129,7 +130,7 @@ export function ClaimsDashboard() {
 
   const discardDraft = (claimId: string) => {
     void navigate({
-      to: "/tutor/sessions",
+      to: APP_PATHS.tutor.sessions,
       search: { claim: claimId },
     });
   };
@@ -235,7 +236,7 @@ export function ClaimsDashboard() {
           </p>
         </div>
         <Button variant="outline" asChild className="shrink-0">
-          <Link to="/tutor/sessions">
+          <Link to={APP_PATHS.tutor.sessions}>
             <History className="size-4" />
             Session history
           </Link>
@@ -424,7 +425,7 @@ export function ClaimsDashboard() {
                           </p>
                         </div>
                         <Button variant="outline" size="sm" asChild>
-                          <Link to="/tutor/sessions">Go to sessions</Link>
+                          <Link to={APP_PATHS.tutor.sessions}>Go to sessions</Link>
                         </Button>
                       </div>
                     </TableCell>
@@ -447,7 +448,7 @@ export function ClaimsDashboard() {
                             return;
                           }
                           void navigate({
-                            to: "/tutor/claims/$claimId",
+                            to: APP_PATHS.tutor.claimDetail,
                             params: { claimId: claim.id },
                           });
                         }}

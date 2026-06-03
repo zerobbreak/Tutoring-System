@@ -18,7 +18,11 @@ export const runSessionAutomationCronFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => cronSchema.parse(input))
   .handler(async ({ data }) => {
     assertCronSecret(data.secret);
-    return runSessionAutomationJobs(getSupabaseAdmin());
+    const db = getSupabaseAdmin();
+    if (!db) {
+      throw new Error("Supabase admin client is not configured.");
+    }
+    return runSessionAutomationJobs(db);
   });
 
 export { runSessionAutomationJobs, repairPublishedSeries } from "./run-jobs";

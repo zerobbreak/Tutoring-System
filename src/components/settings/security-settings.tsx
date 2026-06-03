@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { APP_PATHS } from "#/lib/app-paths";
 import { format, parseISO } from "date-fns";
 import {
   KeyRound,
@@ -247,7 +248,7 @@ export function SecuritySettings({
               <Smartphone className="size-5 text-muted-foreground" />
             )}
             <div>
-              <p className="font-medium text-[#0A1128]">
+              <p className="font-medium text-foreground">
                 {mfaLoading
                   ? "Checking status…"
                   : mfaActive
@@ -413,7 +414,7 @@ export function SecuritySettings({
             {resetSending ? "Sending…" : "Send password reset email"}
           </Button>
           <Button type="button" variant="ghost" asChild>
-            <Link to="/auth/forgot-password">Forgot password page</Link>
+            <Link to={APP_PATHS.auth.forgotPassword}>Forgot password page</Link>
           </Button>
         </CardContent>
       </Card>
@@ -430,7 +431,7 @@ export function SecuritySettings({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="rounded-lg border px-4 py-3">
-            <p className="font-medium text-[#0A1128]">This device</p>
+            <p className="font-medium text-foreground">This device</p>
             <p className="text-sm text-muted-foreground">{deviceLabel()}</p>
             <p className="mt-1 text-xs text-muted-foreground">
               Signed in as {profile.email}
@@ -445,7 +446,7 @@ export function SecuritySettings({
             {signingOutAll ? "Signing out…" : "Sign out all devices"}
           </Button>
           <Separator />
-          <p className="text-sm font-medium text-[#0A1128]">Recent activity</p>
+          <p className="text-sm font-medium text-foreground">Recent activity</p>
           {profile.security_events.length === 0 ? (
             <p className="text-sm text-muted-foreground">No security events yet.</p>
           ) : (

@@ -5,6 +5,8 @@ import { LecturerScheduleView } from "#/components/lecturer/schedule/lecturer-sc
 import { useLecturerScheduleData } from "#/components/lecturer/schedule/use-lecturer-schedule-data";
 import { rangeForView } from "#/components/lecturer/schedule/schedule-range";
 import type { ScheduleCalendarView } from "#/components/lecturer/schedule/types";
+import { QueryPageGate } from "#/lib/query-page-gate";
+import { queryLoadFeedbackProps } from "#/lib/query-route-props";
 import { toast } from "#/lib/toast";
 import { buildDtstartFromDateAndTime } from "#/lib/schedule-recurrence";
 import {
@@ -37,11 +39,20 @@ function SchedulePage() {
   const from = range.from.toISOString();
   const to = endOfDay(range.to).toISOString();
 
-  const { data, isLoading, error, invalidate } = useLecturerScheduleData({
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isSuccess,
+    error,
+    refetch,
+    invalidate,
+  } = useLecturerScheduleData({
     enabled: !!user,
     from,
     to,
   });
+  const feedback = queryLoadFeedbackProps({ error, isFetching, refetch });
 
   const handleCreateSeries = async (values: {
     moduleId: string;
@@ -219,18 +230,19 @@ function SchedulePage() {
     }
   };
 
-  if (!user) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
   return (
+    <QueryPageGate
+      sessionPending={!user}
+      isLoading={isLoading}
+      isFetching={isFetching}
+      error={error}
+      hasData={isSuccess}
+      onRetry={() => void refetch()}
+      loadingLabel="Loading schedule…"
+    >
     <LecturerScheduleView
       booting={isLoading}
-      loadError={error instanceof Error ? error.message : null}
+      {...feedback}
       view={view}
       focusDate={focusDate}
       data={data}
@@ -249,5 +261,6 @@ function SchedulePage() {
       formBusy={formBusy}
       reviewBusyId={reviewBusyId}
     />
+    </QueryPageGate>
   );
 }

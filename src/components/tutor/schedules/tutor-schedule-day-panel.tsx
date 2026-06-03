@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { Ban, ClipboardList, Loader2 } from "lucide-react";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
@@ -161,7 +162,7 @@ export function TutorScheduleDayPanel({
                                   variant="outline"
                                   onClick={() =>
                                     navigate({
-                                      to: "/tutor/sessions",
+                                      to: APP_PATHS.tutor.sessions,
                                       search: { claim: official.claimId! },
                                     })
                                   }

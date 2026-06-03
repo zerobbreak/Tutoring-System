@@ -11,9 +11,12 @@ type RootPublicNavProps = {
 
 export function RootPublicNav({ sessionUser, brandTo }: RootPublicNavProps) {
   return (
-    <nav className="border-b bg-white px-4 py-3 shadow-sm">
+    <nav className="border-b border-border bg-card px-4 py-3 shadow-sm">
       <div className="mx-auto flex max-w-7xl items-center justify-between">
-        <Link to={brandTo} className="text-xl font-bold text-indigo-600">
+        <Link
+          to={brandTo}
+          className="text-xl font-bold text-(--lagoon-deep)"
+        >
           Tutoring System
         </Link>
         <div className="flex items-center gap-4">
@@ -23,13 +26,13 @@ export function RootPublicNav({ sessionUser, brandTo }: RootPublicNavProps) {
             <>
               <Link
                 to={APP_PATHS.auth.login}
-                className="text-sm font-medium text-gray-700 hover:text-indigo-600"
+                className="text-sm font-medium text-muted-foreground hover:text-(--lagoon-deep)"
               >
                 Login
               </Link>
               <Link
-                to="/auth/register"
-                className="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+                to={APP_PATHS.auth.register}
+                className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
                 Register
               </Link>

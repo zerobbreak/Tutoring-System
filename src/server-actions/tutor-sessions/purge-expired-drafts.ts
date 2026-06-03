@@ -46,7 +46,7 @@ export async function purgeExpiredDraftClaimsForTutor(
 
   const expired = (rows ?? []).filter((r) =>
     isSessionEnded(r as SessionClaimTimingFields, now),
-  ) as DraftRow[];
+  ) as unknown as DraftRow[];
 
   if (!expired.length) return 0;
 

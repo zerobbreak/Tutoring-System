@@ -27,7 +27,10 @@ export function useLecturerScheduleData({
   return {
     data: query.data ?? null,
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    isSuccess: query.isSuccess,
     error: query.error,
+    refetch: query.refetch,
     invalidate,
   };
 }

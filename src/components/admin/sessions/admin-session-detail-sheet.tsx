@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { format, parseISO } from "date-fns";
 import {
   AlertTriangle,
@@ -205,7 +206,7 @@ export function AdminSessionDetailSheet({
 
               {inApprovalWorkflow ? (
                 <Button variant="outline" size="sm" asChild className="mt-4 w-full sm:w-auto">
-                  <Link to="/admin/approvals" search={{ claim: session.id }}>
+                  <Link to={APP_PATHS.admin.approvals} search={{ claim: session.id }}>
                     <ExternalLink className="size-4" />
                     Open in approvals
                   </Link>

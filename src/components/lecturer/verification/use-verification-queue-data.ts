@@ -51,7 +51,10 @@ export function useVerificationQueueData({
     disputed: result.disputed,
     recentlyVerified: result.recentlyVerified,
     isLoading: query.isLoading,
+    isFetching: query.isFetching,
+    isSuccess: query.isSuccess,
     error: query.error,
+    refetch: query.refetch,
     invalidate,
   };
 }

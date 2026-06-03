@@ -39,8 +39,7 @@ export function VerificationDecisionPanel({
   const runActionWithMfa = async (stepUpCode: string) => {
     if (!pendingAction) return;
     const action = pendingAction;
-    const keepOpenForFeedback =
-      action === "APPROVE" || action === "SIGN_AND_APPROVE";
+    const keepOpenForFeedback = action === "APPROVE";
     setSubmitting(true);
     try {
       await performVerificationActionFn({

@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { BarChart3 } from "lucide-react";
 import {
   Card,
@@ -55,7 +56,7 @@ export function SystemAnalyticsPanel({
               ))}
             </div>
             <Link
-              to="/admin/analytics"
+              to={APP_PATHS.admin.analytics}
               className="mt-4 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
             >
               View full analytics

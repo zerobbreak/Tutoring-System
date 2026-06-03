@@ -1,5 +1,6 @@
 import { UserPlus, Users } from "lucide-react";
 import { useState } from "react";
+import { QueryErrorBanner } from "#/components/ui/query-fetch-feedback";
 import { Button } from "#/components/ui/button";
 import type { AdminUserCategory, AdminUserRowDTO } from "#/server-actions/admin-users";
 import { AdminCreateUserDialog } from "./admin-create-user-dialog";
@@ -10,6 +11,8 @@ import { AdminUsersTable } from "./admin-users-table";
 export type AdminUsersViewProps = {
   booting: boolean;
   loadError: string | null;
+  onRetryLoad?: () => void;
+  retryingLoad?: boolean;
   category: AdminUserCategory;
   search: string;
   users: AdminUserRowDTO[];
@@ -25,6 +28,8 @@ export type AdminUsersViewProps = {
 export function AdminUsersView({
   booting,
   loadError,
+  onRetryLoad,
+  retryingLoad,
   category,
   search,
   users,
@@ -62,12 +67,11 @@ export function AdminUsersView({
         </div>
 
         {loadError ? (
-          <div
-            role="alert"
-            className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-          >
-            {loadError}
-          </div>
+          <QueryErrorBanner
+            message={loadError}
+            onRetry={onRetryLoad}
+            retrying={retryingLoad}
+          />
         ) : null}
 
         <AdminUsersFilters

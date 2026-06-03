@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { endOfWeek, startOfDay, startOfWeek } from "date-fns";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScrollArea } from "#/components/ui/scroll-area";
@@ -213,7 +214,7 @@ export function TutorSchedulesPage() {
           },
         });
         navigate({
-          to: "/tutor/sessions",
+          to: APP_PATHS.tutor.sessions,
           search: { claim: claimId },
         });
       } catch (e) {

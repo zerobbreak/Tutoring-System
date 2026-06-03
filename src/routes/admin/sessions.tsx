@@ -3,6 +3,9 @@ import { useEffect, useState } from "react";
 import * as z from "zod";
 import { AdminSessionsView } from "#/components/admin/sessions/admin-sessions-view";
 import { useAdminSessionsData } from "#/components/admin/sessions/use-admin-sessions-data";
+import { APP_PATHS } from "#/lib/app-paths";
+import { QueryPageGate } from "#/lib/query-page-gate";
+import { queryLoadFeedbackProps } from "#/lib/query-route-props";
 import { useSessionUser } from "#/lib/use-session-user";
 
 const sessionsSearchSchema = z.object({
@@ -26,13 +29,22 @@ function AdminSessionsPage() {
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const { data, isLoading, error, invalidate } = useAdminSessionsData({
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isSuccess,
+    error,
+    refetch,
+    invalidate,
+  } = useAdminSessionsData({
     enabled: !!user,
     lookbackDays,
     moduleId,
     tutorId,
     lecturerId,
   });
+  const feedback = queryLoadFeedbackProps({ error, isFetching, refetch });
 
   useEffect(() => {
     if (urlSearch.claim) {
@@ -46,7 +58,7 @@ function AdminSessionsPage() {
       setSheetOpen(false);
       setSelectedClaimId(null);
       void navigate({
-        to: "/admin/sessions",
+        to: APP_PATHS.admin.sessions,
         search: { claim: undefined },
         replace: true,
       });
@@ -55,18 +67,19 @@ function AdminSessionsPage() {
     }
   };
 
-  if (pending || !user) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
   return (
+    <QueryPageGate
+      sessionPending={pending || !user}
+      isLoading={isLoading}
+      isFetching={isFetching}
+      error={error}
+      hasData={isSuccess}
+      onRetry={() => void refetch()}
+      loadingLabel="Loading sessions…"
+    >
     <AdminSessionsView
       booting={isLoading}
-      loadError={error instanceof Error ? error.message : null}
+      {...feedback}
       data={data}
       lookbackDays={lookbackDays}
       moduleId={moduleId}
@@ -84,5 +97,6 @@ function AdminSessionsPage() {
         void invalidate();
       }}
     />
+    </QueryPageGate>
   );
 }

@@ -1,5 +1,6 @@
 import { format } from "date-fns";
-import { CheckCircle2, ClipboardList, Loader2, ShieldAlert } from "lucide-react";
+import { CheckCircle2, ClipboardList, Loader2 } from "lucide-react";
+import { QueryEmptyState, QueryErrorBanner } from "#/components/ui/query-fetch-feedback";
 import { Badge } from "#/components/ui/badge";
 import { Card, CardContent } from "#/components/ui/card";
 import { Input } from "#/components/ui/input";
@@ -36,6 +37,8 @@ const CATEGORY_LABELS: Record<AuditFeedCategory, string> = {
 export type AdminAuditLogsViewProps = {
   booting: boolean;
   loadError: string | null;
+  onRetryLoad?: () => void;
+  retryingLoad?: boolean;
   data: AuditLogFeedPageDTO | null;
   users: AdminUserRowDTO[];
   category: AuditFeedCategory;
@@ -115,6 +118,8 @@ function AuditEntryRow({ entry }: { entry: AuditLogFeedEntryDTO }) {
 export function AdminAuditLogsView({
   booting,
   loadError,
+  onRetryLoad,
+  retryingLoad,
   data,
   users,
   category,
@@ -146,12 +151,11 @@ export function AdminAuditLogsView({
         </div>
 
         {loadError ? (
-          <div
-            role="alert"
-            className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-          >
-            {loadError}
-          </div>
+          <QueryErrorBanner
+            message={loadError}
+            onRetry={onRetryLoad}
+            retrying={retryingLoad}
+          />
         ) : null}
 
         <Card>
@@ -248,10 +252,7 @@ export function AdminAuditLogsView({
                 ))}
               </div>
             ) : entries.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-12 text-center text-sm text-muted-foreground">
-                <ShieldAlert className="size-8 opacity-40" />
-                <p>No audit events match these filters.</p>
-              </div>
+              <QueryEmptyState description="No audit events match these filters." />
             ) : (
               <ul className="divide-y-0">
                 {entries.map((entry) => (

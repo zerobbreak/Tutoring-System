@@ -27,6 +27,20 @@ export const queryKeys = {
       scope: AdminScheduleCalendarScope;
       scopeEntityId: string | null;
     }) => ["admin", "schedule-issues", filters] as const,
+    approvals: (filters: { search?: string; moduleId?: string }) =>
+      ["admin", "approvals", filters] as const,
+    institutions: ["admin", "institutions"] as const,
+    auditLogActors: ["admin", "audit-logs", "actors"] as const,
+    auditLogs: (filters: {
+      category: string;
+      actorId: string | null;
+      moduleId: string | null;
+      from?: string;
+      to?: string;
+    }) => ["admin", "audit-logs", filters] as const,
+    analytics: ["admin", "analytics"] as const,
+    payroll: ["admin", "payroll"] as const,
+    reportsPage: ["admin", "reports-page"] as const,
   },
   lecturer: {
     all: ["lecturer"] as const,
@@ -35,6 +49,11 @@ export const queryKeys = {
       ["lecturer", "verification-queue", filters] as const,
     schedule: (filters: { from: string; to: string }) =>
       ["lecturer", "schedule", filters] as const,
+    tutors: ["lecturer", "tutors"] as const,
+    sessions: ["lecturer", "sessions"] as const,
+    attendance: ["lecturer", "attendance"] as const,
+    analytics: ["lecturer", "analytics"] as const,
+    reportsPage: ["lecturer", "reports-page"] as const,
   },
   tutor: {
     all: ["tutor"] as const,
@@ -42,6 +61,10 @@ export const queryKeys = {
     sessionClaims: ["tutor", "session-claims"] as const,
     assignedSchedule: (filters: { from: string; to: string }) =>
       ["tutor", "assigned-schedule", filters] as const,
+    earnings: ["tutor", "earnings"] as const,
+  },
+  settings: {
+    profile: ["settings", "profile"] as const,
   },
   messaging: {
     all: ["messaging"] as const,

@@ -3,6 +3,9 @@ import { useEffect, useState } from "react";
 import * as z from "zod";
 import { VerificationQueueView } from "#/components/lecturer/verification/verification-queue-view";
 import { useVerificationQueueData } from "#/components/lecturer/verification/use-verification-queue-data";
+import { QueryPageGate } from "#/lib/query-page-gate";
+import { queryLoadFeedbackProps } from "#/lib/query-route-props";
+import { APP_PATHS } from "#/lib/app-paths";
 
 const rootRouteApi = getRouteApi("__root__");
 
@@ -33,13 +36,17 @@ function VerificationQueuePage() {
     disputed,
     recentlyVerified,
     isLoading,
+    isFetching,
+    isSuccess,
     error,
+    refetch,
     invalidate,
   } = useVerificationQueueData({
     enabled: !!user,
     debouncedSearch,
     moduleId,
   });
+  const feedback = queryLoadFeedbackProps({ error, isFetching, refetch });
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -57,7 +64,7 @@ function VerificationQueuePage() {
     setSelectedClaimId(claimId);
     setSheetOpen(true);
     void navigate({
-      to: "/lecturer/verification-queue",
+      to: APP_PATHS.lecturer.verificationQueue,
       search: { claim: claimId },
       replace: true,
     });
@@ -68,25 +75,26 @@ function VerificationQueuePage() {
     if (!open) {
       setSelectedClaimId(null);
       void navigate({
-        to: "/lecturer/verification-queue",
+        to: APP_PATHS.lecturer.verificationQueue,
         search: { claim: undefined },
         replace: true,
       });
     }
   };
 
-  if (!user) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
   return (
+    <QueryPageGate
+      sessionPending={!user}
+      isLoading={isLoading}
+      isFetching={isFetching}
+      error={error}
+      hasData={isSuccess}
+      onRetry={() => void refetch()}
+      loadingLabel="Loading verification queue…"
+    >
     <VerificationQueueView
       booting={isLoading}
-      loadError={error instanceof Error ? error.message : null}
+      {...feedback}
       search={search}
       moduleId={moduleId}
       modules={modules}
@@ -103,5 +111,6 @@ function VerificationQueuePage() {
         void invalidate();
       }}
     />
+    </QueryPageGate>
   );
 }

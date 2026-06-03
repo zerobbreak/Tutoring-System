@@ -21,6 +21,10 @@ export type TutorSessionClaimDTO = {
   request_status: string | null;
   request_reason: string | null;
   review_feedback: string | null;
+  scheduled_session_id?: string | null;
+  scheduled_starts_at?: string;
+  scheduled_ends_at?: string;
+  creation_source?: string | null;
   attendance_present_count: number | null;
   attendance_expected_count: number | null;
   attendance_locked_at: string | null;

@@ -1,3 +1,4 @@
+import { APP_PATHS } from "#/lib/app-paths";
 import { DashboardKpiCards } from "./dashboard-kpi-cards";
 import { AttendanceAlertsPanel } from "./attendance-alerts-panel";
 import { ModulesListPanel } from "./modules-list-panel";
@@ -6,12 +7,15 @@ import { QuickActionsPanel } from "./quick-actions-panel";
 import { NotificationsInboxCard } from "#/components/notifications/notifications-inbox-card";
 import { TutorActivityPanel } from "./tutor-activity-panel";
 import type { LecturerDashboardViewProps } from "./types";
+import { QueryErrorBanner } from "#/components/ui/query-fetch-feedback";
 import { WeeklySessionsPanel } from "./weekly-sessions-panel";
 
 export function LecturerDashboardView({
   user,
   booting,
   loadError,
+  onRetryLoad,
+  retryingLoad,
   modulesCount,
   pendingVerificationCount,
   sessionsThisWeek,
@@ -41,9 +45,11 @@ export function LecturerDashboardView({
       </div>
 
       {loadError ? (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {loadError}
-        </div>
+        <QueryErrorBanner
+          message={loadError}
+          onRetry={onRetryLoad}
+          retrying={retryingLoad}
+        />
       ) : null}
 
       <DashboardKpiCards
@@ -69,7 +75,7 @@ export function LecturerDashboardView({
         />
         <TutorActivityPanel booting={booting} activityFeed={activityFeed} />
         <NotificationsInboxCard
-          sessionsLink="/lecturer/sessions"
+          sessionsLink={APP_PATHS.lecturer.sessions}
           title="Notifications"
           description="Schedule changes and claim updates"
         />
