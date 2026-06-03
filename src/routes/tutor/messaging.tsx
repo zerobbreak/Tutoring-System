@@ -6,6 +6,7 @@ import { NewConversationDialog } from "#/components/messaging/NewConversationDia
 import { useMessagingPage } from "#/components/messaging/use-messaging-page";
 import { getOrCreatePeerConversationFn } from "#/server-actions/messaging";
 import { Button } from "#/components/ui/button";
+import { QueryErrorBanner } from "#/components/ui/query-fetch-feedback";
 import { Skeleton } from "#/components/ui/skeleton";
 import { MessageSquare, Plus } from "lucide-react";
 
@@ -25,6 +26,9 @@ function MessagingPage() {
     messages,
     currentUserId,
     isLoading,
+    conversationsError,
+    retryConversations,
+    isConversationsFetching,
     isMessagesLoading,
     handleSendMessage,
     handleConversationCreated,
@@ -53,7 +57,15 @@ function MessagingPage() {
   }
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-background">
+    <div className="flex h-full w-full flex-col overflow-hidden bg-background">
+      {conversationsError ? (
+        <QueryErrorBanner
+          message={conversationsError}
+          onRetry={retryConversations}
+          retrying={isConversationsFetching}
+        />
+      ) : null}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
       <ConversationSidebar
         conversations={conversations}
         selectedId={selectedConvId}
@@ -107,6 +119,7 @@ function MessagingPage() {
         }}
         onConversationCreated={(id) => void handleConversationCreated(id)}
       />
+      </div>
     </div>
   );
 }

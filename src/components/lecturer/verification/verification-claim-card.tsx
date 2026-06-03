@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { FileText, Users } from "lucide-react";
 import { Badge } from "#/components/ui/badge";
@@ -49,7 +50,7 @@ export function VerificationClaimCard({
             <p className="font-semibold text-foreground">
               {claim.tutor?.id ? (
                 <Link
-                  to="/lecturer/tutors"
+                  to={APP_PATHS.lecturer.tutors}
                   search={{ tutor: claim.tutor.id }}
                   className="hover:underline"
                 >

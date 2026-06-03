@@ -4,13 +4,13 @@ import {
   addWeeks,
   format,
   isWithinInterval,
-  startOfDay,
   subDays,
   subMonths,
   subWeeks,
 } from "date-fns";
 import { Calendar, Plus } from "lucide-react";
 import { useMemo, useState } from "react";
+import { QueryErrorBanner } from "#/components/ui/query-fetch-feedback";
 import { Button } from "#/components/ui/button";
 import { Card, CardContent } from "#/components/ui/card";
 import { dayHeadingLong } from "#/lib/schedule-display";
@@ -52,6 +52,8 @@ function navigateFocus(
 export function LecturerScheduleView({
   booting,
   loadError,
+  onRetryLoad,
+  retryingLoad,
   view,
   focusDate,
   data,
@@ -131,9 +133,11 @@ export function LecturerScheduleView({
       </header>
 
       {loadError ? (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-          {loadError}
-        </div>
+        <QueryErrorBanner
+          message={loadError}
+          onRetry={onRetryLoad}
+          retrying={retryingLoad}
+        />
       ) : null}
 
       {data ? (

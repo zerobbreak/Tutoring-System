@@ -27,7 +27,7 @@ export function VerificationClaimsSection({
   onReview,
 }: VerificationClaimsSectionProps) {
   return (
-    <Card className="flex min-h-0 flex-col lg:min-h-[calc(100vh-16rem)]">
+    <Card className="flex min-h-0 flex-col h-full">
       <CardHeader className="shrink-0 space-y-1 pb-3">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="text-base">{title}</CardTitle>

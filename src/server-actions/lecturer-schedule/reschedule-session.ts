@@ -1,8 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireLecturerId } from "#/lib/lecturer-server";
+import {
+  assertNoSchedulingConflicts,
+  getModuleInstitutionId,
+} from "#/lib/schedule-conflicts-assert";
+import type { ScheduleSessionLike } from "#/lib/schedule-conflicts";
+import {
+  loadScheduledSessionSnapshot,
+  syncScheduledSessionAfterUpdate,
+} from "#/lib/schedule-sync";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
-import { scheduleClaimTimesFromTimestamps } from "#/lib/schedule-claim-times";
 
 const rescheduleSchema = z.object({
   scheduledSessionId: z.string().uuid(),
@@ -16,10 +24,31 @@ export const rescheduleScheduledSessionFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => rescheduleSchema.parse(input))
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const supabase = createSupabaseServerClient();
-    await requireLecturerId(supabase);
+    const lecturerId = await requireLecturerId(supabase);
 
-    const startsAt = new Date(data.startsAt);
-    const endsAt = new Date(data.endsAt);
+    const before = await loadScheduledSessionSnapshot(
+      supabase,
+      data.scheduledSessionId,
+    );
+    if (!before) throw new Error("Session not found.");
+
+    const institutionId = await getModuleInstitutionId(supabase, before.moduleId);
+    const proposed: ScheduleSessionLike = {
+      id: data.scheduledSessionId,
+      tutorId: before.tutorId,
+      tutorName: before.moduleCode,
+      moduleId: before.moduleId,
+      moduleCode: before.moduleCode,
+      venueId: data.venueId ?? before.venueId,
+      venueName: data.venueText ?? before.venueText ?? null,
+      startsAt: data.startsAt,
+      endsAt: data.endsAt,
+      status: "RESCHEDULED",
+    };
+    await assertNoSchedulingConflicts(supabase, {
+      institutionId,
+      proposedSessions: [proposed],
+    });
 
     const { error: sessErr } = await supabase
       .from("scheduled_sessions")
@@ -34,19 +63,11 @@ export const rescheduleScheduledSessionFn = createServerFn({ method: "POST" })
 
     if (sessErr) throw new Error(sessErr.message);
 
-    const times = scheduleClaimTimesFromTimestamps(startsAt, endsAt);
-
-    await supabase
-      .from("session_claims")
-      .update({
-        session_date: times.session_date,
-        start_time: times.start_time,
-        end_time: times.end_time,
-        hours: times.hours,
-        venue: data.venueText?.trim() || null,
-      })
-      .eq("source_scheduled_session_id", data.scheduledSessionId)
-      .in("status", ["DRAFT", "PENDING_VERIFICATION"]);
+    await syncScheduledSessionAfterUpdate(supabase, {
+      scheduledSessionId: data.scheduledSessionId,
+      actorId: lecturerId,
+      before,
+    });
 
     return { ok: true };
   });

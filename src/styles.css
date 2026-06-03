@@ -27,6 +27,15 @@
   --hero-a: rgba(79, 184, 178, 0.36);
   --hero-b: rgba(47, 106, 74, 0.2);
 
+  --auth-canvas: #f7f7f7;
+  --auth-ink: #0a1128;
+  --auth-accent: #ff6f61;
+  --auth-hero-overlay: #0a1128;
+  --auth-muted: #6b7280;
+  --auth-muted-subtle: #9ca3af;
+  --auth-hero-muted: rgba(255, 255, 255, 0.72);
+  --auth-border: #e5e7eb;
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.141 0.005 285.823);
   --card: oklch(1 0 0);
@@ -82,6 +91,15 @@
   --link-bg-hover: rgba(24, 44, 49, 0.8);
   --hero-a: rgba(96, 215, 207, 0.18);
   --hero-b: rgba(110, 200, 154, 0.12);
+
+  --auth-canvas: #0f1418;
+  --auth-ink: #e8eef8;
+  --auth-accent: #ff8a7f;
+  --auth-hero-overlay: #050a14;
+  --auth-muted: #9ca3af;
+  --auth-muted-subtle: #6b7280;
+  --auth-hero-muted: rgba(255, 255, 255, 0.72);
+  --auth-border: rgba(255, 255, 255, 0.14);
 
   --background: oklch(0.141 0.005 285.823);
   --foreground: oklch(0.985 0 0);
@@ -335,6 +353,15 @@ a {
 .site-footer {
   border-top: 1px solid var(--line);
   background: color-mix(in oklab, var(--header-bg) 84%, transparent 16%);
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 @layer base {

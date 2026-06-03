@@ -1,4 +1,5 @@
 import { ClipboardCheck, Loader2 } from "lucide-react";
+import { QueryErrorBanner } from "#/components/ui/query-fetch-feedback";
 import {
   Card,
   CardContent,
@@ -18,6 +19,8 @@ import { AdminPayrollExportBar } from "./admin-payroll-export-bar";
 export type AdminApprovalsViewProps = {
   booting: boolean;
   loadError: string | null;
+  onRetryLoad?: () => void;
+  retryingLoad?: boolean;
   search: string;
   moduleId: string;
   modules: VerificationModuleOptionDTO[];
@@ -37,6 +40,8 @@ export type AdminApprovalsViewProps = {
 export function AdminApprovalsView({
   booting,
   loadError,
+  onRetryLoad,
+  retryingLoad,
   search,
   moduleId,
   modules,
@@ -67,9 +72,11 @@ export function AdminApprovalsView({
         </div>
 
         {loadError ? (
-          <div className="shrink-0 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {loadError}
-          </div>
+          <QueryErrorBanner
+            message={loadError}
+            onRetry={onRetryLoad}
+            retrying={retryingLoad}
+          />
         ) : null}
 
         <AdminPayrollExportBar onExported={onActionComplete} />

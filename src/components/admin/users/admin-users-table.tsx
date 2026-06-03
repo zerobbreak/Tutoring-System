@@ -1,6 +1,7 @@
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
+import { QueryEmptyState } from "#/components/ui/query-fetch-feedback";
 import { Skeleton } from "#/components/ui/skeleton";
 import {
   Table,
@@ -47,9 +48,7 @@ export function AdminUsersTable({
 
   if (users.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed px-4 py-8 text-center text-sm text-muted-foreground">
-        No users match this filter.
-      </p>
+      <QueryEmptyState description="No users match this filter." />
     );
   }
 

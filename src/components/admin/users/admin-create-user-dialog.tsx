@@ -1,4 +1,5 @@
 import { format } from "date-fns";
+import { APP_PATHS } from "#/lib/app-paths";
 import { Copy, Loader2, UserPlus } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
@@ -333,7 +334,7 @@ export function AdminCreateUserDialog({
                     </Field>
                     <p className="text-xs text-muted-foreground">
                       Share the invite code once. They complete registration at{" "}
-                      <Link to="/auth/register" className="underline">
+                      <Link to={APP_PATHS.auth.register} className="underline">
                         /auth/register
                       </Link>
                       .
@@ -482,7 +483,7 @@ function SuccessPanel({
         ) : null}
         <p className="text-xs">
           Share these credentials securely. The user can sign in at{" "}
-          <Link to="/auth/login" className="underline">
+          <Link to={APP_PATHS.auth.login} className="underline">
             /auth/login
           </Link>
           .
@@ -510,7 +511,7 @@ function SuccessPanel({
       />
       <p className="text-xs">
         They register at{" "}
-        <Link to="/auth/register" className="underline">
+        <Link to={APP_PATHS.auth.register} className="underline">
           /auth/register
         </Link>{" "}
         using this email and code.

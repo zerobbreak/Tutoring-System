@@ -1,8 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireLecturerId } from "#/lib/lecturer-server";
+import {
+  assertNoSchedulingConflicts,
+  getModuleInstitutionId,
+} from "#/lib/schedule-conflicts-assert";
+import type { ScheduleSessionLike } from "#/lib/schedule-conflicts";
+import {
+  loadScheduledSessionSnapshot,
+  syncScheduledSessionAfterUpdate,
+} from "#/lib/schedule-sync";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
-import { scheduleClaimTimesFromTimestamps } from "#/lib/schedule-claim-times";
 
 const exceptionSchema = z.object({
   seriesId: z.string().uuid(),
@@ -19,7 +27,7 @@ export const createSeriesExceptionFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => exceptionSchema.parse(input))
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const supabase = createSupabaseServerClient();
-    await requireLecturerId(supabase);
+    const lecturerId = await requireLecturerId(supabase);
 
     const { data: series, error: seriesErr } = await supabase
       .from("schedule_series")
@@ -32,11 +40,6 @@ export const createSeriesExceptionFn = createServerFn({ method: "POST" })
       throw new Error("Exceptions apply only to published series.");
     }
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) throw new Error("Unauthorized");
-
     const { error: exErr } = await supabase.from("schedule_series_exceptions").upsert(
       {
         series_id: data.seriesId,
@@ -47,7 +50,7 @@ export const createSeriesExceptionFn = createServerFn({ method: "POST" })
         override_venue_id: data.overrideVenueId ?? null,
         override_venue_text: data.overrideVenueText?.trim() || null,
         override_tutor_id: data.overrideTutorId ?? null,
-        created_by: user.id,
+        created_by: lecturerId,
       },
       { onConflict: "series_id,occurrence_starts_at" },
     );
@@ -56,60 +59,77 @@ export const createSeriesExceptionFn = createServerFn({ method: "POST" })
 
     const { data: session, error: sessErr } = await supabase
       .from("scheduled_sessions")
-      .select("id, tutor_id, module_id")
+      .select("id")
       .eq("series_id", data.seriesId)
       .eq("starts_at", data.occurrenceStartsAt)
+      .is("deleted_at", null)
       .maybeSingle();
 
     if (sessErr) throw new Error(sessErr.message);
-    if (!session) return { ok: true };
+    if (!session?.id) return { ok: true };
+
+    const sessionId = session.id as string;
+    const before = await loadScheduledSessionSnapshot(supabase, sessionId);
+    if (!before) return { ok: true };
 
     if (data.action === "CANCEL") {
       const now = new Date().toISOString();
-      await supabase
+      const { error: cancelErr } = await supabase
         .from("scheduled_sessions")
         .update({
           status: "CANCELLED",
           cancelled_at: now,
-          cancelled_by: user.id,
+          cancelled_by: lecturerId,
           cancellation_reason: "Cancelled via series exception",
         })
-        .eq("id", session.id);
-      return { ok: true };
-    }
+        .eq("id", sessionId);
 
-    if (data.overrideStartsAt && data.overrideEndsAt) {
-      const startsAt = new Date(data.overrideStartsAt);
-      const endsAt = new Date(data.overrideEndsAt);
+      if (cancelErr) throw new Error(cancelErr.message);
+    } else if (data.overrideStartsAt && data.overrideEndsAt) {
+      const institutionId = await getModuleInstitutionId(supabase, before.moduleId);
+      const proposed: ScheduleSessionLike = {
+        id: sessionId,
+        tutorId: data.overrideTutorId ?? before.tutorId,
+        moduleId: before.moduleId,
+        moduleCode: before.moduleCode,
+        venueId: data.overrideVenueId ?? before.venueId,
+        startsAt: data.overrideStartsAt,
+        endsAt: data.overrideEndsAt,
+        status: "RESCHEDULED",
+      };
+      await assertNoSchedulingConflicts(supabase, {
+        institutionId,
+        proposedSessions: [proposed],
+      });
 
-      await supabase
+      const patch: Record<string, unknown> = {
+        starts_at: data.overrideStartsAt,
+        ends_at: data.overrideEndsAt,
+        status: "RESCHEDULED",
+      };
+      if (data.overrideVenueId !== undefined) {
+        patch.venue_id = data.overrideVenueId;
+      }
+      if (data.overrideVenueText !== undefined) {
+        patch.venue_text = data.overrideVenueText?.trim() || null;
+      }
+      if (data.overrideTutorId) {
+        patch.tutor_id = data.overrideTutorId;
+      }
+
+      const { error: upErr } = await supabase
         .from("scheduled_sessions")
-        .update({
-          starts_at: data.overrideStartsAt,
-          ends_at: data.overrideEndsAt,
-          status: "RESCHEDULED",
-          venue_id: data.overrideVenueId ?? undefined,
-          venue_text: data.overrideVenueText ?? undefined,
-          tutor_id: data.overrideTutorId ?? undefined,
-        })
-        .eq("id", session.id);
+        .update(patch)
+        .eq("id", sessionId);
 
-      const times = scheduleClaimTimesFromTimestamps(startsAt, endsAt);
-      const venue = data.overrideVenueText?.trim() || null;
-
-      await supabase
-        .from("session_claims")
-        .update({
-          session_date: times.session_date,
-          start_time: times.start_time,
-          end_time: times.end_time,
-          hours: times.hours,
-          venue,
-          tutor_id: data.overrideTutorId ?? session.tutor_id,
-        })
-        .eq("source_scheduled_session_id", session.id)
-        .eq("status", "DRAFT");
+      if (upErr) throw new Error(upErr.message);
     }
+
+    await syncScheduledSessionAfterUpdate(supabase, {
+      scheduledSessionId: sessionId,
+      actorId: lecturerId,
+      before,
+    });
 
     return { ok: true };
   });

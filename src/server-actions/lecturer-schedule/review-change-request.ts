@@ -1,8 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireLecturerId } from "#/lib/lecturer-server";
+import {
+  assertNoSchedulingConflicts,
+  getModuleInstitutionId,
+} from "#/lib/schedule-conflicts-assert";
+import type { ScheduleSessionLike } from "#/lib/schedule-conflicts";
+import {
+  loadScheduledSessionSnapshot,
+  syncScheduledSessionAfterUpdate,
+} from "#/lib/schedule-sync";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
-import { scheduleClaimTimesFromTimestamps } from "#/lib/schedule-claim-times";
 
 const reviewSchema = z.object({
   requestId: z.string().uuid(),
@@ -49,8 +57,25 @@ export const reviewScheduleChangeRequestFn = createServerFn({ method: "POST" })
 
     if (data.decision === "REJECTED") return { ok: true };
 
-    const startsAt = new Date(req.proposed_starts_at as string);
-    const endsAt = new Date(req.proposed_ends_at as string);
+    const sessionId = req.scheduled_session_id as string;
+    const before = await loadScheduledSessionSnapshot(supabase, sessionId);
+    if (!before) throw new Error("Scheduled session not found.");
+
+    const institutionId = await getModuleInstitutionId(supabase, before.moduleId);
+    const proposed: ScheduleSessionLike = {
+      id: sessionId,
+      tutorId: before.tutorId,
+      moduleId: before.moduleId,
+      moduleCode: before.moduleCode,
+      venueId: (req.proposed_venue_id as string | null) ?? before.venueId,
+      startsAt: req.proposed_starts_at as string,
+      endsAt: req.proposed_ends_at as string,
+      status: "RESCHEDULED",
+    };
+    await assertNoSchedulingConflicts(supabase, {
+      institutionId,
+      proposedSessions: [proposed],
+    });
 
     const { error: sessErr } = await supabase
       .from("scheduled_sessions")
@@ -61,24 +86,15 @@ export const reviewScheduleChangeRequestFn = createServerFn({ method: "POST" })
         venue_text: req.proposed_venue_text,
         status: "RESCHEDULED",
       })
-      .eq("id", req.scheduled_session_id as string);
+      .eq("id", sessionId);
 
     if (sessErr) throw new Error(sessErr.message);
 
-    const times = scheduleClaimTimesFromTimestamps(startsAt, endsAt);
-    const venue = (req.proposed_venue_text as string | null)?.trim() || null;
-
-    await supabase
-      .from("session_claims")
-      .update({
-        session_date: times.session_date,
-        start_time: times.start_time,
-        end_time: times.end_time,
-        hours: times.hours,
-        venue,
-      })
-      .eq("source_scheduled_session_id", req.scheduled_session_id as string)
-      .in("status", ["DRAFT", "PENDING_VERIFICATION"]);
+    await syncScheduledSessionAfterUpdate(supabase, {
+      scheduledSessionId: sessionId,
+      actorId: lecturerId,
+      before,
+    });
 
     return { ok: true };
   });

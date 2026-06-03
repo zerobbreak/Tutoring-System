@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { format, parseISO } from "date-fns";
 import {
   AlertCircle,
@@ -137,7 +138,7 @@ export function ClaimDetailsView({ claimId }: ClaimDetailsViewProps) {
           have access to it.
         </p>
         <Button asChild>
-          <Link to="/tutor/claims">Back to claims</Link>
+          <Link to={APP_PATHS.tutor.claims}>Back to claims</Link>
         </Button>
       </div>
     );
@@ -147,7 +148,7 @@ export function ClaimDetailsView({ claimId }: ClaimDetailsViewProps) {
     <ScrollArea className="min-h-0 flex-1">
       <div className="rise-in flex w-full flex-col gap-6 p-4 md:p-8">
         <Button asChild variant="ghost" size="sm" className="w-fit">
-          <Link to="/tutor/claims">
+          <Link to={APP_PATHS.tutor.claims}>
             <ArrowLeft className="size-4" />
             Back
           </Link>
@@ -314,7 +315,7 @@ export function ClaimDetailsView({ claimId }: ClaimDetailsViewProps) {
                     </p>
                     {claim.status === "DRAFT" ? (
                       <Button variant="outline" size="sm" className="mt-4" asChild>
-                        <Link to="/tutor/sessions" search={{ claim: claim.id }}>
+                        <Link to={APP_PATHS.tutor.sessions} search={{ claim: claim.id }}>
                           Upload from sessions
                         </Link>
                       </Button>

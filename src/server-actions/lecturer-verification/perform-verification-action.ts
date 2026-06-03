@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { appendClaimWorkflowEvent } from "#/lib/claim-workflow-timeline";
 import type { ClaimStatus } from "#/lib/session-claim-display";
+import { requireStepUpMfa } from "#/lib/mfa-auth-server";
 import { requireLecturerId } from "#/lib/lecturer-server";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { assertClaimNotFrozen } from "#/server-actions/admin-approvals/assert-claim-not-frozen";
@@ -14,27 +15,20 @@ const actionSchema = z.object({
     "REJECT",
     "DISPUTE",
     "REQUEST_CLARIFICATION",
-    "SIGN_AND_APPROVE",
   ]),
   comment: z.string().max(2000).optional(),
-  signatureConfirmed: z.boolean().optional(),
+  stepUpCode: z.string().min(6).max(8),
 });
 
 type ActionConfig = {
   actionType: string;
   nextStatus?: ClaimStatus;
   requiresComment?: boolean;
-  digitallySigned?: boolean;
   createDispute?: boolean;
 };
 
 const ACTION_MAP: Record<VerificationActionKind, ActionConfig> = {
   APPROVE: { actionType: "APPROVED", nextStatus: "VERIFIED" },
-  SIGN_AND_APPROVE: {
-    actionType: "SIGNED_APPROVAL",
-    nextStatus: "APPROVED",
-    digitallySigned: true,
-  },
   REJECT: { actionType: "REJECTED", nextStatus: "REJECTED", requiresComment: true },
   DISPUTE: {
     actionType: "DISPUTED",
@@ -47,6 +41,10 @@ const ACTION_MAP: Record<VerificationActionKind, ActionConfig> = {
   },
 };
 
+function actionLabel(action: VerificationActionKind): string {
+  return action.toLowerCase().replace(/_/g, " ");
+}
+
 export const performVerificationActionFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => actionSchema.parse(input))
   .handler(async ({ data }) => {
@@ -58,13 +56,6 @@ export const performVerificationActionFn = createServerFn({ method: "POST" })
 
     if (config.requiresComment && !comment) {
       throw new Error("A comment is required for this action.");
-    }
-
-    if (
-      data.action === "SIGN_AND_APPROVE" &&
-      !data.signatureConfirmed
-    ) {
-      throw new Error("Digital signature confirmation is required.");
     }
 
     const { data: claim, error: selErr } = await supabase
@@ -87,6 +78,12 @@ export const performVerificationActionFn = createServerFn({ method: "POST" })
         `Cannot ${data.action.toLowerCase()} a claim with status ${fromStatus}.`,
       );
     }
+
+    await requireStepUpMfa(
+      supabase,
+      data.stepUpCode,
+      actionLabel(data.action),
+    );
 
     if (config.nextStatus) {
       const { error: upErr } = await supabase
@@ -114,8 +111,8 @@ export const performVerificationActionFn = createServerFn({ method: "POST" })
       fromStatus,
       toStatus: config.nextStatus ?? fromStatus,
       comment,
-      mfaConfirmed: config.digitallySigned ?? false,
-      mfaMethod: config.digitallySigned ? "LECTURER_SIGNATURE" : null,
+      mfaConfirmed: true,
+      mfaMethod: "TOTP_STEP_UP",
     });
 
     return {

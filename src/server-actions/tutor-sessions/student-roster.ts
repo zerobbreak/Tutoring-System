@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { format, isAfter, parseISO } from "date-fns";
+import type { ParsedStudentCard } from "#/lib/student-card-payload";
 import {
   isAttendanceLocked,
   isWithinQrWindow,
@@ -129,6 +130,161 @@ export async function findOrCreateStudent(
   return { ...created, created: true };
 }
 
+/** Resolve student from a scanned card; create only when name is on the card. */
+export async function findOrCreateStudentFromScan(
+  db: SupabaseClient,
+  institutionId: string,
+  card: ParsedStudentCard,
+): Promise<ResolvedStudent> {
+  const studentReference = normalizeReference(card.studentReference);
+  if (!studentReference) {
+    throw new Error("Student number is required on the card.");
+  }
+
+  const { data: existing, error: findErr } = await db
+    .from("students")
+    .select("id, full_name, student_reference, email")
+    .eq("institution_id", institutionId)
+    .eq("student_reference", studentReference)
+    .maybeSingle();
+
+  if (findErr) throw new Error(findErr.message);
+
+  if (existing) {
+    const updates: Record<string, string> = {};
+    const nameFromCard = card.fullName?.trim();
+    if (nameFromCard && existing.full_name !== nameFromCard) {
+      updates.full_name = nameFromCard;
+    }
+    const email = normalizeEmail(card.email);
+    if (email && existing.email !== email) updates.email = email;
+
+    if (Object.keys(updates).length > 0) {
+      const { error: updateErr } = await db
+        .from("students")
+        .update(updates)
+        .eq("id", existing.id);
+      if (updateErr) throw new Error(updateErr.message);
+    }
+
+    return {
+      id: existing.id,
+      full_name: updates.full_name ?? existing.full_name,
+      student_reference: existing.student_reference,
+      email: updates.email ?? existing.email,
+      created: false,
+    };
+  }
+
+  const fullName = card.fullName?.trim();
+  if (!fullName) {
+    throw new Error(
+      "Unknown student. The card must include a name, or the student must already be registered at your institution.",
+    );
+  }
+
+  return findOrCreateStudent(db, institutionId, {
+    fullName,
+    studentReference,
+    email: card.email,
+  });
+}
+
+type ScheduledSessionRow = {
+  starts_at: string;
+  ends_at: string;
+  status: string;
+};
+
+type SessionAttendanceGateRow = {
+  attendance_locked_at: string | null;
+  session_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  scheduled: ScheduledSessionRow | null;
+};
+
+function normalizeScheduledSession(
+  raw: ScheduledSessionRow | ScheduledSessionRow[] | null | undefined,
+): ScheduledSessionRow | null {
+  if (raw == null) return null;
+  return Array.isArray(raw) ? (raw[0] ?? null) : raw;
+}
+
+function toAttendanceGateRow(claim: {
+  attendance_locked_at: string | null;
+  session_date: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  scheduled?: ScheduledSessionRow | ScheduledSessionRow[] | null;
+}): SessionAttendanceGateRow {
+  return {
+    attendance_locked_at: claim.attendance_locked_at,
+    session_date: claim.session_date,
+    start_time: claim.start_time,
+    end_time: claim.end_time,
+    scheduled: normalizeScheduledSession(claim.scheduled),
+  };
+}
+
+function assertSessionAttendanceWindow(claim: SessionAttendanceGateRow): void {
+  if (claim.attendance_locked_at) {
+    throw new Error("Attendance is locked for this session.");
+  }
+
+  const scheduled = claim.scheduled;
+  if (scheduled?.status === "CANCELLED") {
+    throw new Error("This session was cancelled.");
+  }
+
+  let bounds: { startsAt: string; endsAt: string } | null = null;
+  if (scheduled?.starts_at && scheduled?.ends_at) {
+    bounds = { startsAt: scheduled.starts_at, endsAt: scheduled.ends_at };
+  } else if (claim.session_date && claim.start_time && claim.end_time) {
+    bounds = {
+      startsAt: `${claim.session_date}T${claim.start_time}`,
+      endsAt: `${claim.session_date}T${claim.end_time}`,
+    };
+  }
+
+  if (bounds && isAttendanceLocked(bounds)) {
+    throw new Error("Attendance is locked for this session.");
+  }
+
+  if (bounds && !isWithinQrWindow(bounds)) {
+    throw new Error("Attendance scanning is only open during the session window.");
+  }
+}
+
+/** Tutor-owned session must be open for card scanning (no session QR token). */
+export async function assertSessionOpenForTutorScan(
+  db: SupabaseClient,
+  claimId: string,
+  tutorId: string,
+): Promise<void> {
+  const { data: claim, error } = await db
+    .from("session_claims")
+    .select(
+      `
+      id,
+      attendance_locked_at,
+      session_date,
+      start_time,
+      end_time,
+      scheduled:scheduled_sessions ( starts_at, ends_at, status )
+    `,
+    )
+    .eq("id", claimId)
+    .eq("tutor_id", tutorId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error) throw new Error(error.message);
+  if (!claim) throw new Error("Session not found.");
+
+  assertSessionAttendanceWindow(toAttendanceGateRow(claim));
+}
+
 /** Record present attendance and refresh the session present count. */
 export async function recordSessionCheckIn(
   db: SupabaseClient,
@@ -146,7 +302,7 @@ export async function recordSessionCheckIn(
 
   if (findErr) throw new Error(findErr.message);
   if (existing?.id) {
-    throw new Error("You have already checked in for this session.");
+    throw new Error("This student is already marked present for this session.");
   }
 
   const { error: insertErr } = await db.from("session_attendance").insert({
@@ -158,7 +314,7 @@ export async function recordSessionCheckIn(
 
   if (insertErr) {
     if (insertErr.code === "23505") {
-      throw new Error("You have already checked in for this session.");
+      throw new Error("This student is already marked present for this session.");
     }
     throw new Error(insertErr.message);
   }
@@ -206,35 +362,21 @@ export async function assertValidQrSession(
   if (error) throw new Error(error.message);
   if (!claim) throw new Error("Session not found.");
 
-  if (claim.attendance_locked_at) {
-    throw new Error("Attendance is locked for this session.");
-  }
-
-  const scheduled = claim.scheduled as {
-    starts_at: string;
-    ends_at: string;
-    status: string;
-  } | null;
-
-  if (scheduled?.status === "CANCELLED") {
-    throw new Error("This session was cancelled.");
-  }
-
-  let bounds: { startsAt: string; endsAt: string } | null = null;
-  if (scheduled?.starts_at && scheduled?.ends_at) {
-    bounds = { startsAt: scheduled.starts_at, endsAt: scheduled.ends_at };
-  } else if (claim.session_date && claim.start_time && claim.end_time) {
-    bounds = {
-      startsAt: `${claim.session_date}T${claim.start_time}`,
-      endsAt: `${claim.session_date}T${claim.end_time}`,
-    };
-  }
-
-  if (bounds && isAttendanceLocked(bounds)) {
-    throw new Error("Attendance is locked for this session.");
-  }
+  const gate = toAttendanceGateRow(claim);
+  assertSessionAttendanceWindow(gate);
 
   if (claim.qr_token !== token) throw new Error("Invalid QR token.");
+
+  const scheduled = gate.scheduled;
+  const bounds =
+    scheduled?.starts_at && scheduled?.ends_at
+      ? { startsAt: scheduled.starts_at, endsAt: scheduled.ends_at }
+      : gate.session_date && gate.start_time && gate.end_time
+        ? {
+            startsAt: `${gate.session_date}T${gate.start_time}`,
+            endsAt: `${gate.session_date}T${gate.end_time}`,
+          }
+        : null;
 
   if (bounds) {
     if (!isWithinQrWindow(bounds)) {
@@ -295,10 +437,9 @@ export async function getCheckInSessionPreview(
     | { full_name: string }[]
     | null;
   const tutorRow = Array.isArray(tutor) ? tutor[0] : tutor;
-  const scheduled = claim.scheduled as {
-    starts_at: string;
-    ends_at: string;
-  } | null;
+  const scheduled = Array.isArray(claim.scheduled)
+    ? claim.scheduled[0]
+    : claim.scheduled;
 
   let sessionWhen = "—";
   if (scheduled?.starts_at) {
@@ -350,7 +491,9 @@ export async function ensureQrTokenForClaim(
   if (error) throw new Error(error.message);
   if (!claim) throw new Error("Session not found.");
 
-  const scheduled = claim.scheduled as { starts_at: string; ends_at: string } | null;
+  const scheduled = Array.isArray(claim.scheduled)
+    ? claim.scheduled[0]
+    : claim.scheduled;
   let expiresAt: Date;
   if (scheduled?.starts_at && scheduled?.ends_at) {
     expiresAt = qrWindowForScheduledSession({

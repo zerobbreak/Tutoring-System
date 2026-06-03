@@ -1,12 +1,20 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Bell, Shield, User } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { AccountSettings } from "#/components/settings/account-settings";
 import { OnboardingDocumentsCard } from "#/components/settings/onboarding-documents-card";
 import { NotificationsSettings } from "#/components/settings/notifications-settings";
 import { SecuritySettings } from "#/components/settings/security-settings";
+import {
+  PageLoadingSpinner,
+  QueryBlockingState,
+} from "#/components/ui/query-fetch-feedback";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
-import { getPostAuthDashboardPath } from "#/lib/user-role";
+import { APP_PATHS } from "#/lib/app-paths";
+import { formatQueryError } from "#/lib/query-error";
+import { queryKeys } from "#/lib/query-keys";
+import { getPostAuthDashboardPath, getUserRole } from "#/lib/user-role";
 import {
   getSettingsProfileFn,
   type SettingsProfileDTO,
@@ -14,9 +22,11 @@ import {
 import { Route as RootRoute } from "../__root";
 
 export const Route = createFileRoute("/settings/")({
-  loader: async () => {
+  loader: async ({ context: { queryClient } }) => {
     try {
-      return { profile: await getSettingsProfileFn() };
+      const profile = await getSettingsProfileFn();
+      queryClient.setQueryData(queryKeys.settings.profile, profile);
+      return { profile };
     } catch {
       return { profile: null };
     }
@@ -28,45 +38,72 @@ function SettingsPage() {
   const { sessionData } = RootRoute.useLoaderData();
   const { profile: loaderProfile } = Route.useLoaderData();
   const navigate = useNavigate();
-  const [profile, setProfile] = useState<SettingsProfileDTO | null>(
-    loaderProfile,
-  );
-  const [loading, setLoading] = useState(!loaderProfile);
 
-  const role = sessionData?.user?.user_metadata?.role as string | undefined;
+  const role = getUserRole(sessionData?.user);
   const dashboardPath = getPostAuthDashboardPath(role);
 
   useEffect(() => {
     if (!sessionData?.user) {
-      navigate({ to: "/auth/login" });
+      navigate({ to: APP_PATHS.auth.login });
     }
   }, [sessionData, navigate]);
 
-  const refreshProfile = useCallback(async () => {
-    try {
-      const next = await getSettingsProfileFn();
-      setProfile(next);
-    } catch {
-      /* keep current */
-    }
-  }, []);
+  const {
+    data: queryProfile,
+    isLoading,
+    isFetching,
+    isSuccess,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: queryKeys.settings.profile,
+    queryFn: () => getSettingsProfileFn(),
+    enabled: !!sessionData?.user,
+    initialData: loaderProfile ?? undefined,
+  });
+
+  const [profile, setProfile] = useState<SettingsProfileDTO | null>(
+    loaderProfile,
+  );
 
   useEffect(() => {
-    if (!loaderProfile && sessionData?.user) {
-      void refreshProfile().finally(() => setLoading(false));
+    if (queryProfile) {
+      setProfile(queryProfile);
     }
-  }, [loaderProfile, sessionData?.user, refreshProfile]);
+  }, [queryProfile]);
 
-  if (!sessionData?.user || loading || !profile) {
+  if (!sessionData?.user) {
+    return <PageLoadingSpinner className="min-h-[60vh] bg-background" />;
+  }
+
+  if (isLoading && !profile) {
+    return <PageLoadingSpinner className="min-h-[60vh] bg-background" label="Loading settings…" />;
+  }
+
+  const loadError = formatQueryError(error);
+  if (loadError && !profile) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center bg-[#FDFDFF]">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--lagoon)] border-t-transparent" />
+      <div className="min-h-[60vh] bg-background">
+        <QueryBlockingState
+          title="Could not load settings"
+          message={loadError}
+          onRetry={() => void refetch()}
+          retrying={isFetching}
+        />
       </div>
     );
   }
 
+  if (!profile && !isSuccess) {
+    return <PageLoadingSpinner className="min-h-[60vh] bg-background" />;
+  }
+
+  if (!profile) {
+    return null;
+  }
+
   return (
-    <div className="min-h-screen bg-[#FDFDFF]">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-4xl px-6 py-10 lg:px-10 lg:py-12">
         <Link
           to={dashboardPath}
@@ -77,7 +114,7 @@ function SettingsPage() {
         </Link>
 
         <header className="mb-8">
-          <h1 className="font-serif text-4xl font-bold tracking-tight text-[#0A1128]">
+          <h1 className="font-serif text-4xl font-bold tracking-tight text-foreground">
             Settings
           </h1>
           <p className="mt-2 max-w-xl text-muted-foreground">
@@ -111,7 +148,9 @@ function SettingsPage() {
             <SecuritySettings
               profile={profile}
               onProfileChange={setProfile}
-              onRefresh={refreshProfile}
+              onRefresh={async () => {
+                await refetch();
+              }}
             />
           </TabsContent>
 

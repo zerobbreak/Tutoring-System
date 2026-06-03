@@ -7,7 +7,7 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "vite dev --port 3000",
+    "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
@@ -15,6 +15,8 @@
     "db:push:all": "supabase db push --include-all",
     "db:migration:list": "supabase migration list",
     "db:migration:repair": "supabase migration repair",
+    "db:migrations:squash": "node scripts/squash-migrations.mjs",
+    "db:migration:squash-repair": "node scripts/run-squash-repair.mjs",
     "electron": "electron .",
     "electron:start": "wait-on http-get://127.0.0.1:3000 -t 120000 -d 1500 && electron .",
     "electron:dev": "start-server-and-test dev http://127.0.0.1:3000 electron"
@@ -27,12 +29,14 @@
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.105.4",
     "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/react-query": "latest",
     "@tanstack/react-router": "latest",
     "@tanstack/react-router-ssr-query": "latest",
     "@tanstack/react-start": "latest",
     "@tanstack/react-store": "latest",
     "@tanstack/router-plugin": "^1.132.0",
     "@tanstack/store": "latest",
+    "@zxing/browser": "^0.2.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",

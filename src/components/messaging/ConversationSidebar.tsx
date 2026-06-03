@@ -127,8 +127,8 @@ export function ConversationSidebar({
   const showMessageSearch = searchQuery.trim().length >= 2;
 
   return (
-    <div className="flex h-full w-80 shrink-0 flex-col border-r bg-card">
-      <div className="space-y-4 p-4">
+    <div className="flex h-full min-h-0 w-80 shrink-0 flex-col overflow-hidden border-r bg-card">
+      <div className="shrink-0 space-y-4 p-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold tracking-tight">{title}</h2>
           <Button size="icon" variant="ghost" onClick={onCreateNew}>
@@ -146,7 +146,7 @@ export function ConversationSidebar({
           />
         </div>
 
-        <div className="no-scrollbar flex gap-1 overflow-x-auto pb-1">
+        <div className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
           {categories.map((cat) => {
             const Icon =
               categoryIconSet === "admin"
@@ -157,7 +157,7 @@ export function ConversationSidebar({
                 key={cat.id}
                 variant={activeCategory === cat.id ? "secondary" : "ghost"}
                 size="sm"
-                className="h-8 whitespace-nowrap px-2.5"
+                className="h-8 shrink-0 whitespace-nowrap px-2.5"
                 onClick={() => setActiveCategory(cat.id)}
               >
                 <Icon className="mr-1.5 h-3.5 w-3.5" />
@@ -168,7 +168,7 @@ export function ConversationSidebar({
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <div className="space-y-4 px-2 pb-4">
           {showMessageSearch ? (
             <div>

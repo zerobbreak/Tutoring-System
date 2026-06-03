@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isSessionEnded, type SessionClaimTimingFields } from "#/lib/session-claim-lifecycle";
+import { resolveTutorClaimWriteDb } from "#/lib/schedule-claims/claim-write-db";
+import { softDeleteClaim } from "#/lib/soft-delete";
 
 export const DRAFT_EXPIRED_PURGED_ACTION = "DRAFT_EXPIRED_PURGED";
 
@@ -12,16 +14,17 @@ type DraftRow = SessionClaimTimingFields & {
 };
 
 /**
- * Removes tutor DRAFT claims whose session end is in the past. Writes a
- * verification_actions row before delete so institutions keep an audit trail.
+ * Soft-deletes tutor DRAFT claims whose session end is in the past. Writes a
+ * verification_actions row before discard so institutions keep an audit trail.
  */
 export async function purgeExpiredDraftClaimsForTutor(
   db: SupabaseClient,
   tutorId: string,
 ): Promise<number> {
   const now = new Date();
+  const writeDb = await resolveTutorClaimWriteDb(db, tutorId);
 
-  const { data: rows, error } = await db
+  const { data: rows, error } = await writeDb
     .from("session_claims")
     .select(
       `
@@ -43,7 +46,7 @@ export async function purgeExpiredDraftClaimsForTutor(
 
   const expired = (rows ?? []).filter((r) =>
     isSessionEnded(r as SessionClaimTimingFields, now),
-  ) as DraftRow[];
+  ) as unknown as DraftRow[];
 
   if (!expired.length) return 0;
 
@@ -60,7 +63,7 @@ export async function purgeExpiredDraftClaimsForTutor(
       purged_at: now.toISOString(),
     };
 
-    const { error: logErr } = await db.from("verification_actions").insert({
+    const { error: logErr } = await writeDb.from("verification_actions").insert({
       claim_id: row.id,
       actor_id: tutorId,
       action_type: DRAFT_EXPIRED_PURGED_ACTION,
@@ -72,15 +75,9 @@ export async function purgeExpiredDraftClaimsForTutor(
     if (logErr) throw new Error(logErr.message);
   }
 
-  const ids = expired.map((r) => r.id);
-  const { error: delErr } = await db
-    .from("session_claims")
-    .delete()
-    .eq("tutor_id", tutorId)
-    .eq("status", "DRAFT")
-    .in("id", ids);
-
-  if (delErr) throw new Error(delErr.message);
+  for (const row of expired) {
+    await softDeleteClaim(db, row.id, tutorId, "Expired draft purged");
+  }
 
   return expired.length;
 }

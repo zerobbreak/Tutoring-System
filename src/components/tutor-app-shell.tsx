@@ -14,25 +14,26 @@ import {
   type AppShellNavGroup,
   type AppShellUser,
 } from "#/components/app-shell";
+import { APP_PATHS } from "#/lib/app-paths";
 
 const TUTOR_NAV_GROUPS: readonly AppShellNavGroup[] = [
   {
     label: "Overview",
     items: [
-      { to: "/tutor", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/tutor/sessions", label: "Sessions", icon: Video },
-      { to: "/tutor/claims", label: "Claims", icon: ClipboardCheck },
-      { to: "/tutor/earnings", label: "Earnings", icon: Coins },
+      { to: APP_PATHS.tutor.home, label: "Dashboard", icon: LayoutDashboard },
+      { to: APP_PATHS.tutor.sessions, label: "Sessions", icon: Video },
+      { to: APP_PATHS.tutor.claims, label: "Claims", icon: ClipboardCheck },
+      { to: APP_PATHS.tutor.earnings, label: "Earnings", icon: Coins },
     ],
   },
   {
     label: "Teaching",
     items: [
-      { to: "/tutor/messaging", label: "Messaging", icon: MessageSquare },
-      { to: "/tutor/schedules", label: "Schedules", icon: Calendar },
-      { to: "/tutor/notes", label: "Notes", icon: NotebookPen },
+      { to: APP_PATHS.tutor.messaging, label: "Messaging", icon: MessageSquare },
+      { to: APP_PATHS.tutor.schedules, label: "Schedules", icon: Calendar },
+      { to: APP_PATHS.tutor.notes, label: "Notes", icon: NotebookPen },
       {
-        to: "/tutor/register-generation",
+        to: APP_PATHS.tutor.registerGeneration,
         label: "Register generation",
         icon: FileSpreadsheet,
       },
@@ -49,8 +50,9 @@ export function TutorAppShell({
 }) {
   return (
     <AppShell
-      homePath="/tutor"
-      helpPath="/tutor/help"
+      homePath={APP_PATHS.tutor.home}
+      helpPath={APP_PATHS.tutor.help}
+      notificationsPath={APP_PATHS.tutor.notifications}
       brandMark={<span className="text-xs font-bold">TS</span>}
       brandTitle="Tutor Studio"
       brandSubtitle="Emeris Learning"

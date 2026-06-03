@@ -9,6 +9,7 @@ import { SESSION_REQUEST_STATUS } from "#/lib/session-request-status";
 import { buildDtstartFromDateAndTime } from "#/lib/schedule-recurrence";
 import { scheduleClaimTimesFromTimestamps } from "#/lib/schedule-claim-times";
 import { isTutorManualSessionClaim } from "#/lib/tutor-manual-session-claim";
+import { softDeleteClaim } from "#/lib/soft-delete";
 import { publishScheduleSeriesCore } from "./publish-schedule-series-core";
 import { ensureScheduledSessionClaim } from "./ensure-scheduled-session-claim";
 import { checkReservedCapacityForOccurrences } from "#/server-actions/tutor-allocations/check-reserved-capacity";
@@ -86,7 +87,7 @@ export async function approveTutorSessionRequest(
       source_scheduled_session_id,
       source_schedule_import_id,
       admin_creation_approved_at,
-      module:modules ( id, code, institution_id, lecturer_id )
+      module:modules ( id, code, institution_id, lecturer_id, academic_term_id )
     `,
     )
     .eq("id", input.claimId)
@@ -96,8 +97,20 @@ export async function approveTutorSessionRequest(
   if (!row) throw new Error("Session not found.");
   const claim = row as TutorSessionRequestClaimRow & {
     module:
-      | { id: string; code: string; institution_id: string; lecturer_id: string }
-      | { id: string; code: string; institution_id: string; lecturer_id: string }[]
+      | {
+          id: string;
+          code: string;
+          institution_id: string;
+          lecturer_id: string;
+          academic_term_id: string | null;
+        }
+      | {
+          id: string;
+          code: string;
+          institution_id: string;
+          lecturer_id: string;
+          academic_term_id: string | null;
+        }[]
       | null;
   };
 
@@ -150,6 +163,8 @@ export async function approveTutorSessionRequest(
     .from("schedule_series")
     .insert({
       module_id: claim.module_id,
+      institution_id: mod.institution_id,
+      academic_term_id: mod.academic_term_id ?? null,
       created_by: input.seriesCreatedBy,
       title,
       session_kind: sessionKind,
@@ -174,6 +189,8 @@ export async function approveTutorSessionRequest(
   await publishScheduleSeriesCore(db, {
     seriesId,
     materializeMode: "first_publish",
+    actorId: input.reviewerId,
+    reconcileClaims: false,
   });
 
   const { data: session, error: sessErr } = await db
@@ -202,11 +219,12 @@ export async function approveTutorSessionRequest(
 
   if (dupErr) throw new Error(dupErr.message);
   for (const d of dupes ?? []) {
-    const { error: delErr } = await db
-      .from("session_claims")
-      .delete()
-      .eq("id", d.id as string);
-    if (delErr) throw new Error(delErr.message);
+    await softDeleteClaim(
+      db,
+      d.id as string,
+      input.reviewerId,
+      "Duplicate scheduled-session claim cleaned up during approval",
+    );
   }
 
   const now = new Date().toISOString();

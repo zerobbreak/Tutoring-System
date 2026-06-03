@@ -1,144 +1,85 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
 import { AdminDashboardView } from "#/components/admin/dashboard/admin-dashboard-view";
+import { useAdminDashboardData } from "#/components/admin/dashboard/use-admin-dashboard-data";
+import { QueryPageGate } from "#/lib/query-page-gate";
+import { queryLoadFeedbackProps } from "#/lib/query-route-props";
+import { queryKeys } from "#/lib/query-keys";
 import { useSessionUser } from "#/lib/use-session-user";
-import {
-  getAdminDashboardDataFn,
-  type AdminAnalyticsSummaryDTO,
-  type AdminDeadlineDTO,
-  type AdminLecturerActivityDTO,
-  type AdminPipelineDTO,
-} from "#/server-actions/admin-dashboard";
-import type { LecturerActivityItemDTO } from "#/server-actions/lecturer-dashboard";
-import type { PendingTutorSessionCreationDTO } from "#/server-actions/admin-sessions";
+import { getAdminDashboardDataFn } from "#/server-actions/admin-dashboard";
 
 export const Route = createFileRoute("/admin/")({
+  loader: ({ context: { queryClient } }) =>
+    queryClient.ensureQueryData({
+      queryKey: queryKeys.admin.dashboard,
+      queryFn: () => getAdminDashboardDataFn(),
+    }),
   component: AdminDashboardPage,
 });
 
 function AdminDashboardPage() {
   const { user, pending } = useSessionUser();
-
-  const [booting, setBooting] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [institutionName, setInstitutionName] = useState<string | null>(null);
-  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0);
-  const [verifiedClaimsCount, setVerifiedClaimsCount] = useState(0);
-  const [activeSessionsCount, setActiveSessionsCount] = useState(0);
-  const [approvedHours, setApprovedHours] = useState(0);
-  const [pipeline, setPipeline] = useState<AdminPipelineDTO>({
-    pendingLecturerVerifications: 0,
-    pendingAdminApprovals: 0,
-    openDisputes: 0,
-    stalledClaims: 0,
-    pendingScheduleChanges: 0,
-  });
-  const [activityFeed, setActivityFeed] = useState<LecturerActivityItemDTO[]>(
-    [],
-  );
-  const [lecturerActivity, setLecturerActivity] = useState<
-    AdminLecturerActivityDTO[]
-  >([]);
-  const [deadlines, setDeadlines] = useState<AdminDeadlineDTO[]>([]);
-  const [analyticsSummary, setAnalyticsSummary] =
-    useState<AdminAnalyticsSummaryDTO>({
-      totalModules: 0,
-      totalTutors: 0,
-      activeTutors: 0,
-      totalLecturers: 0,
-      claimsPending: 0,
-      claimsVerified: 0,
-      claimsApproved: 0,
-      openDisputes: 0,
-    });
-  const [weekStart, setWeekStart] = useState("");
-  const [weekEnd, setWeekEnd] = useState("");
-  const [pendingTutorSessionCreations, setPendingTutorSessionCreations] =
-    useState<PendingTutorSessionCreationDTO[]>([]);
-
-  const loadDashboard = useCallback(async () => {
-    const data = await getAdminDashboardDataFn();
-    setInstitutionName(data.institutionName);
-    setPendingApprovalsCount(data.pendingApprovalsCount);
-    setVerifiedClaimsCount(data.verifiedClaimsCount);
-    setActiveSessionsCount(data.activeSessionsCount);
-    setApprovedHours(data.approvedHours);
-    setPipeline(data.pipeline);
-    setActivityFeed(data.activityFeed);
-    setLecturerActivity(data.lecturerActivity);
-    setDeadlines(data.deadlines);
-    setAnalyticsSummary(data.analyticsSummary);
-    setWeekStart(data.weekStart);
-    setWeekEnd(data.weekEnd);
-    setPendingTutorSessionCreations(data.pendingTutorSessionCreations);
-    return data;
-  }, []);
-
-  useEffect(() => {
-    if (!user) {
-      setBooting(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    void (async () => {
-      setBooting(true);
-      setLoadError(null);
-      try {
-        if (cancelled) return;
-        await loadDashboard();
-      } catch (e) {
-        if (!cancelled) {
-          setLoadError(
-            e instanceof Error ? e.message : "Failed to load dashboard",
-          );
-        }
-      } finally {
-        if (!cancelled) setBooting(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id, loadDashboard]);
-
-  if (pending || !user) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isSuccess,
+    error,
+    invalidate,
+    refetch,
+  } = useAdminDashboardData(!!user);
+  const feedback = queryLoadFeedbackProps({ error, isFetching, refetch });
 
   return (
-    <AdminDashboardView
-      user={user}
-      booting={booting}
-      loadError={loadError}
-      institutionName={institutionName}
-      pendingApprovalsCount={pendingApprovalsCount}
-      verifiedClaimsCount={verifiedClaimsCount}
-      activeSessionsCount={activeSessionsCount}
-      approvedHours={approvedHours}
-      pipeline={pipeline}
-      activityFeed={activityFeed}
-      lecturerActivity={lecturerActivity}
-      deadlines={deadlines}
-      analyticsSummary={analyticsSummary}
-      weekStart={weekStart}
-      weekEnd={weekEnd}
-      pendingTutorSessionCreations={pendingTutorSessionCreations}
-      onTutorSessionApprovalsChanged={() => {
-        void (async () => {
-          try {
-            await loadDashboard();
-          } catch {
-            /* toast handled on next full load */
+    <QueryPageGate
+      sessionPending={pending || !user}
+      isLoading={isLoading}
+      isFetching={isFetching}
+      error={error}
+      hasData={isSuccess}
+      onRetry={() => void refetch()}
+      loadingLabel="Loading dashboard…"
+    >
+      <AdminDashboardView
+        user={user!}
+        booting={isLoading}
+        {...feedback}
+        institutionName={data?.institutionName ?? null}
+        pendingApprovalsCount={data?.pendingApprovalsCount ?? 0}
+        verifiedClaimsCount={data?.verifiedClaimsCount ?? 0}
+        activeSessionsCount={data?.activeSessionsCount ?? 0}
+        approvedHours={data?.approvedHours ?? 0}
+        pipeline={
+          data?.pipeline ?? {
+            pendingLecturerVerifications: 0,
+            pendingAdminApprovals: 0,
+            openDisputes: 0,
+            stalledClaims: 0,
+            pendingScheduleChanges: 0,
+            pendingTutorSessionCreations: 0,
           }
-        })();
-      }}
-    />
+        }
+        activityFeed={data?.activityFeed ?? []}
+        lecturerActivity={data?.lecturerActivity ?? []}
+        deadlines={data?.deadlines ?? []}
+        analyticsSummary={
+          data?.analyticsSummary ?? {
+            totalModules: 0,
+            totalTutors: 0,
+            activeTutors: 0,
+            totalLecturers: 0,
+            claimsPending: 0,
+            claimsVerified: 0,
+            claimsApproved: 0,
+            openDisputes: 0,
+          }
+        }
+        weekStart={data?.weekStart ?? ""}
+        weekEnd={data?.weekEnd ?? ""}
+        pendingTutorSessionCreations={data?.pendingTutorSessionCreations ?? []}
+        onTutorSessionApprovalsChanged={() => {
+          void invalidate();
+        }}
+      />
+    </QueryPageGate>
   );
 }

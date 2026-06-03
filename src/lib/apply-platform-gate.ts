@@ -2,6 +2,7 @@ import {
   fetchAuthUserLifecycleClient,
   isUserLifecycleBlocked,
 } from "#/lib/user-platform-gate";
+import { APP_PATHS } from "#/lib/app-paths";
 import { hasPlatformAccess } from "#/lib/user-status";
 import type { PostAuthDestination } from "#/lib/user-role";
 
@@ -17,11 +18,11 @@ export async function applyPlatformGate(): Promise<PlatformGateResult> {
   if (!lifecycle) return { allowed: true };
 
   if (isUserLifecycleBlocked(lifecycle)) {
-    return { allowed: false, redirect: "/auth/account-blocked" };
+    return { allowed: false, redirect: APP_PATHS.auth.accountBlocked };
   }
 
   if (!hasPlatformAccess(lifecycle.user_status)) {
-    return { allowed: false, redirect: "/settings" };
+    return { allowed: false, redirect: APP_PATHS.settings };
   }
 
   return { allowed: true };

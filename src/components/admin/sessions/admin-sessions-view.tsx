@@ -1,4 +1,5 @@
 import type { NavigateOptions } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import {
   Activity,
   CalendarCheck,
@@ -9,6 +10,7 @@ import {
 } from "lucide-react";
 import { CancelledScheduleRow } from "#/components/lecturer/sessions/cancelled-schedule-row";
 import { SessionListSection } from "#/components/lecturer/sessions/session-list-section";
+import { QueryErrorBanner } from "#/components/ui/query-fetch-feedback";
 import {
   Card,
   CardContent,
@@ -23,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "#/components/ui/select";
+import { ScrollArea } from "#/components/ui/scroll-area";
 import { Skeleton } from "#/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
 import type {
@@ -46,6 +49,8 @@ export type AdminSessionsSearch = {
 export type AdminSessionsViewProps = {
   booting: boolean;
   loadError: string | null;
+  onRetryLoad?: () => void;
+  retryingLoad?: boolean;
   data: AdminSessionsPageDataDTO | null;
   lookbackDays: number;
   moduleId: string | null;
@@ -123,6 +128,8 @@ function SessionsKpiStrip({
 export function AdminSessionsView({
   booting,
   loadError,
+  onRetryLoad,
+  retryingLoad,
   data,
   lookbackDays,
   moduleId,
@@ -140,7 +147,7 @@ export function AdminSessionsView({
 }: AdminSessionsViewProps) {
   const openSession = (session: AdminSessionCardDTO | { id: string }) => {
     void navigate({
-      to: "/admin/sessions",
+      to: APP_PATHS.admin.sessions,
       search: { claim: session.id },
       replace: true,
     });
@@ -151,7 +158,8 @@ export function AdminSessionsView({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain p-6 pb-10 md:p-8">
+      <ScrollArea className="min-h-0 flex-1">
+      <div className="flex flex-col gap-6 p-6 pb-10 md:p-8">
         <header className="shrink-0">
           <h2 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
             <Video className="size-7 text-(--lagoon-deep)" />
@@ -163,15 +171,14 @@ export function AdminSessionsView({
           </p>
         </header>
 
-        <AdminTutorSessionCreationsPanel onApproved={onTutorSessionApproved} />
+        <AdminTutorSessionCreationsPanel onChanged={onTutorSessionApproved} />
 
         {loadError ? (
-          <div
-            role="alert"
-            className="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
-          >
-            {loadError}
-          </div>
+          <QueryErrorBanner
+            message={loadError}
+            onRetry={onRetryLoad}
+            retrying={retryingLoad}
+          />
         ) : null}
 
         <div className="grid shrink-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -353,6 +360,7 @@ export function AdminSessionsView({
           </Tabs>
         )}
       </div>
+      </ScrollArea>
 
       <AdminSessionDetailSheet
         claimId={selectedClaimId}

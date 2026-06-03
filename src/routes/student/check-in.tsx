@@ -39,7 +39,7 @@ export const Route = createFileRoute("/student/check-in")({
     session: (search.session as string) || "",
   }),
   head: () => ({
-    meta: [{ title: "Session check-in" }],
+    meta: [{ title: "Mark attendance" }],
   }),
   component: StudentCheckInPage,
 });
@@ -64,7 +64,7 @@ function CheckInShell({ children }: { children: ReactNode }) {
                 Attendance
               </p>
               <p className="truncate font-display text-lg font-semibold tracking-tight">
-                Session check-in
+                Mark attendance
               </p>
             </div>
           </div>
@@ -120,7 +120,7 @@ function SessionPreviewCard({
           </Badge>
         </div>
         <CardDescription className="text-(--sea-ink-soft)">
-          Confirm this is the class you are attending before you check in.
+          Confirm this is the class you attended, then mark yourself present.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3 pb-5">
@@ -206,7 +206,7 @@ function StudentCheckInPage() {
     if (!token || !sessionId) {
       setSessionPreview(null);
       setPreviewLoading(false);
-      setPreviewError("This check-in link is missing required parameters.");
+      setPreviewError("This attendance link is missing required parameters.");
       return;
     }
 
@@ -259,11 +259,12 @@ function StudentCheckInPage() {
       setSuccess(result.studentName);
       toast.success(
         result.registered
-          ? `Welcome, ${result.studentName}! You are registered and checked in.`
-          : `Check-in successful! Welcome, ${result.studentName}.`,
+          ? `Welcome, ${result.studentName}! You are registered and marked present.`
+          : `You are marked present. Welcome, ${result.studentName}.`,
       );
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to check in";
+      const msg =
+        err instanceof Error ? err.message : "Could not mark attendance";
       setError(msg);
       toast.error(msg);
     } finally {
@@ -286,7 +287,7 @@ function StudentCheckInPage() {
             </div>
             <div className="space-y-2">
               <CardTitle className="display-title text-2xl font-bold text-(--sea-ink)">
-                You&apos;re checked in
+                You&apos;re marked present
               </CardTitle>
               <CardDescription className="text-base text-(--sea-ink-soft)">
                 Welcome,{" "}
@@ -416,10 +417,10 @@ function StudentCheckInPage() {
                 ) : (
                   <UserCheck className="size-5" />
                 )}
-                Register & check in
+                Mark present
               </Button>
               <p className="text-center text-[11px] leading-relaxed text-(--sea-ink-soft)">
-                By checking in you confirm your attendance for this session only.
+                You confirm you attended this session only.
               </p>
             </CardFooter>
           </form>

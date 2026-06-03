@@ -1,6 +1,8 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { ensurePublicUserProfile } from "#/lib/ensure-public-user";
+import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import type { createSupabaseServerClient } from "#/lib/supabase-server";
-import { isAdminDashboardRole } from "#/lib/user-role";
+import { getUserRole, isAdminDashboardRole } from "#/lib/user-role";
 
 export type AdminContext = {
   userId: string;
@@ -17,12 +19,13 @@ export async function requireAdminContext(
   } = await supabase.auth.getUser();
   if (error || !user) throw new Error("Unauthorized");
 
-  const role = user.user_metadata?.role as string | undefined;
+  const role = getUserRole(user);
   if (!isAdminDashboardRole(role)) {
     throw new Error("Admin access required.");
   }
 
-  await ensurePublicUserProfile(supabase);
+  const dbRole = role === "SUPER_ADMIN" ? "SUPER_ADMIN" : "ADMIN";
+  await ensurePublicUserProfile(supabase, { role: dbRole });
 
   const { data: row, error: rowErr } = await supabase
     .from("users")
@@ -40,4 +43,11 @@ export async function requireAdminContext(
   }
 
   return { userId: user.id, institutionId, role: role ?? "ADMIN" };
+}
+
+/** Service-role client for admin mutations when configured; falls back to user JWT. */
+export function resolveAdminWriteClient(
+  supabase: ReturnType<typeof createSupabaseServerClient>,
+): SupabaseClient {
+  return getSupabaseAdmin() ?? supabase;
 }

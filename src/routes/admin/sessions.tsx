@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import * as z from "zod";
 import { AdminSessionsView } from "#/components/admin/sessions/admin-sessions-view";
+import { useAdminSessionsData } from "#/components/admin/sessions/use-admin-sessions-data";
+import { APP_PATHS } from "#/lib/app-paths";
+import { QueryPageGate } from "#/lib/query-page-gate";
+import { queryLoadFeedbackProps } from "#/lib/query-route-props";
 import { useSessionUser } from "#/lib/use-session-user";
-import {
-  listAdminSessionsFn,
-  type AdminSessionsPageDataDTO,
-} from "#/server-actions/admin-sessions";
 
 const sessionsSearchSchema = z.object({
   claim: z.string().uuid().optional(),
@@ -22,9 +22,6 @@ function AdminSessionsPage() {
   const urlSearch = Route.useSearch();
   const navigate = Route.useNavigate();
 
-  const [booting, setBooting] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [data, setData] = useState<AdminSessionsPageDataDTO | null>(null);
   const [lookbackDays, setLookbackDays] = useState(30);
   const [moduleId, setModuleId] = useState<string | null>(null);
   const [tutorId, setTutorId] = useState<string | null>(null);
@@ -32,36 +29,22 @@ function AdminSessionsPage() {
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const load = useCallback(async () => {
-    if (!user) return;
-    setBooting(true);
-    setLoadError(null);
-    try {
-      const result = await listAdminSessionsFn({
-        data: {
-          lookbackDays,
-          moduleId: moduleId ?? undefined,
-          tutorId: tutorId ?? undefined,
-          lecturerId: lecturerId ?? undefined,
-        },
-      });
-      setData(result);
-    } catch (e) {
-      setLoadError(
-        e instanceof Error ? e.message : "Failed to load sessions",
-      );
-    } finally {
-      setBooting(false);
-    }
-  }, [user, lookbackDays, moduleId, tutorId, lecturerId]);
-
-  useEffect(() => {
-    if (!user) {
-      setBooting(false);
-      return;
-    }
-    void load();
-  }, [user?.id, load]);
+  const {
+    data,
+    isLoading,
+    isFetching,
+    isSuccess,
+    error,
+    refetch,
+    invalidate,
+  } = useAdminSessionsData({
+    enabled: !!user,
+    lookbackDays,
+    moduleId,
+    tutorId,
+    lecturerId,
+  });
+  const feedback = queryLoadFeedbackProps({ error, isFetching, refetch });
 
   useEffect(() => {
     if (urlSearch.claim) {
@@ -75,7 +58,7 @@ function AdminSessionsPage() {
       setSheetOpen(false);
       setSelectedClaimId(null);
       void navigate({
-        to: "/admin/sessions",
+        to: APP_PATHS.admin.sessions,
         search: { claim: undefined },
         replace: true,
       });
@@ -84,18 +67,19 @@ function AdminSessionsPage() {
     }
   };
 
-  if (pending || !user) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
   return (
+    <QueryPageGate
+      sessionPending={pending || !user}
+      isLoading={isLoading}
+      isFetching={isFetching}
+      error={error}
+      hasData={isSuccess}
+      onRetry={() => void refetch()}
+      loadingLabel="Loading sessions…"
+    >
     <AdminSessionsView
-      booting={booting}
-      loadError={loadError}
+      booting={isLoading}
+      {...feedback}
       data={data}
       lookbackDays={lookbackDays}
       moduleId={moduleId}
@@ -109,7 +93,10 @@ function AdminSessionsPage() {
       onLecturerChange={setLecturerId}
       navigate={navigate}
       onSheetOpenChange={handleSheetOpenChange}
-      onTutorSessionApproved={() => void load()}
+      onTutorSessionApproved={() => {
+        void invalidate();
+      }}
     />
+    </QueryPageGate>
   );
 }

@@ -11,6 +11,8 @@ export type { ScheduleCalendarView, ScheduleEventDTO };
 export type LecturerScheduleViewProps = {
   booting: boolean;
   loadError: string | null;
+  onRetryLoad?: () => void;
+  retryingLoad?: boolean;
   view: ScheduleCalendarView;
   focusDate: Date;
   data: LecturerSchedulePageDataDTO | null;

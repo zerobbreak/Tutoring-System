@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "#/components/ui/button";
+import { APP_PATHS } from "#/lib/app-paths";
 import {
   Card,
   CardContent,
@@ -289,13 +290,13 @@ function TutorHelpPage() {
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             <Button variant="outline" size="sm" className="rounded-full" asChild>
-              <Link to="/tutor/sessions">Sessions</Link>
+              <Link to={APP_PATHS.tutor.sessions}>Sessions</Link>
             </Button>
             <Button variant="outline" size="sm" className="rounded-full" asChild>
-              <Link to="/tutor/claims">Claims</Link>
+              <Link to={APP_PATHS.tutor.claims}>Claims</Link>
             </Button>
             <Button variant="outline" size="sm" className="rounded-full" asChild>
-              <Link to="/tutor/messaging">Messaging</Link>
+              <Link to={APP_PATHS.tutor.messaging}>Messaging</Link>
             </Button>
             <Button variant="outline" size="sm" className="rounded-full" asChild>
               <Link to="/settings">Settings</Link>

@@ -27,7 +27,7 @@ export const createOneOffScheduleSeriesFn = createServerFn({ method: "POST" })
 
     const { data: mod, error: modErr } = await supabase
       .from("modules")
-      .select("id")
+      .select("id, institution_id, academic_term_id")
       .eq("id", data.moduleId)
       .eq("lecturer_id", lecturerId)
       .maybeSingle();
@@ -52,6 +52,8 @@ export const createOneOffScheduleSeriesFn = createServerFn({ method: "POST" })
       .from("schedule_series")
       .insert({
         module_id: data.moduleId,
+        institution_id: mod.institution_id as string,
+        academic_term_id: (mod.academic_term_id as string | null) ?? null,
         created_by: lecturerId,
         title: data.title.trim(),
         session_kind: data.sessionKind?.trim() || "one_off",
@@ -76,6 +78,7 @@ export const createOneOffScheduleSeriesFn = createServerFn({ method: "POST" })
     const { sessionCount } = await publishScheduleSeriesCore(supabase, {
       seriesId,
       materializeMode: "first_publish",
+      actorId: lecturerId,
     });
 
     return { seriesId, sessionCount };

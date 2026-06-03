@@ -52,17 +52,17 @@ export function AdminPayrollExportBar({ onExported }: AdminPayrollExportBarProps
           type="date"
           value={periodStart}
           onChange={(e) => setPeriodStart(e.target.value)}
-          className="w-full sm:w-auto"
+          className="w-full sm:w-auto ml-3"
         />
       </div>
-      <div className="space-y-1">
+      <div className="space-y-1 mr-2">
         <Label htmlFor="export-end">Period end</Label>
         <Input
           id="export-end"
           type="date"
           value={periodEnd}
           onChange={(e) => setPeriodEnd(e.target.value)}
-          className="w-full sm:w-auto"
+          className="w-full sm:w-auto ml-3"
         />
       </div>
       <Button

@@ -1,13 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import * as z from "zod";
 import { AdminUsersView } from "#/components/admin/users/admin-users-view";
+import { useAdminUsersData } from "#/components/admin/users/use-admin-users-data";
+import { APP_PATHS } from "#/lib/app-paths";
+import { QueryPageGate } from "#/lib/query-page-gate";
+import { queryLoadFeedbackProps } from "#/lib/query-route-props";
 import { useSessionUser } from "#/lib/use-session-user";
-import {
-  listAdminUsersFn,
-  type AdminUserCategory,
-  type AdminUserRowDTO,
-} from "#/server-actions/admin-users";
+import type { AdminUserCategory } from "#/server-actions/admin-users";
 
 const usersSearchSchema = z.object({
   user: z.string().uuid().optional(),
@@ -23,48 +23,31 @@ function AdminUsersPage() {
   const urlSearch = Route.useSearch();
   const navigate = Route.useNavigate();
 
-  const [booting, setBooting] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const [category, setCategory] = useState<AdminUserCategory>("all");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [users, setUsers] = useState<AdminUserRowDTO[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+
+  const {
+    users,
+    isLoading,
+    isFetching,
+    isSuccess,
+    error,
+    refetch,
+    invalidate,
+  } = useAdminUsersData({
+    enabled: !!user,
+    category,
+    debouncedSearch,
+  });
+  const feedback = queryLoadFeedbackProps({ error, isFetching, refetch });
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
   }, [search]);
-
-  const loadUsers = useCallback(async () => {
-    if (!user) return;
-    setBooting(true);
-    setLoadError(null);
-    try {
-      const result = await listAdminUsersFn({
-        data: {
-          category,
-          search: debouncedSearch || undefined,
-        },
-      });
-      setUsers(result.users);
-    } catch (e) {
-      setLoadError(
-        e instanceof Error ? e.message : "Failed to load users",
-      );
-    } finally {
-      setBooting(false);
-    }
-  }, [user, category, debouncedSearch]);
-
-  useEffect(() => {
-    if (!user) {
-      setBooting(false);
-      return;
-    }
-    void loadUsers();
-  }, [user?.id, loadUsers]);
 
   useEffect(() => {
     if (urlSearch.user) {
@@ -77,7 +60,7 @@ function AdminUsersPage() {
     setSelectedUserId(userId);
     setSheetOpen(true);
     void navigate({
-      to: "/admin/users",
+      to: APP_PATHS.admin.users,
       search: { user: userId },
       replace: true,
     });
@@ -88,25 +71,26 @@ function AdminUsersPage() {
     if (!open) {
       setSelectedUserId(null);
       void navigate({
-        to: "/admin/users",
+        to: APP_PATHS.admin.users,
         search: { user: undefined },
         replace: true,
       });
     }
   };
 
-  if (pending || !user) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
   return (
+    <QueryPageGate
+      sessionPending={pending || !user}
+      isLoading={isLoading}
+      isFetching={isFetching}
+      error={error}
+      hasData={isSuccess}
+      onRetry={() => void refetch()}
+      loadingLabel="Loading users…"
+    >
     <AdminUsersView
-      booting={booting}
-      loadError={loadError}
+      booting={isLoading}
+      {...feedback}
       category={category}
       search={search}
       users={users}
@@ -116,7 +100,10 @@ function AdminUsersPage() {
       onSearchChange={setSearch}
       onSelectUser={openUser}
       onSheetOpenChange={handleSheetOpenChange}
-      onActionComplete={() => void loadUsers()}
+      onActionComplete={() => {
+        void invalidate();
+      }}
     />
+    </QueryPageGate>
   );
 }

@@ -1,6 +1,9 @@
 import * as React from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { subscribeToIncomingMessages } from "#/lib/messaging-realtime";
+import { formatQueryError } from "#/lib/query-error";
+import { queryKeys } from "#/lib/query-keys";
 import { supabase } from "#/lib/supabase";
 import {
   deleteConversationFn,
@@ -17,20 +20,32 @@ type UseMessagingPageOptions = {
 };
 
 export function useMessagingPage({ initialConversationId }: UseMessagingPageOptions = {}) {
-  const [conversations, setConversations] = React.useState<ConversationDTO[]>([]);
+  const queryClient = useQueryClient();
   const [selectedConvId, setSelectedConvId] = React.useState<string | undefined>();
-  const [messages, setMessages] = React.useState<MessageDTO[]>([]);
   const [currentUserId, setCurrentUserId] = React.useState<string | null>(null);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [isMessagesLoading, setIsMessagesLoading] = React.useState(false);
+  const [initialized, setInitialized] = React.useState(false);
 
+  const conversationsQuery = useQuery({
+    queryKey: queryKeys.messaging.conversations,
+    queryFn: () => listConversationsFn({ data: {} }) as Promise<ConversationDTO[]>,
+    enabled: !!currentUserId,
+  });
+
+  const conversations = conversationsQuery.data ?? [];
+
+  const messagesQuery = useQuery({
+    queryKey: selectedConvId
+      ? queryKeys.messaging.messages(selectedConvId)
+      : ["messaging", "messages", "none"],
+    queryFn: () =>
+      getConversationMessagesFn({
+        data: { conversationId: selectedConvId! },
+      }) as Promise<MessageDTO[]>,
+    enabled: !!selectedConvId,
+  });
+
+  const messages = messagesQuery.data ?? [];
   const selectedConversation = conversations.find((c) => c.id === selectedConvId);
-
-  const refreshConversations = React.useCallback(async (): Promise<ConversationDTO[]> => {
-    const convs = (await listConversationsFn({ data: {} })) as ConversationDTO[];
-    setConversations(convs);
-    return convs;
-  }, []);
 
   React.useEffect(() => {
     async function init() {
@@ -40,121 +55,136 @@ export function useMessagingPage({ initialConversationId }: UseMessagingPageOpti
         } = await supabase.auth.getUser();
         if (!user) return;
         setCurrentUserId(user.id);
-
-        const convs = await refreshConversations();
-
-        if (initialConversationId) {
-          setSelectedConvId(initialConversationId);
-        } else if (convs.length > 0) {
-          setSelectedConvId(convs[0]!.id);
-        }
       } catch (err) {
         console.error("Failed to init messaging:", err);
         toast.error("Failed to load conversations");
       } finally {
-        setIsLoading(false);
+        setInitialized(true);
       }
     }
     void init();
-  }, [initialConversationId, refreshConversations]);
+  }, []);
 
   React.useEffect(() => {
-    if (!selectedConvId) {
-      setMessages([]);
-      return;
-    }
+    if (!conversationsQuery.isSuccess || selectedConvId) return;
 
-    async function fetchMessages() {
-      setIsMessagesLoading(true);
-      try {
-        const msgs = (await getConversationMessagesFn({
-          data: { conversationId: selectedConvId },
-        })) as MessageDTO[];
-        setMessages(msgs);
-        await markConversationAsReadFn({
-          data: { conversationId: selectedConvId },
-        });
-        setConversations((prev) =>
-          prev.map((c) =>
-            c.id === selectedConvId ? { ...c, unread_count: 0 } : c,
-          ),
-        );
-      } catch (err) {
-        console.error("Failed to fetch messages:", err);
-        toast.error("Failed to load message history");
-      } finally {
-        setIsMessagesLoading(false);
-      }
+    if (initialConversationId) {
+      setSelectedConvId(initialConversationId);
+    } else if (conversations.length > 0) {
+      setSelectedConvId(conversations[0]!.id);
     }
-    void fetchMessages();
-  }, [selectedConvId]);
+  }, [
+    conversations,
+    conversationsQuery.isSuccess,
+    initialConversationId,
+    selectedConvId,
+  ]);
+
+  React.useEffect(() => {
+    if (!selectedConvId || !messagesQuery.isSuccess) return;
+
+    void markConversationAsReadFn({
+      data: { conversationId: selectedConvId },
+    }).then(() => {
+      queryClient.setQueryData<ConversationDTO[]>(
+        queryKeys.messaging.conversations,
+        (prev) =>
+          prev?.map((c) =>
+            c.id === selectedConvId ? { ...c, unread_count: 0 } : c,
+          ) ?? prev,
+      );
+    });
+  }, [messagesQuery.isSuccess, queryClient, selectedConvId]);
 
   React.useEffect(() => {
     if (!currentUserId) return;
 
     const unsubscribe = subscribeToIncomingMessages(currentUserId, async (newMsg) => {
-          if (newMsg.conversation_id === selectedConvId) {
-            setMessages((prev) => {
-              if (prev.some((m) => m.id === newMsg.id)) return prev;
-              return [
-                ...prev,
-                {
-                  id: newMsg.id,
-                  conversation_id: newMsg.conversation_id,
-                  sender_id: newMsg.sender_id,
-                  sender_name:
-                    newMsg.sender_id === currentUserId ? "You" : "Participant",
-                  content: newMsg.content,
-                  parent_message_id: newMsg.parent_message_id,
-                  metadata: newMsg.metadata ?? {},
-                  created_at: newMsg.created_at,
-                  attachments: [],
-                },
-              ];
-            });
-            await markConversationAsReadFn({
-              data: { conversationId: selectedConvId },
-            });
-          }
-
-          setConversations((prev) => {
-            const index = prev.findIndex((c) => c.id === newMsg.conversation_id);
-            if (index === -1) {
-              void refreshConversations();
-              return prev;
-            }
-
-            const updated = [...prev];
-            const conv = updated[index]!;
-            updated[index] = {
-              ...conv,
-              updated_at: newMsg.created_at,
-              last_message: {
+      if (newMsg.conversation_id === selectedConvId) {
+        queryClient.setQueryData<MessageDTO[]>(
+          queryKeys.messaging.messages(selectedConvId),
+          (prev) => {
+            if (prev?.some((m) => m.id === newMsg.id)) return prev;
+            return [
+              ...(prev ?? []),
+              {
                 id: newMsg.id,
                 conversation_id: newMsg.conversation_id,
-                content: newMsg.content,
                 sender_id: newMsg.sender_id,
                 sender_name:
                   newMsg.sender_id === currentUserId ? "You" : "Participant",
+                content: newMsg.content,
                 parent_message_id: newMsg.parent_message_id,
                 metadata: newMsg.metadata ?? {},
                 created_at: newMsg.created_at,
                 attachments: [],
               },
-              unread_count:
-                newMsg.conversation_id === selectedConvId
-                  ? 0
-                  : conv.unread_count + 1,
-            };
+            ];
+          },
+        );
+        await markConversationAsReadFn({
+          data: { conversationId: selectedConvId },
+        });
+      }
 
-            const item = updated.splice(index, 1)[0]!;
-            updated.unshift(item);
-            return updated;
-          });
+      queryClient.setQueryData<ConversationDTO[]>(
+        queryKeys.messaging.conversations,
+        (prev) => {
+          if (!prev) {
+            void queryClient.invalidateQueries({
+              queryKey: queryKeys.messaging.conversations,
+            });
+            return prev;
+          }
+
+          const index = prev.findIndex((c) => c.id === newMsg.conversation_id);
+          if (index === -1) {
+            void queryClient.invalidateQueries({
+              queryKey: queryKeys.messaging.conversations,
+            });
+            return prev;
+          }
+
+          const updated = [...prev];
+          const conv = updated[index]!;
+          updated[index] = {
+            ...conv,
+            updated_at: newMsg.created_at,
+            last_message: {
+              id: newMsg.id,
+              conversation_id: newMsg.conversation_id,
+              content: newMsg.content,
+              sender_id: newMsg.sender_id,
+              sender_name:
+                newMsg.sender_id === currentUserId ? "You" : "Participant",
+              parent_message_id: newMsg.parent_message_id,
+              metadata: newMsg.metadata ?? {},
+              created_at: newMsg.created_at,
+              attachments: [],
+            },
+            unread_count:
+              newMsg.conversation_id === selectedConvId
+                ? 0
+                : conv.unread_count + 1,
+          };
+
+          const item = updated.splice(index, 1)[0]!;
+          updated.unshift(item);
+          return updated;
+        },
+      );
     });
 
     return unsubscribe;
-  }, [selectedConvId, currentUserId, refreshConversations]);
+  }, [currentUserId, queryClient, selectedConvId]);
+
+  const refreshConversations = React.useCallback(async (): Promise<ConversationDTO[]> => {
+    const result = await queryClient.fetchQuery({
+      queryKey: queryKeys.messaging.conversations,
+      queryFn: () => listConversationsFn({ data: {} }) as Promise<ConversationDTO[]>,
+    });
+    return result;
+  }, [queryClient]);
 
   const handleSendMessage = async (
     content: string,
@@ -168,6 +198,12 @@ export function useMessagingPage({ initialConversationId }: UseMessagingPageOpti
           content,
           attachments,
         },
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.messaging.messages(selectedConvId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.messaging.conversations,
       });
     } catch (err) {
       console.error("Failed to send message:", err);
@@ -183,22 +219,39 @@ export function useMessagingPage({ initialConversationId }: UseMessagingPageOpti
   const handleDeleteConversation = async () => {
     if (!selectedConvId) return;
     await deleteConversationFn({ data: { conversationId: selectedConvId } });
-    setConversations((prev) => prev.filter((c) => c.id !== selectedConvId));
+    queryClient.removeQueries({
+      queryKey: queryKeys.messaging.messages(selectedConvId),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: queryKeys.messaging.conversations,
+    });
     setSelectedConvId(undefined);
-    setMessages([]);
     toast.success("Conversation deleted");
   };
 
   return {
     conversations,
-    setConversations,
+    conversationsError: formatQueryError(conversationsQuery.error),
+    retryConversations: () => {
+      void conversationsQuery.refetch();
+    },
+    isConversationsFetching: conversationsQuery.isFetching,
+    setConversations: (updater: React.SetStateAction<ConversationDTO[]>) => {
+      queryClient.setQueryData<ConversationDTO[]>(
+        queryKeys.messaging.conversations,
+        (prev) => {
+          const current = prev ?? [];
+          return typeof updater === "function" ? updater(current) : updater;
+        },
+      );
+    },
     selectedConvId,
     setSelectedConvId,
     selectedConversation,
     messages,
     currentUserId,
-    isLoading,
-    isMessagesLoading,
+    isLoading: !initialized || conversationsQuery.isLoading,
+    isMessagesLoading: messagesQuery.isLoading,
     refreshConversations,
     handleSendMessage,
     handleConversationCreated,

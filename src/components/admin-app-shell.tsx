@@ -6,6 +6,7 @@ import {
   ClipboardCheck,
   FileText,
   LayoutDashboard,
+  MapPin,
   MessageSquare,
   ScrollText,
 
@@ -18,43 +19,61 @@ import {
   type AppShellNavGroup,
   type AppShellUser,
 } from "#/components/app-shell";
-import { formatRoleLabel } from "#/lib/user-role";
+import { APP_PATHS } from "#/lib/app-paths";
+import { formatRoleLabel, getUserRole } from "#/lib/user-role";
 
 const ADMIN_NAV_GROUPS: readonly AppShellNavGroup[] = [
   {
     label: "Overview",
     items: [
-      { to: "/admin", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/admin/approvals", label: "Approvals", icon: ClipboardCheck },
+      { to: APP_PATHS.admin.home, label: "Dashboard", icon: LayoutDashboard },
+      {
+        to: APP_PATHS.admin.approvals,
+        label: "Approvals",
+        icon: ClipboardCheck,
+      },
     ],
   },
   {
     label: "Organization",
     items: [
-      { to: "/admin/institutions", label: "Institutions", icon: Building2 },
-      { to: "/admin/users", label: "Users", icon: Users },
+      {
+        to: APP_PATHS.admin.institutions,
+        label: "Institutions",
+        icon: Building2,
+      },
+      { to: APP_PATHS.admin.users, label: "Users", icon: Users },
+      { to: APP_PATHS.admin.venues, label: "Venues", icon: MapPin },
     ],
   },
   {
     label: "Operations",
     items: [
-      { to: "/admin/schedules", label: "Schedules", icon: Calendar },
-      { to: "/admin/sessions", label: "Sessions", icon: Video },
-      { to: "/admin/payments", label: "Payroll", icon: Wallet },
+      { to: APP_PATHS.admin.schedules, label: "Schedules", icon: Calendar },
+      { to: APP_PATHS.admin.sessions, label: "Sessions", icon: Video },
+      { to: APP_PATHS.admin.payments, label: "Payroll", icon: Wallet },
     ],
   },
   {
     label: "Communication",
     items: [
-      { to: "/admin/messaging", label: "Messaging", icon: MessageSquare },
+      {
+        to: APP_PATHS.admin.messaging,
+        label: "Messaging",
+        icon: MessageSquare,
+      },
     ],
   },
   {
     label: "Insights",
     items: [
-      { to: "/admin/analytics", label: "Analytics", icon: BarChart3 },
-      { to: "/admin/reports", label: "Reports", icon: FileText },
-      { to: "/admin/audit-logs", label: "Audit Logs", icon: ScrollText },
+      { to: APP_PATHS.admin.analytics, label: "Analytics", icon: BarChart3 },
+      { to: APP_PATHS.admin.reports, label: "Reports", icon: FileText },
+      {
+        to: APP_PATHS.admin.auditLogs,
+        label: "Audit Logs",
+        icon: ScrollText,
+      },
     ],
   },
 ] as const;
@@ -66,12 +85,12 @@ export function AdminAppShell({
   user: AppShellUser;
   children: ReactNode;
 }) {
-  const role = user.user_metadata?.role as string | undefined;
+  const role = getUserRole(user);
   const fallbackDisplayName = formatRoleLabel(role);
 
   return (
     <AppShell
-      homePath="/admin"
+      homePath={APP_PATHS.admin.home}
       brandMark={<span className="text-xs font-bold">EL</span>}
       brandTitle="Emeris Admin"
       brandSubtitle="Operations"

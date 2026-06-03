@@ -6,6 +6,10 @@ export async function materializeSeriesSessions(
   seriesId: string,
   _actorId?: string,
 ): Promise<number> {
-  const result = await materializeSeriesSessionsIncremental(supabase, seriesId);
+  const result = await materializeSeriesSessionsIncremental(
+    supabase,
+    seriesId,
+    _actorId ?? "",
+  );
   return result.totalActive;
 }

@@ -1,4 +1,5 @@
 import type { NavigateOptions } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { format, parseISO } from "date-fns";
 import {
   AlertTriangle,
@@ -9,9 +10,15 @@ import {
   TrendingUp,
   UserCheck,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState, lazy } from "react";
+import { useLecturerAttendanceData } from "#/components/lecturer/attendance/use-lecturer-attendance-data";
+import {
+  PageLoadingSpinner,
+  QueryErrorBanner,
+} from "#/components/ui/query-fetch-feedback";
+import { LazyWhenOpened } from "#/lib/lazy-when-opened";
+import { queryLoadFeedbackProps } from "#/lib/query-route-props";
 import { AttendanceAlertsPanel } from "#/components/lecturer/dashboard/attendance-alerts-panel";
-import { LecturerSessionDetailSheet } from "#/components/lecturer/sessions/lecturer-session-detail-sheet";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import {
@@ -24,12 +31,17 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
 import { formatClock } from "#/lib/session-claim-display";
 import {
-  getAttendanceDashboardFn,
   getLiveAttendanceSnapshotFn,
   type LecturerAttendanceDashboardDTO,
 } from "#/server-actions/lecturer-attendance";
 import { AttendanceKpiCards } from "./attendance-kpi-cards";
 import { AttendanceTrendChart } from "./attendance-trend-chart";
+
+const LecturerSessionDetailSheet = lazy(() =>
+  import("#/components/lecturer/sessions/lecturer-session-detail-sheet").then(
+    (m) => ({ default: m.LecturerSessionDetailSheet }),
+  ),
+);
 
 const LIVE_POLL_MS = 30_000;
 
@@ -46,34 +58,21 @@ export function LecturerAttendanceView({
   search,
   navigate,
 }: LecturerAttendanceViewProps) {
-  const [booting, setBooting] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [data, setData] = useState<LecturerAttendanceDashboardDTO | null>(null);
+  const { data, isLoading, isFetching, error, refetch, isSuccess, invalidate } =
+    useLecturerAttendanceData();
+  const feedback = queryLoadFeedbackProps({ error, isFetching, refetch });
+  const booting = isLoading;
   const [liveSessions, setLiveSessions] = useState<
     LecturerAttendanceDashboardDTO["liveSessions"]
   >([]);
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  const load = useCallback(async () => {
-    setBooting(true);
-    setLoadError(null);
-    try {
-      const result = await getAttendanceDashboardFn();
-      setData(result);
-      setLiveSessions(result.liveSessions);
-    } catch (e) {
-      setLoadError(
-        e instanceof Error ? e.message : "Failed to load attendance data",
-      );
-    } finally {
-      setBooting(false);
-    }
-  }, []);
-
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (data?.liveSessions) {
+      setLiveSessions(data.liveSessions);
+    }
+  }, [data?.liveSessions]);
 
   useEffect(() => {
     if (search.claim) {
@@ -99,7 +98,7 @@ export function LecturerAttendanceView({
     setSelectedClaimId(claimId);
     setSheetOpen(true);
     void navigate({
-      to: "/lecturer/attendance",
+      to: APP_PATHS.lecturer.attendance,
       search: { claim: claimId },
       replace: true,
     });
@@ -110,7 +109,7 @@ export function LecturerAttendanceView({
       setSheetOpen(false);
       setSelectedClaimId(null);
       void navigate({
-        to: "/lecturer/attendance",
+        to: APP_PATHS.lecturer.attendance,
         search: { claim: undefined },
         replace: true,
       });
@@ -118,6 +117,10 @@ export function LecturerAttendanceView({
       setSheetOpen(true);
     }
   };
+
+  if (isLoading && !isSuccess) {
+    return <PageLoadingSpinner label="Loading attendance…" />;
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -133,10 +136,12 @@ export function LecturerAttendanceView({
           </p>
         </div>
 
-        {loadError ? (
-          <div className="shrink-0 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {loadError}
-          </div>
+        {feedback.loadError ? (
+          <QueryErrorBanner
+            message={feedback.loadError}
+            onRetry={feedback.onRetryLoad}
+            retrying={feedback.retryingLoad}
+          />
         ) : null}
 
         <AttendanceKpiCards
@@ -404,17 +409,24 @@ export function LecturerAttendanceView({
         />
 
         <div className="flex justify-end">
-          <Button variant="outline" size="sm" onClick={() => void load()} disabled={booting}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void invalidate()}
+            disabled={isFetching}
+          >
             Refresh dashboard
           </Button>
         </div>
       </div>
 
-      <LecturerSessionDetailSheet
-        claimId={selectedClaimId}
-        open={sheetOpen}
-        onOpenChange={handleSheetOpenChange}
-      />
+      <LazyWhenOpened open={sheetOpen}>
+        <LecturerSessionDetailSheet
+          claimId={selectedClaimId}
+          open={sheetOpen}
+          onOpenChange={handleSheetOpenChange}
+        />
+      </LazyWhenOpened>
     </div>
   );
 }

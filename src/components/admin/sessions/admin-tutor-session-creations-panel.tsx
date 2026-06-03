@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { format } from "date-fns";
 import { AlertTriangle, Check, Loader2, MessageSquare, UserPlus, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
@@ -169,7 +170,7 @@ export function AdminTutorSessionCreationsPanel({
           </div>
           {showViewAllLink ? (
             <Button variant="ghost" size="sm" className="shrink-0" asChild>
-              <Link to="/admin/sessions">All sessions</Link>
+              <Link to={APP_PATHS.admin.sessions}>All sessions</Link>
             </Button>
           ) : null}
         </CardHeader>

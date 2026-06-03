@@ -309,7 +309,21 @@ export const listAuditLogFeedFn = createServerFn({ method: "GET" })
       ) {
         category = event === "MFA_RESET_BY_ADMIN" ? "MFA" : "USER";
       } else if (
-        ["SCHEDULE_SERIES_CREATED", "SCHEDULE_SERIES_PUBLISHED"].includes(event)
+        [
+          "SCHEDULE_SERIES_CREATED",
+          "SCHEDULE_SERIES_PUBLISHED",
+          "SESSION_TIME_CHANGED",
+          "VENUE_CHANGED",
+          "TUTOR_REASSIGNED",
+          "SESSION_CANCELLED",
+          "SESSION_RESTORED",
+          "SCHEDULED_SESSION_CANCELLED",
+          "SCHEDULED_SESSION_RESTORED",
+          "SCHEDULED_SESSION_SOFT_DELETED",
+          "SCHEDULE_SYNC_DRAFT_REPAIRED",
+          "SCHEDULE_SYNC_SKIPPED_FROZEN_CLAIM",
+        ].includes(event) ||
+        entityType === "SCHEDULED_SESSION"
       ) {
         category = "SCHEDULE";
       } else if (event === "STATUS_CHANGED") {

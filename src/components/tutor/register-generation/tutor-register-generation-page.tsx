@@ -12,8 +12,8 @@ import {
   Loader2,
   QrCode,
   RefreshCw,
+  ScanLine,
   Search,
-  UserPlus,
   Users,
   XCircle,
 } from "lucide-react";
@@ -38,16 +38,12 @@ import {
   CardHeader,
   CardTitle,
 } from "#/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "#/components/ui/dialog";
 import { Input } from "#/components/ui/input";
-import { Label } from "#/components/ui/label";
+import { StudentCardScanner } from "#/components/tutor/attendance/student-card-scanner";
+import {
+  attendanceScanWindowLabel,
+  canTutorScanAttendanceForClaim,
+} from "#/lib/session-attendance-open";
 import {
   Select,
   SelectContent,
@@ -71,7 +67,7 @@ import {
   getAttendanceDataFn,
   getHistoricalAttendanceFn,
   listTutorSessionClaimsFn,
-  registerStudentForSessionFn,
+  scanStudentForSessionFn,
   type AttendanceRecordDTO,
   type TutorSessionClaimDTO,
 } from "#/server-actions/tutor-sessions";
@@ -87,19 +83,33 @@ export function TutorRegisterGenerationPage() {
   >([]);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [registerOpen, setRegisterOpen] = useState(false);
-  const [registering, setRegistering] = useState(false);
-  const [registerForm, setRegisterForm] = useState({
-    fullName: "",
-    studentReference: "",
-    email: "",
-  });
+  const [scanning, setScanning] = useState(false);
   const [activeTab, setActiveTab] = useState<"live" | "analytics">("live");
 
   const selectedSession = useMemo(
     () => sessions.find((s) => s.id === selectedSessionId),
     [sessions, selectedSessionId],
   );
+
+  const scanEnabled = useMemo(() => {
+    if (!selectedSession) return false;
+    return canTutorScanAttendanceForClaim({
+      attendance_locked_at: selectedSession.attendance_locked_at,
+      session_date: selectedSession.session_date,
+      start_time: selectedSession.start_time,
+      end_time: selectedSession.end_time,
+    });
+  }, [selectedSession]);
+
+  const scanWindowHint = useMemo(() => {
+    if (!selectedSession) return null;
+    return attendanceScanWindowLabel({
+      attendance_locked_at: selectedSession.attendance_locked_at,
+      session_date: selectedSession.session_date,
+      start_time: selectedSession.start_time,
+      end_time: selectedSession.end_time,
+    });
+  }, [selectedSession]);
 
   const loadSessions = useCallback(async () => {
     try {
@@ -153,39 +163,35 @@ export function TutorRegisterGenerationPage() {
     }
   }, [selectedSessionId, loadAttendance]);
 
-  const handleRegisterStudent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedSessionId) return;
-    if (!registerForm.fullName.trim() || !registerForm.studentReference.trim()) {
-      toast.error("Full name and student number are required.");
-      return;
-    }
-    setRegistering(true);
-    try {
-      const result = await registerStudentForSessionFn({
-        data: {
-          claimId: selectedSessionId,
-          fullName: registerForm.fullName.trim(),
-          studentReference: registerForm.studentReference.trim(),
-          email: registerForm.email.trim() || undefined,
-        },
-      });
-      toast.success(
-        result.registered
-          ? `${result.studentName} registered and marked present.`
-          : `${result.studentName} checked in.`,
-      );
-      setRegisterForm({ fullName: "", studentReference: "", email: "" });
-      setRegisterOpen(false);
-      await loadAttendance();
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Could not register student",
-      );
-    } finally {
-      setRegistering(false);
-    }
-  };
+  const handleStudentScan = useCallback(
+    async (payload: string) => {
+      if (!selectedSessionId) return;
+      setScanning(true);
+      try {
+        const result = await scanStudentForSessionFn({
+          data: { claimId: selectedSessionId, payload },
+        });
+        if (result.alreadyPresent) {
+          toast.info(`${result.studentName} is already marked present.`);
+        } else if (result.registered) {
+          toast.success(
+            `${result.studentName} registered and marked present.`,
+          );
+        } else {
+          toast.success(`${result.studentName} marked present.`);
+        }
+        await loadAttendance();
+        await loadSessions();
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Could not record attendance",
+        );
+      } finally {
+        setScanning(false);
+      }
+    },
+    [selectedSessionId, loadAttendance, loadSessions],
+  );
 
   const handleGenerateQR = async () => {
     if (!selectedSessionId) return;
@@ -248,7 +254,8 @@ export function TutorRegisterGenerationPage() {
             Attendance Workspace
           </h1>
           <p className="text-muted-foreground">
-            Manage live check-ins, generate QR codes, and export reports.
+            Scan student cards to record who was present, optional student QR
+            backup, and exports.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -318,15 +325,47 @@ export function TutorRegisterGenerationPage() {
 
         <TabsContent value="live" className="mt-6 space-y-8">
           <div className="grid gap-6 lg:grid-cols-3">
-            {/* QR Generator Card */}
-            <Card className="lg:col-span-1">
+            <div className="flex flex-col gap-6 lg:col-span-1">
+            {/* Student card scanner */}
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
-                  <QrCode className="size-5 text-lagoon-deep" />
-                  Check-in QR
+                  <ScanLine className="size-5 text-lagoon-deep" />
+                  Scan attendance
                 </CardTitle>
                 <CardDescription>
-                  Generate a secure, time-limited QR code for students to scan.
+                  Scan student ID barcodes or QR codes to mark them present for
+                  the selected session only.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {!scanEnabled && selectedSession ? (
+                  <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-100">
+                    Scanning is closed for this session
+                    {selectedSession.attendance_locked_at
+                      ? " (attendance locked)."
+                      : " (outside the session window)."}
+                  </p>
+                ) : scanWindowHint ? (
+                  <p className="text-[11px] text-muted-foreground">{scanWindowHint}</p>
+                ) : null}
+                <StudentCardScanner
+                  enabled={Boolean(selectedSessionId) && scanEnabled}
+                  busy={scanning}
+                  onScan={handleStudentScan}
+                />
+              </CardContent>
+            </Card>
+
+            <Card className="border-dashed">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <QrCode className="size-5 text-muted-foreground" />
+                  Student self-registration
+                </CardTitle>
+                <CardDescription>
+                  Optional backup: students scan this session QR and confirm
+                  they were present.
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-col items-center gap-6">
@@ -379,6 +418,7 @@ export function TutorRegisterGenerationPage() {
                 </div>
               </CardContent>
             </Card>
+            </div>
 
             {/* Attendance Stats Grid */}
             <div className="lg:col-span-2 space-y-6">
@@ -441,21 +481,11 @@ export function TutorRegisterGenerationPage() {
                   <div className="space-y-0.5">
                     <CardTitle className="text-lg">Student roster</CardTitle>
                     <CardDescription>
-                      Live attendance for this session. Institution is set from
-                      the module automatically.
+                      Live roster for the selected session. Use the scanner to
+                      check students in.
                     </CardDescription>
                   </div>
                   <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                    <Button
-                      type="button"
-                      size="sm"
-                      className="gap-2 bg-lagoon-deep hover:bg-lagoon-deep/90"
-                      disabled={!selectedSessionId}
-                      onClick={() => setRegisterOpen(true)}
-                    >
-                      <UserPlus className="size-4" />
-                      Register student
-                    </Button>
                     <div className="relative w-full sm:w-[200px]">
                       <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
@@ -475,7 +505,7 @@ export function TutorRegisterGenerationPage() {
                           <TableHead>Student Name</TableHead>
                           <TableHead>Reference</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead>Check-in Time</TableHead>
+                          <TableHead>Recorded</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -668,89 +698,6 @@ export function TutorRegisterGenerationPage() {
         </TabsContent>
       </Tabs>
 
-      <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
-        <DialogContent className="sm:max-w-md">
-          <form onSubmit={handleRegisterStudent}>
-            <DialogHeader>
-              <DialogTitle>Register student</DialogTitle>
-              <DialogDescription>
-                Add a student to your institution roster and mark them present for
-                this session.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="register-fullName">Full name</Label>
-                <Input
-                  id="register-fullName"
-                  value={registerForm.fullName}
-                  onChange={(e) =>
-                    setRegisterForm((f) => ({ ...f, fullName: e.target.value }))
-                  }
-                  placeholder="Student full name"
-                  disabled={registering}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="register-studentReference">Student number</Label>
-                <Input
-                  id="register-studentReference"
-                  value={registerForm.studentReference}
-                  onChange={(e) =>
-                    setRegisterForm((f) => ({
-                      ...f,
-                      studentReference: e.target.value,
-                    }))
-                  }
-                  placeholder="e.g. STU12345"
-                  disabled={registering}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="register-email">
-                  Email{" "}
-                  <span className="font-normal text-muted-foreground">
-                    (optional)
-                  </span>
-                </Label>
-                <Input
-                  id="register-email"
-                  type="email"
-                  value={registerForm.email}
-                  onChange={(e) =>
-                    setRegisterForm((f) => ({ ...f, email: e.target.value }))
-                  }
-                  placeholder="student@university.edu"
-                  disabled={registering}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setRegisterOpen(false)}
-                disabled={registering}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                className="bg-lagoon-deep hover:bg-lagoon-deep/90"
-                disabled={registering}
-              >
-                {registering ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : (
-                  "Register & mark present"
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
       </div>
     </ScrollArea>
   );

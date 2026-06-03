@@ -1,5 +1,10 @@
 import { BarChart3, Loader2, RefreshCw } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useAdminAnalyticsData } from "#/components/admin/analytics/use-admin-analytics-data";
+import {
+  PageLoadingSpinner,
+  QueryErrorBanner,
+} from "#/components/ui/query-fetch-feedback";
+import { queryLoadFeedbackProps } from "#/lib/query-route-props";
 import { AttendanceTrendChart } from "#/components/lecturer/attendance/attendance-trend-chart";
 import { AnalyticsClaimsVolumeChart } from "#/components/lecturer/analytics/analytics-claims-volume-chart";
 import { AnalyticsModuleHeatmap } from "#/components/lecturer/analytics/analytics-module-heatmap";
@@ -20,10 +25,6 @@ import {
   CardTitle,
 } from "#/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
-import {
-  getAdminAnalyticsFn,
-  type AdminAnalyticsDTO,
-} from "#/server-actions/admin-analytics";
 import { AdminComparisonsTable } from "./admin-comparisons-table";
 import { AdminInstitutionSnapshot } from "./admin-institution-snapshot";
 import { AdminKpiCards } from "./admin-kpi-cards";
@@ -33,33 +34,24 @@ import { AdminStageTimings } from "./admin-stage-timings";
 import { AdminTutorsTable } from "./admin-tutors-table";
 
 export function AdminAnalyticsView() {
-  const [booting, setBooting] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [data, setData] = useState<AdminAnalyticsDTO | null>(null);
-
-  const load = useCallback(async () => {
-    setBooting(true);
-    setLoadError(null);
-    try {
-      const result = await getAdminAnalyticsFn();
-      setData(result);
-    } catch (e) {
-      setLoadError(
-        e instanceof Error ? e.message : "Failed to load analytics",
-      );
-    } finally {
-      setBooting(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
+  const {
+    data,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+    isSuccess,
+  } = useAdminAnalyticsData();
+  const feedback = queryLoadFeedbackProps({ error, isFetching, refetch });
+  const booting = isLoading;
   const lookbackDays = data?.lookbackDays ?? 90;
 
+  if (isLoading && !isSuccess) {
+    return <PageLoadingSpinner label="Loading analytics…" />;
+  }
+
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 p-6 pb-10 md:p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
@@ -77,10 +69,10 @@ export function AdminAnalyticsView() {
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => void load()}
-          disabled={booting}
+          onClick={() => void refetch()}
+          disabled={isFetching}
         >
-          {booting ? (
+          {isFetching ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
             <RefreshCw className="size-4" />
@@ -89,12 +81,12 @@ export function AdminAnalyticsView() {
         </Button>
       </div>
 
-      {loadError ? (
-        <Card className="border-destructive/50 bg-destructive/5">
-          <CardContent className="pt-6 text-sm text-destructive">
-            {loadError}
-          </CardContent>
-        </Card>
+      {feedback.loadError ? (
+        <QueryErrorBanner
+          message={feedback.loadError}
+          onRetry={feedback.onRetryLoad}
+          retrying={feedback.retryingLoad}
+        />
       ) : null}
 
       <AdminKpiCards

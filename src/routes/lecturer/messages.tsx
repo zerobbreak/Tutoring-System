@@ -7,6 +7,7 @@ import { NewConversationDialog } from "#/components/messaging/NewConversationDia
 import { useMessagingPage } from "#/components/messaging/use-messaging-page";
 import { getOrCreateDirectConversationFn } from "#/server-actions/messaging";
 import { Button } from "#/components/ui/button";
+import { QueryErrorBanner } from "#/components/ui/query-fetch-feedback";
 import { Skeleton } from "#/components/ui/skeleton";
 import { MessageSquare, Plus } from "lucide-react";
 
@@ -32,6 +33,9 @@ function LecturerMessagesPage() {
     messages,
     currentUserId,
     isLoading,
+    conversationsError,
+    retryConversations,
+    isConversationsFetching,
     isMessagesLoading,
     handleSendMessage,
     handleConversationCreated,
@@ -40,8 +44,8 @@ function LecturerMessagesPage() {
 
   if (isLoading) {
     return (
-      <div className="flex h-full w-full">
-        <div className="w-80 space-y-4 border-r p-4">
+      <div className="flex h-[calc(100svh-theme(spacing.14)-1px)] min-w-0 max-w-full overflow-hidden sm:h-[calc(100svh-theme(spacing.16)-1px)]">
+        <div className="w-80 shrink-0 space-y-4 border-r p-4">
           <Skeleton className="h-10 w-full" />
           <div className="space-y-2">
             {[1, 2, 3, 4, 5].map((i) => (
@@ -49,7 +53,7 @@ function LecturerMessagesPage() {
             ))}
           </div>
         </div>
-        <div className="flex flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col">
           <Skeleton className="h-16 w-full border-b" />
           <div className="flex-1 p-6">
             <Skeleton className="h-20 w-1/2" />
@@ -60,60 +64,70 @@ function LecturerMessagesPage() {
   }
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-background">
-      <ConversationSidebar
-        conversations={conversations}
-        selectedId={selectedConvId}
-        onSelect={setSelectedConvId}
-        onCreateNew={() => setIsNewChatOpen(true)}
-      />
-
-      {selectedConversation && currentUserId ? (
-        <ChatWindow
-          conversation={selectedConversation}
-          messages={messages}
-          onSendMessage={handleSendMessage}
-          currentUserId={currentUserId}
-          isLoading={isMessagesLoading}
-          onPinChange={(pinned) => {
-            setConversations((prev) =>
-              prev.map((c) =>
-                c.id === selectedConversation.id
-                  ? { ...c, my_is_pinned: pinned }
-                  : c,
-              ),
-            );
-          }}
-          onDelete={() => void handleDeleteConversation()}
+    <div className="flex h-[calc(100svh-theme(spacing.14)-1px)] min-w-0 max-w-full flex-col overflow-hidden bg-background sm:h-[calc(100svh-theme(spacing.16)-1px)]">
+      {conversationsError ? (
+        <QueryErrorBanner
+          message={conversationsError}
+          onRetry={retryConversations}
+          retrying={isConversationsFetching}
+          className="shrink-0 rounded-none border-x-0 border-t-0"
         />
-      ) : (
-        <div className="flex flex-1 flex-col items-center justify-center bg-muted/5 p-12 text-center">
-          <MessageSquare className="mb-6 h-10 w-10 text-muted-foreground/30" />
-          <h2 className="text-2xl font-bold tracking-tight">Select a conversation</h2>
-          <p className="mt-2 max-w-sm text-muted-foreground">
-            Message tutors on your modules or start a new conversation.
-          </p>
-          <Button
-            className="mt-6 gap-2 rounded-full px-6"
-            onClick={() => setIsNewChatOpen(true)}
-          >
-            <Plus className="h-4 w-4" />
-            New conversation
-          </Button>
-        </div>
-      )}
+      ) : null}
+      <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+        <ConversationSidebar
+          conversations={conversations}
+          selectedId={selectedConvId}
+          onSelect={setSelectedConvId}
+          onCreateNew={() => setIsNewChatOpen(true)}
+        />
 
-      <NewConversationDialog
-        open={isNewChatOpen}
-        onOpenChange={setIsNewChatOpen}
-        onSelectUser={async (user) => {
-          const { conversationId } = await getOrCreateDirectConversationFn({
-            data: { tutorId: user.id },
-          });
-          return conversationId;
-        }}
-        onConversationCreated={(id) => void handleConversationCreated(id)}
-      />
+        {selectedConversation && currentUserId ? (
+          <ChatWindow
+            conversation={selectedConversation}
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            currentUserId={currentUserId}
+            isLoading={isMessagesLoading}
+            onPinChange={(pinned) => {
+              setConversations((prev) =>
+                prev.map((c) =>
+                  c.id === selectedConversation.id
+                    ? { ...c, my_is_pinned: pinned }
+                    : c,
+                ),
+              );
+            }}
+            onDelete={() => void handleDeleteConversation()}
+          />
+        ) : (
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col items-center justify-center bg-muted/5 p-12 text-center">
+            <MessageSquare className="mb-6 h-10 w-10 text-muted-foreground/30" />
+            <h2 className="text-2xl font-bold tracking-tight">Select a conversation</h2>
+            <p className="mt-2 max-w-sm text-muted-foreground">
+              Message tutors on your modules or start a new conversation.
+            </p>
+            <Button
+              className="mt-6 gap-2 rounded-full px-6"
+              onClick={() => setIsNewChatOpen(true)}
+            >
+              <Plus className="h-4 w-4" />
+              New conversation
+            </Button>
+          </div>
+        )}
+
+        <NewConversationDialog
+          open={isNewChatOpen}
+          onOpenChange={setIsNewChatOpen}
+          onSelectUser={async (user) => {
+            const { conversationId } = await getOrCreateDirectConversationFn({
+              data: { tutorId: user.id },
+            });
+            return conversationId;
+          }}
+          onConversationCreated={(id) => void handleConversationCreated(id)}
+        />
+      </div>
     </div>
   );
 }

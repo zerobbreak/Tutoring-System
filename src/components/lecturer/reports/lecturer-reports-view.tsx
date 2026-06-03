@@ -5,7 +5,13 @@ import {
   Loader2,
   Users,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLecturerReportsPageData } from "#/components/lecturer/reports/use-lecturer-reports-page-data";
+import {
+  PageLoadingSpinner,
+  QueryErrorBanner,
+} from "#/components/ui/query-fetch-feedback";
+import { queryLoadFeedbackProps } from "#/lib/query-route-props";
 import { toast } from "sonner";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
@@ -29,9 +35,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
 import { cn } from "#/lib/utils";
 import {
   generateLecturerReportFn,
-  getLecturerReportsPageDataFn,
   REPORT_CATEGORY_LABELS,
-  type LecturerReportsPageDataDTO,
   type ReportCatalogItemDTO,
   type ReportCategory,
   type ReportResultDTO,
@@ -47,11 +51,15 @@ const CATEGORY_ICONS: Record<ReportCategory, typeof BarChart3> = {
 };
 
 export function LecturerReportsView() {
-  const [booting, setBooting] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [pageData, setPageData] = useState<LecturerReportsPageDataDTO | null>(
-    null,
-  );
+  const {
+    data: pageData,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+    isSuccess,
+  } = useLecturerReportsPageData();
+  const feedback = queryLoadFeedbackProps({ error, isFetching, refetch });
 
   const [category, setCategory] = useState<ReportCategory>("attendance");
   const [selectedReportId, setSelectedReportId] =
@@ -64,26 +72,11 @@ export function LecturerReportsView() {
   const [generating, setGenerating] = useState(false);
   const [report, setReport] = useState<ReportResultDTO | null>(null);
 
-  const loadPage = useCallback(async () => {
-    setBooting(true);
-    setLoadError(null);
-    try {
-      const data = await getLecturerReportsPageDataFn();
-      setPageData(data);
-      setDateFrom(data.defaultDateFrom);
-      setDateTo(data.defaultDateTo);
-    } catch (e) {
-      setLoadError(
-        e instanceof Error ? e.message : "Failed to load reports page",
-      );
-    } finally {
-      setBooting(false);
-    }
-  }, []);
-
   useEffect(() => {
-    void loadPage();
-  }, [loadPage]);
+    if (!pageData) return;
+    setDateFrom(pageData.defaultDateFrom);
+    setDateTo(pageData.defaultDateTo);
+  }, [pageData]);
 
   const catalogByCategory = useMemo(() => {
     const items = pageData?.catalog ?? [];
@@ -125,23 +118,8 @@ export function LecturerReportsView() {
     }
   };
 
-  if (booting) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-12">
-        <Loader2 className="size-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-12">
-        <p className="text-sm text-destructive">{loadError}</p>
-        <Button variant="outline" onClick={() => void loadPage()}>
-          Retry
-        </Button>
-      </div>
-    );
+  if (isLoading && !isSuccess) {
+    return <PageLoadingSpinner label="Loading reports…" />;
   }
 
   return (
@@ -156,6 +134,14 @@ export function LecturerReportsView() {
             to PDF, CSV, Excel, or JSON.
           </p>
         </header>
+
+        {feedback.loadError ? (
+          <QueryErrorBanner
+            message={feedback.loadError}
+            onRetry={feedback.onRetryLoad}
+            retrying={feedback.retryingLoad}
+          />
+        ) : null}
 
         <Tabs
           value={category}

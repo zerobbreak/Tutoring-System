@@ -230,7 +230,7 @@ export function AccountSettings({
         <CardContent className="space-y-4">
           {profile.institution ? (
             <div className="rounded-lg border bg-muted/30 px-4 py-3">
-              <p className="font-medium text-[#0A1128]">
+              <p className="font-medium text-foreground">
                 {profile.institution.name}
               </p>
               {profile.institution.domain ? (
@@ -291,7 +291,7 @@ export function AccountSettings({
         <CardContent className="space-y-4">
           <div className="grid gap-2">
             <Label className="text-muted-foreground">Email</Label>
-            <p className="font-medium text-[#0A1128]">{profile.email}</p>
+            <p className="font-medium text-foreground">{profile.email}</p>
             <p className="text-xs text-muted-foreground">
               Email is managed through your account sign-in.
             </p>

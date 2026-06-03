@@ -12,6 +12,6 @@ export const archiveScheduleSeriesFn = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => schema.parse(input))
   .handler(async ({ data }): Promise<{ cancelledSessionCount: number }> => {
     const supabase = createSupabaseServerClient();
-    await requireLecturerId(supabase);
-    return archivePublishedScheduleSeries(supabase, data.seriesId);
+    const lecturerId = await requireLecturerId(supabase);
+    return archivePublishedScheduleSeries(supabase, data.seriesId, lecturerId);
   });

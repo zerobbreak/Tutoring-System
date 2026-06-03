@@ -1,4 +1,3 @@
-import type { ClaimStatus } from "#/lib/session-claim-display";
 import type {
   VerificationClaimCardDTO,
   VerificationClaimDetailDTO,

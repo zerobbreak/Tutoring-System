@@ -3,6 +3,7 @@ import {
   extendSeriesHorizon,
   materializeSeriesSessionsIncremental,
 } from "#/lib/schedule-materialize";
+import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import { checkReservedCapacityForSeriesPublish } from "#/server-actions/tutor-allocations/check-reserved-capacity";
 import { reconcileSeriesClaims } from "./reconcile-series-claims";
 
@@ -13,6 +14,9 @@ export type PublishScheduleSeriesCoreInput = {
   materializeMode: PublishMaterializeMode;
   /** When false, only materialize + reconcile; caller updates series status (e.g. one-off create). */
   markPublished?: boolean;
+  /** When false, materialize sessions but let the caller link/create claims. */
+  reconcileClaims?: boolean;
+  actorId?: string;
 };
 
 export type PublishScheduleSeriesCoreResult = {
@@ -72,15 +76,13 @@ export async function publishScheduleSeriesCore(
     await checkReservedCapacityForSeriesPublish(db, seriesId);
   }
 
+  const actorId = input.actorId ?? "";
+
   if (materializeMode === "repair_horizon" || alreadyPublished) {
     await extendSeriesHorizon(db, seriesId);
   } else {
-    await materializeSeriesSessionsIncremental(db, seriesId);
+    await materializeSeriesSessionsIncremental(db, seriesId, actorId);
   }
-
-  await reconcileSeriesClaims(db, seriesId, { skipCancelled: true });
-
-  const sessionCount = await countActiveSessions(db, seriesId);
 
   if (markPublished && !alreadyPublished) {
     const { error: pubErr } = await db
@@ -93,6 +95,13 @@ export async function publishScheduleSeriesCore(
 
     if (pubErr) throw new Error(pubErr.message);
   }
+
+  if (input.reconcileClaims !== false) {
+    const claimDb = getSupabaseAdmin() ?? db;
+    await reconcileSeriesClaims(claimDb, seriesId, { skipCancelled: true });
+  }
+
+  const sessionCount = await countActiveSessions(db, seriesId);
 
   return { sessionCount, repairedOnly };
 }

@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { logInstitutionAudit } from "#/lib/audit-log";
-import { requireAdminContext } from "#/lib/admin-server";
+import { requireAdminContext, resolveAdminWriteClient } from "#/lib/admin-server";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { deleteDraftScheduleSeries } from "#/server-actions/lecturer-schedule/series-lifecycle";
 import { assertModuleInInstitution } from "./helpers";
@@ -25,7 +25,8 @@ export const adminDeleteScheduleSeriesFn = createServerFn({ method: "POST" })
       institutionId,
     );
 
-    await deleteDraftScheduleSeries(supabase, data.seriesId, userId);
+    const writeDb = resolveAdminWriteClient(supabase);
+    await deleteDraftScheduleSeries(writeDb, data.seriesId, userId);
 
     await logInstitutionAudit(supabase, {
       institutionId,

@@ -7,42 +7,43 @@ import {
   UserPlus,
   Wallet,
 } from "lucide-react";
+import { APP_PATHS } from "#/lib/app-paths";
 
 export const ADMIN_QUICK_ACTIONS = [
   {
     label: "Approve Claims",
-    to: "/admin/approvals" as const,
+    to: APP_PATHS.admin.approvals,
     icon: ClipboardCheck,
   },
   {
     label: "Create Schedule",
-    to: "/admin/schedules" as const,
+    to: APP_PATHS.admin.schedules,
     icon: Calendar,
   },
   {
     label: "Export Payroll",
-    to: "/admin/payments" as const,
+    to: APP_PATHS.admin.payments,
     icon: Wallet,
     soon: true,
   },
   {
     label: "Add Lecturer",
-    to: "/admin/users" as const,
+    to: APP_PATHS.admin.users,
     icon: UserPlus,
   },
   {
     label: "Broadcast",
-    to: "/admin/messaging" as const,
+    to: APP_PATHS.admin.messaging,
     icon: MessageSquare,
   },
   {
     label: "Generate Reports",
-    to: "/admin/reports" as const,
+    to: APP_PATHS.admin.reports,
     icon: FileText,
   },
   {
     label: "Analytics",
-    to: "/admin/analytics" as const,
+    to: APP_PATHS.admin.analytics,
     icon: BarChart3,
   },
 ] as const;

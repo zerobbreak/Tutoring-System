@@ -105,6 +105,11 @@ export const getInstitutionManagementFn = createServerFn({ method: "GET" }).hand
       }),
     );
 
+    const compensation_rates_available =
+      (modulesRes.data ?? []).every((row) =>
+        Object.prototype.hasOwnProperty.call(row, "tutor_hourly_rate_cents"),
+      );
+
     const moduleIds = modules.map((m) => m.id);
 
     const dashboard = await loadInstitutionDashboard(
@@ -115,6 +120,7 @@ export const getInstitutionManagementFn = createServerFn({ method: "GET" }).hand
 
     return {
       institution,
+      compensation_rates_available,
       campuses,
       academicTerms,
       modules,

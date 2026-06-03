@@ -1,6 +1,13 @@
 import type { NavigateOptions } from "@tanstack/react-router";
-import { Loader2, Plus, Search, Users } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { APP_PATHS } from "#/lib/app-paths";
+import { Plus, Search, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { useLecturerTutorsData } from "#/components/lecturer/tutors/use-lecturer-tutors-data";
+import {
+  PageLoadingSpinner,
+  QueryErrorBanner,
+} from "#/components/ui/query-fetch-feedback";
+import { queryLoadFeedbackProps } from "#/lib/query-route-props";
 import { Button } from "#/components/ui/button";
 import {
   Card,
@@ -11,11 +18,7 @@ import {
 } from "#/components/ui/card";
 import { Input } from "#/components/ui/input";
 import { Skeleton } from "#/components/ui/skeleton";
-import {
-  listLecturerTutorsFn,
-  type LecturerTutorCardDTO,
-  type LecturerTutorsPageDataDTO,
-} from "#/server-actions/lecturer-tutors";
+import type { LecturerTutorCardDTO } from "#/server-actions/lecturer-tutors";
 import { AssignTutorDialog } from "./assign-tutor-dialog";
 import { LecturerTutorCard } from "./lecturer-tutor-card";
 import { LecturerTutorDetailSheet } from "./lecturer-tutor-detail-sheet";
@@ -54,33 +57,15 @@ export function LecturerTutorsView({
   search,
   navigate,
 }: LecturerTutorsViewProps) {
-  const [booting, setBooting] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [data, setData] = useState<LecturerTutorsPageDataDTO | null>(null);
+  const { data, isLoading, isFetching, error, refetch, isSuccess, invalidate } =
+    useLecturerTutorsData();
+  const feedback = queryLoadFeedbackProps({ error, isFetching, refetch });
+  const booting = isLoading;
   const [query, setQuery] = useState("");
   const [showInactive, setShowInactive] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [selectedTutorId, setSelectedTutorId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-
-  const load = useCallback(async () => {
-    setBooting(true);
-    setLoadError(null);
-    try {
-      const result = await listLecturerTutorsFn();
-      setData(result);
-    } catch (e) {
-      setLoadError(
-        e instanceof Error ? e.message : "Failed to load tutors",
-      );
-    } finally {
-      setBooting(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   useEffect(() => {
     if (search.tutor) {
@@ -109,7 +94,7 @@ export function LecturerTutorsView({
     setSelectedTutorId(tutor.id);
     setSheetOpen(true);
     void navigate({
-      to: "/lecturer/tutors",
+      to: APP_PATHS.lecturer.tutors,
       search: { tutor: tutor.id },
       replace: true,
     });
@@ -120,7 +105,7 @@ export function LecturerTutorsView({
       setSheetOpen(false);
       setSelectedTutorId(null);
       void navigate({
-        to: "/lecturer/tutors",
+        to: APP_PATHS.lecturer.tutors,
         search: { tutor: undefined },
         replace: true,
       });
@@ -131,10 +116,14 @@ export function LecturerTutorsView({
 
   const handleMessage = (conversationId: string) => {
     void navigate({
-      to: "/lecturer/messages",
+      to: APP_PATHS.lecturer.messages,
       search: { conversation: conversationId },
     });
   };
+
+  if (isLoading && !isSuccess) {
+    return <PageLoadingSpinner label="Loading tutors…" />;
+  }
 
   const inactiveCount =
     data?.tutors.filter((t) => t.isInactive).length ?? 0;
@@ -165,10 +154,12 @@ export function LecturerTutorsView({
           </Button>
         </div>
 
-        {loadError ? (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {loadError}
-          </div>
+        {feedback.loadError ? (
+          <QueryErrorBanner
+            message={feedback.loadError}
+            onRetry={feedback.onRetryLoad}
+            retrying={feedback.retryingLoad}
+          />
         ) : null}
 
         {!booting && totalCount > 0 ? (
@@ -260,14 +251,14 @@ export function LecturerTutorsView({
           open={assignOpen}
           onOpenChange={setAssignOpen}
           modules={data?.modules ?? []}
-          onAssigned={() => void load()}
+          onAssigned={() => void invalidate()}
         />
 
         <LecturerTutorDetailSheet
           tutorId={selectedTutorId}
           open={sheetOpen}
           onOpenChange={handleSheetOpenChange}
-          onUpdated={() => void load()}
+          onUpdated={() => void invalidate()}
           onMessage={handleMessage}
           modules={data?.modules ?? []}
         />

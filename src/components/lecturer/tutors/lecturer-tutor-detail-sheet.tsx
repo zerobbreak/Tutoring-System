@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import {
   BarChart3,
@@ -248,7 +249,7 @@ export function LecturerTutorDetailSheet({
                 </Button>
                 {detail.pendingClaims > 0 ? (
                   <Button size="sm" variant="outline" asChild>
-                    <Link to="/lecturer/verification-queue">
+                    <Link to={APP_PATHS.lecturer.verificationQueue}>
                       Review {detail.pendingClaims} pending
                     </Link>
                   </Button>
@@ -403,7 +404,7 @@ export function LecturerTutorDetailSheet({
                     {detail.recentClaimIds.map((id) => (
                       <li key={id}>
                         <Link
-                          to="/lecturer/sessions"
+                          to={APP_PATHS.lecturer.sessions}
                           search={{ claim: id }}
                           className="text-sm font-medium text-(--lagoon-deep) hover:underline"
                         >

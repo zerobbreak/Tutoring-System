@@ -3,6 +3,7 @@ import { Loader2, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { Button } from "#/components/ui/button";
 import { toast } from "#/lib/toast";
+import { APP_PATHS } from "#/lib/app-paths";
 import {
   getOrCreateAttendanceConversationFn,
   getOrCreateClaimConversationFn,
@@ -17,7 +18,9 @@ type WorkflowMessageButtonProps = {
   claimId?: string;
   disputeId?: string;
   /** Messaging route to open after the thread is resolved. */
-  messagesTo?: "/lecturer/messages" | "/tutor/messaging";
+  messagesTo?:
+    | typeof APP_PATHS.lecturer.messages
+    | typeof APP_PATHS.tutor.messaging;
   label?: string;
   variant?: "default" | "outline" | "ghost" | "secondary";
   size?: "default" | "sm" | "lg" | "icon";
@@ -28,7 +31,7 @@ export function WorkflowMessageButton({
   kind,
   claimId,
   disputeId,
-  messagesTo = "/lecturer/messages",
+  messagesTo = APP_PATHS.lecturer.messages,
   label,
   variant = "outline",
   size = "sm",

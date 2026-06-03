@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { logInstitutionAudit } from "#/lib/audit-log";
 import {
+  loadScheduledSessionSnapshot,
+  syncScheduledSessionAfterUpdate,
+} from "#/lib/schedule-sync";
+import {
   softDeleteDraftClaimsForSession,
   softDeleteScheduledSession,
 } from "#/lib/soft-delete";
@@ -82,6 +86,8 @@ export async function cancelScheduledSessionRecord(
     throw new Error("This session is already cancelled.");
   }
 
+  const before = await loadScheduledSessionSnapshot(supabase, params.sessionId);
+
   const now = new Date().toISOString();
   const { error } = await supabase
     .from("scheduled_sessions")
@@ -100,7 +106,13 @@ export async function cancelScheduledSessionRecord(
 
   await rejectPendingChangeRequests(supabase, params.sessionId, params.actorId);
 
-  if (params.institutionId) {
+  if (before) {
+    await syncScheduledSessionAfterUpdate(supabase, {
+      scheduledSessionId: params.sessionId,
+      actorId: params.actorId,
+      before,
+    });
+  } else if (params.institutionId) {
     await logInstitutionAudit(supabase, {
       institutionId: params.institutionId,
       actorId: params.actorId,
@@ -132,6 +144,8 @@ export async function restoreScheduledSessionRecord(
     throw new Error("Only cancelled sessions can be restored.");
   }
 
+  const before = await loadScheduledSessionSnapshot(supabase, params.sessionId);
+
   const now = new Date().toISOString();
   const { error } = await supabase
     .from("scheduled_sessions")
@@ -147,14 +161,22 @@ export async function restoreScheduledSessionRecord(
 
   if (error) throw new Error(error.message);
 
-  await logInstitutionAudit(supabase, {
-    institutionId: params.institutionId,
-    actorId: params.actorId,
-    entityType: "SCHEDULED_SESSION",
-    entityId: params.sessionId,
-    event: "SCHEDULED_SESSION_RESTORED",
-    payload: {},
-  });
+  if (before) {
+    await syncScheduledSessionAfterUpdate(supabase, {
+      scheduledSessionId: params.sessionId,
+      actorId: params.actorId,
+      before,
+    });
+  } else {
+    await logInstitutionAudit(supabase, {
+      institutionId: params.institutionId,
+      actorId: params.actorId,
+      entityType: "SCHEDULED_SESSION",
+      entityId: params.sessionId,
+      event: "SCHEDULED_SESSION_RESTORED",
+      payload: {},
+    });
+  }
 }
 
 export async function deleteScheduledSessionRecord(
@@ -185,6 +207,15 @@ export async function deleteScheduledSessionRecord(
     params.reason,
   );
 
+  await supabase.from("notifications").insert({
+    recipient_id: session.tutor_id,
+    claim_id: null,
+    channel: "IN_APP",
+    type: "SESSION_CANCELLED",
+    subject: "Scheduled session removed",
+    body: `A scheduled session has been removed from the calendar. Reason: ${params.reason.trim()}`,
+  });
+
   if (params.institutionId) {
     await logInstitutionAudit(supabase, {
       institutionId: params.institutionId,
@@ -198,6 +229,42 @@ export async function deleteScheduledSessionRecord(
         starts_at: session.starts_at,
       },
     });
+  }
+}
+
+/** Guard linked official schedule rows before submit, approve, or payroll. */
+export async function assertScheduledSessionActiveForClaimLink(
+  supabase: Supabase,
+  sessionId: string,
+  context: "submit" | "payroll",
+): Promise<void> {
+  const { data: session, error: sessErr } = await supabase
+    .from("scheduled_sessions")
+    .select("status, deleted_at")
+    .eq("id", sessionId)
+    .maybeSingle();
+
+  if (sessErr) throw new Error(sessErr.message);
+  if (!session) {
+    throw new Error(
+      context === "submit"
+        ? "The linked schedule session no longer exists."
+        : "Cannot approve payment for a claim linked to a missing session.",
+    );
+  }
+  if (session.deleted_at) {
+    throw new Error(
+      context === "submit"
+        ? "The linked schedule session was removed."
+        : "Cannot approve payment for a claim linked to a deleted session.",
+    );
+  }
+  if (session.status === "CANCELLED") {
+    throw new Error(
+      context === "submit"
+        ? "This session was cancelled on the official schedule. You cannot submit a claim for it."
+        : "Cannot approve payment for a claim linked to a cancelled session.",
+    );
   }
 }
 
@@ -219,21 +286,9 @@ export async function assertScheduledSessionActiveForPayroll(
   const sessionId = claim?.source_scheduled_session_id as string | null;
   if (!sessionId) return;
 
-  const { data: session, error: sessErr } = await supabase
-    .from("scheduled_sessions")
-    .select("status, deleted_at")
-    .eq("id", sessionId)
-    .maybeSingle();
-
-  if (sessErr) throw new Error(sessErr.message);
-  if (session?.deleted_at) {
-    throw new Error(
-      "Cannot approve payment for a claim linked to a deleted session.",
-    );
-  }
-  if (session?.status === "CANCELLED") {
-    throw new Error(
-      "Cannot approve payment for a claim linked to a cancelled session.",
-    );
-  }
+  await assertScheduledSessionActiveForClaimLink(
+    supabase,
+    sessionId,
+    "payroll",
+  );
 }

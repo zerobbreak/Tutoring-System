@@ -1,16 +1,26 @@
 import type { NavigateOptions } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { Loader2, Video } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
+import { lazy, useEffect, useState } from "react";
+import { useLecturerSessionsData } from "#/components/lecturer/sessions/use-lecturer-sessions-data";
 import {
-  listLecturerSessionsFn,
-  type LecturerSessionCardDTO,
-  type LecturerSessionsPageDataDTO,
-} from "#/server-actions/lecturer-sessions";
+  PageLoadingSpinner,
+  QueryErrorBanner,
+} from "#/components/ui/query-fetch-feedback";
+import { LazyWhenOpened } from "#/lib/lazy-when-opened";
+import { queryLoadFeedbackProps } from "#/lib/query-route-props";
+import { ScrollArea } from "#/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
+import type { LecturerSessionCardDTO } from "#/server-actions/lecturer-sessions";
 import { CancelledScheduleRow } from "./cancelled-schedule-row";
 import { LecturerSessionCard } from "./lecturer-session-card";
-import { LecturerSessionDetailSheet } from "./lecturer-session-detail-sheet";
 import { SessionListSection } from "./session-list-section";
+
+const LecturerSessionDetailSheet = lazy(() =>
+  import("./lecturer-session-detail-sheet").then((m) => ({
+    default: m.LecturerSessionDetailSheet,
+  })),
+);
 
 export type LecturerSessionsSearch = {
   claim?: string;
@@ -25,30 +35,12 @@ export function LecturerSessionsView({
   search,
   navigate,
 }: LecturerSessionsViewProps) {
-  const [booting, setBooting] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [data, setData] = useState<LecturerSessionsPageDataDTO | null>(null);
+  const { data, isLoading, isFetching, error, refetch, isSuccess } =
+    useLecturerSessionsData();
+  const feedback = queryLoadFeedbackProps({ error, isFetching, refetch });
+  const booting = isLoading;
   const [selectedClaimId, setSelectedClaimId] = useState<string | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-
-  const load = useCallback(async () => {
-    setBooting(true);
-    setLoadError(null);
-    try {
-      const result = await listLecturerSessionsFn();
-      setData(result);
-    } catch (e) {
-      setLoadError(
-        e instanceof Error ? e.message : "Failed to load sessions",
-      );
-    } finally {
-      setBooting(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
 
   useEffect(() => {
     if (search.claim) {
@@ -61,7 +53,7 @@ export function LecturerSessionsView({
     setSelectedClaimId(session.id);
     setSheetOpen(true);
     void navigate({
-      to: "/lecturer/sessions",
+      to: APP_PATHS.lecturer.sessions,
       search: { claim: session.id },
       replace: true,
     });
@@ -72,7 +64,7 @@ export function LecturerSessionsView({
       setSheetOpen(false);
       setSelectedClaimId(null);
       void navigate({
-        to: "/lecturer/sessions",
+        to: APP_PATHS.lecturer.sessions,
         search: { claim: undefined },
         replace: true,
       });
@@ -84,9 +76,14 @@ export function LecturerSessionsView({
   const cancelledCount =
     (data?.cancelledSchedule.length ?? 0) + (data?.rejectedClaims.length ?? 0);
 
+  if (isLoading && !isSuccess) {
+    return <PageLoadingSpinner label="Loading sessions…" />;
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain p-6 pb-10 md:p-8">
+      <ScrollArea className="min-h-0 flex-1">
+      <div className="flex flex-col gap-6 p-6 pb-10 md:p-8">
         <div className="shrink-0">
           <h2 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
             <Video className="size-7 text-(--lagoon-deep)" />
@@ -98,10 +95,12 @@ export function LecturerSessionsView({
           </p>
         </div>
 
-        {loadError ? (
-          <div className="shrink-0 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-            {loadError}
-          </div>
+        {feedback.loadError ? (
+          <QueryErrorBanner
+            message={feedback.loadError}
+            onRetry={feedback.onRetryLoad}
+            retrying={feedback.retryingLoad}
+          />
         ) : null}
 
         {booting ? (
@@ -223,12 +222,15 @@ export function LecturerSessionsView({
           </Tabs>
         )}
 
-        <LecturerSessionDetailSheet
-          claimId={selectedClaimId}
-          open={sheetOpen}
-          onOpenChange={handleSheetOpenChange}
-        />
+        <LazyWhenOpened open={sheetOpen}>
+          <LecturerSessionDetailSheet
+            claimId={selectedClaimId}
+            open={sheetOpen}
+            onOpenChange={handleSheetOpenChange}
+          />
+        </LazyWhenOpened>
       </div>
+      </ScrollArea>
     </div>
   );
 }

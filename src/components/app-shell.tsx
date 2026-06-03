@@ -27,7 +27,10 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "#/components/ui/sidebar";
+import { APP_PATHS } from "#/lib/app-paths";
+import { navItemActive } from "#/lib/nav-item-active";
 import { supabase } from "#/lib/supabase";
+import { SidebarNotificationsBell } from "#/components/notifications/sidebar-notifications-bell";
 import { ThemeToggle } from "./theme-toggle";
 
 export type AppShellNavItem = {
@@ -46,11 +49,8 @@ export type AppShellUser = {
   user_metadata?: Record<string, string | undefined>;
 };
 
-function navItemActive(pathname: string, to: string, homePath: string) {
-  if (to === homePath) {
-    return pathname === homePath || pathname === `${homePath}/`;
-  }
-  return pathname === to || pathname.startsWith(`${to}/`);
+function normalizePath(path: string) {
+  return path === "/" ? path : path.replace(/\/+$/, "");
 }
 
 function flattenNav(navGroups: readonly AppShellNavGroup[]) {
@@ -61,16 +61,28 @@ function pageTitleFromPath(
   pathname: string,
   homePath: string,
   navGroups: readonly AppShellNavGroup[],
+  navPaths: readonly string[],
   helpPath?: string,
+  notificationsPath?: string,
 ) {
   if (
+    notificationsPath &&
+    (normalizePath(pathname) === normalizePath(notificationsPath) ||
+      normalizePath(pathname).startsWith(
+        `${normalizePath(notificationsPath)}/`,
+      ))
+  ) {
+    return "Notifications";
+  }
+  if (
     helpPath &&
-    (pathname === helpPath || pathname.startsWith(`${helpPath}/`))
+    (normalizePath(pathname) === normalizePath(helpPath) ||
+      normalizePath(pathname).startsWith(`${normalizePath(helpPath)}/`))
   ) {
     return "Get Help";
   }
   const hit = flattenNav(navGroups).find((n) =>
-    navItemActive(pathname, n.to, homePath),
+    navItemActive(pathname, n.to, homePath, navPaths),
   );
   return hit?.label ?? "Home";
 }
@@ -79,11 +91,12 @@ function renderNavBlock(
   pathname: string,
   homePath: string,
   items: readonly AppShellNavItem[],
+  navPaths: readonly string[],
 ) {
   return (
     <SidebarMenu>
       {items.map((item) => {
-        const active = navItemActive(pathname, item.to, homePath);
+        const active = navItemActive(pathname, item.to, homePath, navPaths);
         const Icon = item.icon;
         return (
           <SidebarMenuItem key={item.to}>
@@ -111,7 +124,8 @@ export function AppShell({
   children,
   headerTrailing,
   helpPath,
-  settingsPath = "/settings",
+  settingsPath = APP_PATHS.settings,
+  notificationsPath,
 }: {
   homePath: string;
   brandMark: ReactNode;
@@ -127,9 +141,19 @@ export function AppShell({
   helpPath?: string;
   /** Sidebar settings link target (default `/settings`). */
   settingsPath?: string;
+  /** When set, shows a bell control beside the profile menu in the sidebar footer. */
+  notificationsPath?: string;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const title = pageTitleFromPath(pathname, homePath, navGroups, helpPath);
+  const navPaths = flattenNav(navGroups).map((item) => item.to);
+  const title = pageTitleFromPath(
+    pathname,
+    homePath,
+    navGroups,
+    navPaths,
+    helpPath,
+    notificationsPath,
+  );
 
   const initials = user.user_metadata?.full_name
     ? user.user_metadata.full_name
@@ -144,7 +168,7 @@ export function AppShell({
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    window.location.href = "/auth/login";
+    window.location.href = APP_PATHS.auth.login;
   };
 
   return (
@@ -180,7 +204,7 @@ export function AppShell({
             <SidebarGroup key={group.label}>
               <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
               <SidebarGroupContent>
-                {renderNavBlock(pathname, homePath, group.items)}
+                {renderNavBlock(pathname, homePath, group.items, navPaths)}
               </SidebarGroupContent>
             </SidebarGroup>
           ))}
@@ -194,8 +218,10 @@ export function AppShell({
                   asChild
                   tooltip="Settings"
                   isActive={
-                    pathname === settingsPath ||
-                    pathname.startsWith(`${settingsPath}/`)
+                    normalizePath(pathname) === normalizePath(settingsPath) ||
+                    normalizePath(pathname).startsWith(
+                      `${normalizePath(settingsPath)}/`,
+                    )
                   }
                 >
                   <Link to={settingsPath}>
@@ -207,13 +233,15 @@ export function AppShell({
               {helpPath ? (
                 <SidebarMenuItem>
                   <SidebarMenuButton
-                    asChild
-                    tooltip="Get Help"
-                    isActive={
-                      pathname === helpPath ||
-                      pathname.startsWith(`${helpPath}/`)
-                    }
-                  >
+                  asChild
+                  tooltip="Get Help"
+                  isActive={
+                      normalizePath(pathname) === normalizePath(helpPath) ||
+                      normalizePath(pathname).startsWith(
+                        `${normalizePath(helpPath)}/`,
+                      )
+                  }
+                >
                     <Link to={helpPath}>
                       <LifeBuoy />
                       <span>Get Help</span>
@@ -228,53 +256,108 @@ export function AppShell({
         <SidebarFooter className="shrink-0 gap-0 border-t border-sidebar-border bg-sidebar p-0 px-2 pt-2 pb-0">
           <SidebarMenu>
             <SidebarMenuItem>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton
-                    size="lg"
-                    tooltip={displayName}
-                    className="h-auto min-h-12 rounded-b-none py-2 pb-0 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              {notificationsPath ? (
+                <div className="flex min-h-12 w-full items-center gap-1.5 py-2 pb-0 group-data-[collapsible=icon]:flex-col group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:gap-1">
+                  <div className="min-w-0 flex-1">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <SidebarMenuButton
+                          size="lg"
+                          tooltip={displayName}
+                          className="h-auto min-h-0 w-full rounded-md py-2 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                        >
+                          <Avatar className="size-8 rounded-lg">
+                            {user.user_metadata?.avatar_url ? (
+                              <AvatarImage
+                                src={user.user_metadata.avatar_url}
+                                alt={user.email ?? ""}
+                              />
+                            ) : (
+                              <AvatarFallback className="rounded-lg text-xs font-medium">
+                                {initials}
+                              </AvatarFallback>
+                            )}
+                          </Avatar>
+                          <div className="grid flex-1 text-left text-sm leading-tight">
+                            <span className="truncate font-semibold">
+                              {displayName}
+                            </span>
+                            <span className="truncate text-xs text-muted-foreground">
+                              {user.email}
+                            </span>
+                          </div>
+                        </SidebarMenuButton>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        className="w-56"
+                        side="bottom"
+                        align="end"
+                        sideOffset={4}
+                      >
+                        <DropdownMenuItem asChild>
+                          <Link to={settingsPath}>Settings</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={handleLogout}
+                        >
+                          Log out
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <SidebarNotificationsBell to={notificationsPath} />
+                </div>
+              ) : (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <SidebarMenuButton
+                      size="lg"
+                      tooltip={displayName}
+                      className="h-auto min-h-12 w-full rounded-b-none py-2 pb-0 data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                    >
+                      <Avatar className="size-8 rounded-lg">
+                        {user.user_metadata?.avatar_url ? (
+                          <AvatarImage
+                            src={user.user_metadata.avatar_url}
+                            alt={user.email ?? ""}
+                          />
+                        ) : (
+                          <AvatarFallback className="rounded-lg text-xs font-medium">
+                            {initials}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div className="grid flex-1 text-left text-sm leading-tight">
+                        <span className="truncate font-semibold">
+                          {displayName}
+                        </span>
+                        <span className="truncate text-xs text-muted-foreground">
+                          {user.email}
+                        </span>
+                      </div>
+                    </SidebarMenuButton>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    className="w-56"
+                    side="bottom"
+                    align="end"
+                    sideOffset={4}
                   >
-                    <Avatar className="size-8 rounded-lg">
-                      {user.user_metadata?.avatar_url ? (
-                        <AvatarImage
-                          src={user.user_metadata.avatar_url}
-                          alt={user.email ?? ""}
-                        />
-                      ) : (
-                        <AvatarFallback className="rounded-lg text-xs font-medium">
-                          {initials}
-                        </AvatarFallback>
-                      )}
-                    </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">
-                        {displayName}
-                      </span>
-                      <span className="truncate text-xs text-muted-foreground">
-                        {user.email}
-                      </span>
-                    </div>
-                  </SidebarMenuButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  className="w-56"
-                  side="bottom"
-                  align="end"
-                  sideOffset={4}
-                >
-                  <DropdownMenuItem asChild>
-                    <Link to={settingsPath}>Settings</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    onClick={handleLogout}
-                  >
-                    Log out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <DropdownMenuItem asChild>
+                      <Link to={settingsPath}>Settings</Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={handleLogout}
+                    >
+                      Log out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>

@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { BarChart3, Users } from "lucide-react";
 import {
   Card,
@@ -105,7 +106,7 @@ export function InstitutionDashboardCard({
             </div>
 
             <Link
-              to="/admin/analytics"
+              to={APP_PATHS.admin.analytics}
               className="inline-flex items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline"
             >
               <BarChart3 className="size-3.5" />

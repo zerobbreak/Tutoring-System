@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { MapPin } from "lucide-react";
 import {
   Card,
@@ -17,20 +18,20 @@ export function VenuesCampusHint() {
           Venues &amp; campuses
         </CardTitle>
         <CardDescription>
-          Link venues to campuses when creating or editing schedules.
+          Manage venues and link them to campuses and schedules.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <p className="text-sm text-muted-foreground">
-          Campus records defined here can be assigned to venues on the schedules
-          page. Lecturer schedule tools continue to use venue text and module
-          semester fields until a future sync with academic terms.
+          Create and manage venues on the dedicated venues page. Venues can be
+          assigned to campuses and linked to schedule series for conflict
+          detection.
         </p>
         <Link
-          to="/admin/schedules"
+          to={APP_PATHS.admin.venues}
           className="mt-3 inline-block text-sm font-medium text-primary underline-offset-4 hover:underline"
         >
-          Manage schedules &amp; venues
+          Manage venues →
         </Link>
       </CardContent>
     </Card>

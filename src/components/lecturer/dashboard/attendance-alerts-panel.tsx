@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { AlertTriangle } from "lucide-react";
 import {
   Card,
@@ -48,7 +49,7 @@ export function AttendanceAlertsPanel({
                 <span className="mr-1">⚠</span>
                 {alert.claimId ? (
                   <Link
-                    to="/lecturer/attendance"
+                    to={APP_PATHS.lecturer.attendance}
                     search={{ claim: alert.claimId }}
                     className="underline-offset-2 hover:underline"
                   >

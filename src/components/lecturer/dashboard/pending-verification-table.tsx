@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { format, parseISO } from "date-fns";
 import {
   Table,
@@ -42,7 +43,7 @@ export function PendingVerificationTable({
             <TableCell className="font-medium">
               {claim.tutor?.id ? (
                 <Link
-                  to="/lecturer/tutors"
+                  to={APP_PATHS.lecturer.tutors}
                   search={{ tutor: claim.tutor.id }}
                   className="hover:underline"
                 >

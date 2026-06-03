@@ -3,6 +3,7 @@ import {
   isAccountBlocked,
   type UserStatus,
 } from "#/lib/user-status";
+import { APP_PATHS, type DashboardPath } from "#/lib/app-paths";
 
 /** Matches Postgres `CREATE TYPE user_role AS ENUM (...)` */
 export const USER_ROLES = [
@@ -33,19 +34,26 @@ export function isTutorDashboardRole(role: string | undefined): boolean {
 /** Default app entry for an authenticated user (no bare `/` home route). */
 export function getPostAuthDashboardPath(
   role: string | undefined,
-): "/admin" | "/lecturer" | "/tutor" | "/settings" {
-  if (isAdminDashboardRole(role)) return "/admin";
-  if (isLecturerDashboardRole(role)) return "/lecturer";
-  if (isTutorDashboardRole(role)) return "/tutor";
-  return "/settings";
+): DashboardPath {
+  if (isAdminDashboardRole(role)) return APP_PATHS.admin.home;
+  if (isLecturerDashboardRole(role)) return APP_PATHS.lecturer.home;
+  if (isTutorDashboardRole(role)) return APP_PATHS.tutor.home;
+  return APP_PATHS.settings;
 }
 
 export type PostAuthDestination =
-  | "/admin"
-  | "/lecturer"
-  | "/tutor"
-  | "/settings"
-  | "/auth/account-blocked";
+  | DashboardPath
+  | typeof APP_PATHS.auth.accountBlocked;
+
+export function getUserRole(
+  user:
+    | { user_metadata?: Record<string, unknown> | null }
+    | undefined
+    | null,
+): string | undefined {
+  const role = user?.user_metadata?.role;
+  return typeof role === "string" ? role : undefined;
+}
 
 /** Route after sign-in based on role and account lifecycle. */
 export function getPostAuthDestination(
@@ -53,10 +61,10 @@ export function getPostAuthDestination(
   userStatus: UserStatus | string | null | undefined,
 ): PostAuthDestination {
   if (userStatus && isAccountBlocked(userStatus)) {
-    return "/auth/account-blocked";
+    return APP_PATHS.auth.accountBlocked;
   }
   if (userStatus && !hasPlatformAccess(userStatus)) {
-    return "/settings";
+    return APP_PATHS.settings;
   }
   return getPostAuthDashboardPath(role);
 }

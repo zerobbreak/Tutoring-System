@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { format, parseISO } from "date-fns";
 import {
   AlertTriangle,
@@ -6,6 +7,7 @@ import {
   Clock,
   ExternalLink,
   FileText,
+  Activity,
   History,
   Loader2,
   MapPin,
@@ -32,10 +34,16 @@ import {
 } from "#/lib/session-claim-display";
 import { toast } from "#/lib/toast";
 import { cn } from "#/lib/utils";
+import { PrivateSessionFeedbackReadBlock } from "#/components/private-session-feedback/private-session-feedback-read-block";
+import { SessionActivityTimeline } from "#/components/sessions/session-activity-timeline";
 import {
   getAdminSessionDetailFn,
   type AdminSessionDetailDTO,
 } from "#/server-actions/admin-sessions";
+import {
+  getSessionTimelineFn,
+  type SessionTimelineEntryDTO,
+} from "#/server-actions/scheduled-sessions";
 
 type AdminSessionDetailSheetProps = {
   claimId: string | null;
@@ -118,14 +126,19 @@ export function AdminSessionDetailSheet({
   onOpenChange,
 }: AdminSessionDetailSheetProps) {
   const [session, setSession] = useState<AdminSessionDetailDTO | null>(null);
+  const [activity, setActivity] = useState<SessionTimelineEntryDTO[]>([]);
   const [loading, setLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!claimId) return;
     setLoading(true);
     try {
-      const data = await getAdminSessionDetailFn({ data: { claimId } });
+      const [data, timeline] = await Promise.all([
+        getAdminSessionDetailFn({ data: { claimId } }),
+        getSessionTimelineFn({ data: { claimId } }),
+      ]);
       setSession(data);
+      setActivity(timeline);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to load session");
       onOpenChange(false);
@@ -193,7 +206,7 @@ export function AdminSessionDetailSheet({
 
               {inApprovalWorkflow ? (
                 <Button variant="outline" size="sm" asChild className="mt-4 w-full sm:w-auto">
-                  <Link to="/admin/approvals" search={{ claim: session.id }}>
+                  <Link to={APP_PATHS.admin.approvals} search={{ claim: session.id }}>
                     <ExternalLink className="size-4" />
                     Open in approvals
                   </Link>
@@ -468,6 +481,14 @@ export function AdminSessionDetailSheet({
               </DetailSection>
 
               <DetailSection
+                title="Activity"
+                description="Schedule changes, claim workflow, and system events."
+                icon={Activity}
+              >
+                <SessionActivityTimeline entries={activity} />
+              </DetailSection>
+
+              <DetailSection
                 title="Verification timeline"
                 description="Audit trail of claim review actions."
                 icon={History}
@@ -496,6 +517,15 @@ export function AdminSessionDetailSheet({
                   </ol>
                 )}
               </DetailSection>
+
+              {claimId ? (
+                <PrivateSessionFeedbackReadBlock
+                  claimId={claimId}
+                  claimStatus={session.status}
+                  title="Private lecturer feedback"
+                  description="Optional developmental notes visible to staffing — not shared publicly."
+                />
+              ) : null}
             </div>
           </>
         )}

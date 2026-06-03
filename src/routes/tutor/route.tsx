@@ -1,50 +1,16 @@
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router"
-import { useEffect, useState } from "react"
+import { createFileRoute, Outlet } from "@tanstack/react-router"
 import { IncomingMessagesListener } from "#/components/messaging/incoming-messages-listener"
 import { TutorAppShell } from "#/components/tutor-app-shell"
-import { gateAuthenticatedSession } from "#/lib/mfa-auth"
+import { APP_PATHS } from "#/lib/app-paths"
 import { isTutorDashboardRole } from "#/lib/user-role"
-import { applyPlatformGate } from "#/lib/apply-platform-gate"
+import { useDashboardLayoutAccess } from "#/lib/use-dashboard-layout-access"
 
 export const Route = createFileRoute("/tutor")({
   component: TutorLayout,
 })
 
 function TutorLayout() {
-  const [user, setUser] = useState<{
-    email?: string
-    user_metadata?: Record<string, string | undefined>
-  } | null>(null)
-  const [loading, setLoading] = useState(true)
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      const gate = await gateAuthenticatedSession()
-      if (gate.status === "unauthenticated") {
-        navigate({ to: "/auth/login" })
-        return
-      }
-      if (gate.status === "mfa_required") {
-        navigate({ to: "/auth/mfa" })
-        return
-      }
-      const u = gate.user
-      const role = u.user_metadata?.role as string | undefined
-      if (!isTutorDashboardRole(role)) {
-        navigate({ to: "/auth/login" })
-        return
-      }
-      const gateResult = await applyPlatformGate()
-      if (!gateResult.allowed) {
-        navigate({ to: gateResult.redirect })
-        return
-      }
-      setUser(u)
-      setLoading(false)
-    }
-    checkAuth()
-  }, [navigate])
+  const { user, loading } = useDashboardLayoutAccess(isTutorDashboardRole)
 
   if (loading || !user) {
     return (
@@ -56,7 +22,7 @@ function TutorLayout() {
 
   return (
     <TutorAppShell user={user}>
-      <IncomingMessagesListener messagingPath="/tutor/messaging" />
+      <IncomingMessagesListener messagingPath={APP_PATHS.tutor.messaging} />
       <Outlet />
     </TutorAppShell>
   )

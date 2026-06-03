@@ -7,27 +7,12 @@ import {
 import { scheduleClaimTimesFromTimestamps } from "#/lib/schedule-claim-times";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { ensureClaimForScheduledSession } from "#/server-actions/lecturer-schedule/ensure-claim-for-session";
-import type { TutorSessionClaimDTO } from "./index";
-
-async function requireUserId(
-  supabase: ReturnType<typeof createSupabaseServerClient>,
-): Promise<string> {
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-  if (error || !user) throw new Error("Unauthorized");
-  return user.id;
-}
-
-type LecturerRow = { id: string; full_name: string; email: string };
-
-function mapLecturer(
-  lecturer: LecturerRow | LecturerRow[] | null,
-): LecturerRow | null {
-  if (lecturer == null) return null;
-  return Array.isArray(lecturer) ? (lecturer[0] ?? null) : lecturer;
-}
+import { requireUserId } from "#/server-actions/tutor-sessions/helpers";
+import {
+  mapLecturer,
+  type LecturerRow,
+} from "#/server-actions/tutor-sessions/mappers";
+import type { TutorSessionClaimDTO } from "#/server-actions/tutor-sessions/types";
 
 const CLAIM_SELECT = `
   id,
@@ -196,6 +181,9 @@ export const listTutorOperationalSessionsFn = createServerFn({
       coverage_validated_at: r.coverage_validated_at as string | null,
       submitted_at: r.submitted_at as string | null,
       session_kind: r.session_kind as string | null,
+      request_status: null,
+      request_reason: null,
+      review_feedback: null,
       attendance_present_count: r.attendance_present_count as number | null,
       attendance_expected_count: r.attendance_expected_count as number | null,
       qr_token: r.qr_token as string | null,

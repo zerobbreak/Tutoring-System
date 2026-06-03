@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { Ban, Clock, MapPin, RotateCcw, Trash2, User } from "lucide-react";
 import { formatTimeRange } from "#/lib/schedule-display";
 import {
@@ -66,7 +67,7 @@ export function ScheduleEventCard({
             <User className="size-3.5 shrink-0" />
             {showTutorLink ? (
               <Link
-                to="/lecturer/tutors"
+                to={APP_PATHS.lecturer.tutors}
                 search={{ tutor: event.tutorId }}
                 onClick={(e) => e.stopPropagation()}
                 className="truncate hover:underline"
@@ -110,7 +111,7 @@ export function ScheduleEventCard({
         ) : event.claimId && manageRole !== "tutor" ? (
           <Button size="sm" variant="outline" className="h-7 text-xs" asChild>
             <Link
-              to="/lecturer/sessions"
+              to={APP_PATHS.lecturer.sessions}
               search={{ claim: event.claimId }}
             >
               Monitor session

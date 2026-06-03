@@ -1,4 +1,8 @@
 import type { createSupabaseServerClient } from "#/lib/supabase-server";
+import {
+  loadScheduledSessionSnapshotsForIds,
+  syncCancelledSessionsBatch,
+} from "#/lib/schedule-sync";
 import { softDeleteDraftScheduleSeries } from "#/lib/soft-delete";
 
 type Supabase = ReturnType<typeof createSupabaseServerClient>;
@@ -33,6 +37,7 @@ export async function deleteDraftScheduleSeries(
 export async function archivePublishedScheduleSeries(
   supabase: Supabase,
   seriesId: string,
+  actorId: string,
 ): Promise<{ cancelledSessionCount: number }> {
   const { data: series, error: fetchErr } = await supabase
     .from("schedule_series")
@@ -50,6 +55,23 @@ export async function archivePublishedScheduleSeries(
   }
 
   const now = new Date().toISOString();
+
+  const { data: toCancel, error: listErr } = await supabase
+    .from("scheduled_sessions")
+    .select("id")
+    .eq("series_id", seriesId)
+    .eq("status", "SCHEDULED")
+    .is("deleted_at", null)
+    .gte("starts_at", now);
+
+  if (listErr) throw new Error(listErr.message);
+
+  const sessionIds = (toCancel ?? []).map((r) => r.id as string);
+  const beforeSnapshots = await loadScheduledSessionSnapshotsForIds(
+    supabase,
+    sessionIds,
+  );
+
   const { data: cancelled, error: cancelErr } = await supabase
     .from("scheduled_sessions")
     .update({ status: "CANCELLED" })
@@ -60,6 +82,17 @@ export async function archivePublishedScheduleSeries(
     .select("id");
 
   if (cancelErr) throw new Error(cancelErr.message);
+
+  if (beforeSnapshots.length > 0) {
+    await syncCancelledSessionsBatch(
+      supabase,
+      beforeSnapshots.map((before) => ({
+        sessionId: before.id,
+        actorId,
+        before,
+      })),
+    );
+  }
 
   const { error: archErr } = await supabase
     .from("schedule_series")

@@ -56,8 +56,8 @@ const COPY: Record<
   delete: {
     title: "Delete session permanently",
     description:
-      "This removes the session from the schedule entirely. Only use when the occurrence should no longer exist.",
-    confirm: "Delete permanently",
+      "This removes the session from the schedule and notifies the tutor to reschedule the occurrence.",
+    confirm: "Delete and notify tutor",
     destructive: true,
   },
   restore: {

@@ -95,8 +95,8 @@ export function NotificationsSettings({
             checked={prefs.push_notifications}
             onCheckedChange={(v) => patch({ push_notifications: v })}
           />
-          <div className="rounded-lg border border-border/60 bg-white px-4 py-3">
-            <Label className="text-[#0A1128]">Reminder frequency</Label>
+          <div className="rounded-lg border border-border/60 bg-card px-4 py-3">
+            <Label className="text-foreground">Reminder frequency</Label>
             <p className="mb-2 text-sm text-muted-foreground">
               How often to bundle non-urgent reminders.
             </p>
@@ -132,7 +132,7 @@ export function NotificationsSettings({
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2 rounded-lg border border-border/60 bg-white px-4 py-3">
+          <div className="space-y-2 rounded-lg border border-border/60 bg-card px-4 py-3">
             <Label>Week starts on</Label>
             <Select
               value={String(prefs.calendar_week_start)}
@@ -151,7 +151,7 @@ export function NotificationsSettings({
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2 rounded-lg border border-border/60 bg-white px-4 py-3">
+          <div className="space-y-2 rounded-lg border border-border/60 bg-card px-4 py-3">
             <Label>Default view</Label>
             <Select
               value={prefs.calendar_default_view}

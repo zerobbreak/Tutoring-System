@@ -13,6 +13,8 @@ export type LecturerDashboardViewProps = {
   };
   booting: boolean;
   loadError: string | null;
+  onRetryLoad?: () => void;
+  retryingLoad?: boolean;
   modulesCount: number;
   pendingVerificationCount: number;
   sessionsThisWeek: number;

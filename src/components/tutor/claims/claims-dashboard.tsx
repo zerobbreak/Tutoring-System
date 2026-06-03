@@ -1,4 +1,5 @@
 import { Link, useNavigate } from "@tanstack/react-router";
+import { APP_PATHS } from "#/lib/app-paths";
 import { format, parseISO } from "date-fns";
 import {
   AlertCircle,
@@ -97,7 +98,6 @@ export function ClaimsDashboard() {
   const navigate = useNavigate();
   const [claims, setClaims] = useState<TutorSessionClaimDTO[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [discardingId, setDiscardingId] = useState<string | null>(null);
   const [draftSelectMode, setDraftSelectMode] = useState(false);
   const [selectedDraftIds, setSelectedDraftIds] = useState<Set<string>>(
     () => new Set(),
@@ -128,29 +128,11 @@ export function ClaimsDashboard() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [reload]);
 
-  const discardDraft = async (claimId: string) => {
-    if (
-      !window.confirm(
-        "Discard this draft? It will be removed from your workspace and cannot be undone.",
-      )
-    ) {
-      return;
-    }
-    setDiscardingId(claimId);
-    try {
-      await deleteDraftSessionClaimFn({ data: { claimId } });
-      toast.success("Draft discarded");
-      setSelectedDraftIds((prev) => {
-        const next = new Set(prev);
-        next.delete(claimId);
-        return next;
-      });
-      await reload();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Could not discard draft");
-    } finally {
-      setDiscardingId(null);
-    }
+  const discardDraft = (claimId: string) => {
+    void navigate({
+      to: APP_PATHS.tutor.sessions,
+      search: { claim: claimId },
+    });
   };
 
   const draftClaims = useMemo(
@@ -254,7 +236,7 @@ export function ClaimsDashboard() {
           </p>
         </div>
         <Button variant="outline" asChild className="shrink-0">
-          <Link to="/tutor/sessions">
+          <Link to={APP_PATHS.tutor.sessions}>
             <History className="size-4" />
             Session history
           </Link>
@@ -443,7 +425,7 @@ export function ClaimsDashboard() {
                           </p>
                         </div>
                         <Button variant="outline" size="sm" asChild>
-                          <Link to="/tutor/sessions">Go to sessions</Link>
+                          <Link to={APP_PATHS.tutor.sessions}>Go to sessions</Link>
                         </Button>
                       </div>
                     </TableCell>
@@ -466,7 +448,7 @@ export function ClaimsDashboard() {
                             return;
                           }
                           void navigate({
-                            to: "/tutor/claims/$claimId",
+                            to: APP_PATHS.tutor.claimDetail,
                             params: { claimId: claim.id },
                           });
                         }}
@@ -559,18 +541,13 @@ export function ClaimsDashboard() {
                                 variant="ghost"
                                 size="icon-xs"
                                 className="text-destructive hover:text-destructive"
-                                disabled={discardingId === claim.id}
-                                aria-label="Discard draft"
+                                aria-label="Discard draft — review in session workspace"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  void discardDraft(claim.id);
+                                  discardDraft(claim.id);
                                 }}
                               >
-                                {discardingId === claim.id ? (
-                                  <Loader2 className="size-4 animate-spin" />
-                                ) : (
-                                  <Trash2 className="size-4" />
-                                )}
+                                <Trash2 className="size-4" />
                               </Button>
                             ) : null}
                             <ChevronRight

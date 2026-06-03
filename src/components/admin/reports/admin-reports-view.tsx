@@ -7,7 +7,13 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAdminReportsPageData } from "#/components/admin/reports/use-admin-reports-page-data";
+import {
+  PageLoadingSpinner,
+  QueryErrorBanner,
+} from "#/components/ui/query-fetch-feedback";
+import { queryLoadFeedbackProps } from "#/lib/query-route-props";
 import { toast } from "sonner";
 import { ReportExportActions } from "#/components/lecturer/reports/report-export-actions";
 import { ReportPreviewTable } from "#/components/lecturer/reports/report-preview-table";
@@ -34,12 +40,10 @@ import { cn } from "#/lib/utils";
 import {
   ADMIN_REPORT_CATEGORY_LABELS,
   generateAdminReportFn,
-  getAdminReportsPageDataFn,
   type AdminReportCatalogItemDTO,
   type AdminReportCategory,
   type AdminReportResultDTO,
   type AdminReportType,
-  type AdminReportsPageDataDTO,
 } from "#/server-actions/admin-reports";
 
 const CATEGORY_ICONS: Record<AdminReportCategory, typeof Wallet> = {
@@ -53,9 +57,15 @@ const CATEGORY_ICONS: Record<AdminReportCategory, typeof Wallet> = {
 const REPORTS_WITHOUT_MODULES: AdminReportType[] = ["onboarding_status"];
 
 export function AdminReportsView() {
-  const [booting, setBooting] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [pageData, setPageData] = useState<AdminReportsPageDataDTO | null>(null);
+  const {
+    data: pageData,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+    isSuccess,
+  } = useAdminReportsPageData();
+  const feedback = queryLoadFeedbackProps({ error, isFetching, refetch });
 
   const [category, setCategory] = useState<AdminReportCategory>("payroll");
   const [selectedReportId, setSelectedReportId] =
@@ -70,29 +80,14 @@ export function AdminReportsView() {
   const [generating, setGenerating] = useState(false);
   const [report, setReport] = useState<AdminReportResultDTO | null>(null);
 
-  const loadPage = useCallback(async () => {
-    setBooting(true);
-    setLoadError(null);
-    try {
-      const data = await getAdminReportsPageDataFn();
-      setPageData(data);
-      setDateFrom(data.defaultDateFrom);
-      setDateTo(data.defaultDateTo);
-      if (data.payrollExports[0]) {
-        setPayrollExportId(data.payrollExports[0].id);
-      }
-    } catch (e) {
-      setLoadError(
-        e instanceof Error ? e.message : "Failed to load reports page",
-      );
-    } finally {
-      setBooting(false);
-    }
-  }, []);
-
   useEffect(() => {
-    void loadPage();
-  }, [loadPage]);
+    if (!pageData) return;
+    setDateFrom(pageData.defaultDateFrom);
+    setDateTo(pageData.defaultDateTo);
+    if (pageData.payrollExports[0]) {
+      setPayrollExportId(pageData.payrollExports[0].id);
+    }
+  }, [pageData]);
 
   const catalogByCategory = useMemo(() => {
     const items = pageData?.catalog ?? [];
@@ -117,6 +112,10 @@ export function AdminReportsView() {
     !generating &&
     (!needsModules || (pageData?.modules.length ?? 0) > 0) &&
     (!needsPayrollExport || Boolean(payrollExportId));
+
+  if (isLoading && !isSuccess) {
+    return <PageLoadingSpinner label="Loading reports…" />;
+  }
 
   const handleGenerate = async () => {
     if (!dateFrom || !dateTo) {
@@ -148,25 +147,6 @@ export function AdminReportsView() {
     }
   };
 
-  if (booting) {
-    return (
-      <div className="flex flex-1 items-center justify-center p-12">
-        <Loader2 className="size-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-12">
-        <p className="text-sm text-destructive">{loadError}</p>
-        <Button variant="outline" onClick={() => void loadPage()}>
-          Retry
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6 md:p-8">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
@@ -182,6 +162,14 @@ export function AdminReportsView() {
             PDF, CSV, Excel, or JSON.
           </p>
         </header>
+
+        {feedback.loadError ? (
+          <QueryErrorBanner
+            message={feedback.loadError}
+            onRetry={feedback.onRetryLoad}
+            retrying={feedback.retryingLoad}
+          />
+        ) : null}
 
         <Tabs
           value={category}

@@ -37,6 +37,7 @@ export const adminPublishScheduleSeriesFn = createServerFn({ method: "POST" })
       {
         seriesId: data.seriesId,
         materializeMode: alreadyPublished ? "repair_horizon" : "first_publish",
+        actorId: userId,
       },
     );
 
