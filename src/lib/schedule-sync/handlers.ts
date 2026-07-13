@@ -4,6 +4,7 @@ import { classifyScheduleChange } from "#/lib/schedule-sync/classify-change";
 import { notifyScheduleSyncRecipients } from "#/lib/schedule-sync/notify";
 import { loadScheduledSessionSnapshot } from "#/lib/schedule-sync/snapshot";
 import { syncSessionClaimsFromSchedule } from "#/lib/schedule-sync/sync-claims";
+import { syncVenueUnlockFromSchedule } from "#/lib/schedule-sync/effects/venue-unlock";
 import type {
   ScheduleSyncEvent,
   ScheduledSessionSnapshot,
@@ -34,6 +35,7 @@ async function handleScheduleSyncEvent(
   event: ScheduleSyncEvent,
 ): Promise<void> {
   const claimResult = await syncSessionClaimsFromSchedule(db, event);
+  await syncVenueUnlockFromSchedule(db, event);
   await notifyScheduleSyncRecipients(db, event, claimResult.claimId);
   await logScheduleSyncAudit(db, event, claimResult.claimId, {
     skippedClaimSync: claimResult.skippedClaimSync,

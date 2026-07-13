@@ -52,6 +52,9 @@ export const queryKeys = {
       ["lecturer", "verification-queue", filters] as const,
     schedule: (filters: { from: string; to: string }) =>
       ["lecturer", "schedule", filters] as const,
+    roomAccess: (filters: { from: string; to: string }) =>
+      ["lecturer", "room-access", filters] as const,
+    roomAccessAccess: ["lecturer", "room-access-access"] as const,
     tutors: ["lecturer", "tutors"] as const,
     sessions: ["lecturer", "sessions"] as const,
     attendance: ["lecturer", "attendance"] as const,
@@ -64,6 +67,8 @@ export const queryKeys = {
     sessionClaims: ["tutor", "session-claims"] as const,
     assignedSchedule: (filters: { from: string; to: string }) =>
       ["tutor", "assigned-schedule", filters] as const,
+    venueUnlockStatus: (filters: { from: string; to: string }) =>
+      ["tutor", "venue-unlock-status", filters] as const,
     earnings: ["tutor", "earnings"] as const,
     notesClaims: ["tutor", "notes-claims"] as const,
   },

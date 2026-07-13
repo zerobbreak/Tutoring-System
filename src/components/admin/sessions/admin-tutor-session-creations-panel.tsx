@@ -84,9 +84,13 @@ export function AdminTutorSessionCreationsPanel({
   const refresh = async () => {
     if (isControlled) {
       onChanged?.();
-    } else {
-      await load();
+      return;
     }
+
+    await load();
+    // Notify parent (if present) so surrounding views can refresh their data
+    // (e.g., the AdminSessionsView which uses a separate query cache).
+    onChanged?.();
   };
 
   const approve = async (claimId: string, canApprove: boolean) => {

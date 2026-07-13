@@ -4,6 +4,7 @@ import {
   loadScheduledSessionSnapshot,
   syncScheduledSessionAfterUpdate,
 } from "#/lib/schedule-sync";
+import { cancelVenueUnlockForSoftDeletedSession } from "#/lib/schedule-sync/effects/venue-unlock";
 import {
   softDeleteDraftClaimsForSession,
   softDeleteScheduledSession,
@@ -206,6 +207,8 @@ export async function deleteScheduledSessionRecord(
     params.actorId,
     params.reason,
   );
+
+  await cancelVenueUnlockForSoftDeletedSession(supabase, params.sessionId);
 
   await supabase.from("notifications").insert({
     recipient_id: session.tutor_id,

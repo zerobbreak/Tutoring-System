@@ -12,3 +12,15 @@ export function createQueryClient() {
     },
   });
 }
+
+export function resetQueryCache(queryClient: QueryClient) {
+  const activeQueries = queryClient.getQueryCache().findAll({
+    fetchStatus: "fetching",
+  });
+
+  for (const query of activeQueries) {
+    queryClient.getQueryCache().remove(query);
+  }
+
+  queryClient.invalidateQueries({ queryKey: ["auth"] });
+}

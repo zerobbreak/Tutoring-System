@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdminContext } from "#/lib/admin-server";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
+import { VENUE_ACCESS_CONTROLS } from "#/lib/venue-access";
 
 const createSchema = z.object({
   name: z.string().min(1).max(255),
@@ -13,6 +14,7 @@ const createSchema = z.object({
     .transform((v) => (v?.trim() ? v.trim() : null)),
   capacity: z.number().int().positive().optional().nullable(),
   campusId: z.string().uuid().optional().nullable(),
+  accessControl: z.enum(VENUE_ACCESS_CONTROLS).optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -30,10 +32,11 @@ export const createVenueFn = createServerFn({ method: "POST" })
         code: data.code,
         capacity: data.capacity ?? null,
         campus_id: data.campusId ?? null,
+        access_control: data.accessControl ?? "OPEN",
         is_active: data.isActive ?? true,
       })
       .select(
-        "id, name, code, capacity, campus_id, is_active, created_at, updated_at",
+        "id, name, code, capacity, campus_id, access_control, is_active, created_at, updated_at",
       )
       .single();
 

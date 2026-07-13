@@ -7,6 +7,7 @@ import type {
   VenueDTO,
 } from "#/server-actions/lecturer-schedule";
 import type { SchedulingIssue } from "#/lib/schedule-conflicts";
+import type { VenueUnlockStatus } from "#/lib/venue-access";
 
 export type { ScheduleEventDTO, ScheduleSeriesDTO, ScheduleChangeRequestDTO };
 
@@ -31,6 +32,12 @@ export type ScheduleLecturerOptionDTO = {
   email: string;
 };
 
+export type SessionUnlockStatusDTO = {
+  status: VenueUnlockStatus;
+  claimedByName: string | null;
+  requiresUnlock: boolean;
+};
+
 export type AdminSchedulePageDataDTO = {
   modules: ScheduleModuleOptionDTO[];
   tutors: ScheduleTutorOptionDTO[];
@@ -45,6 +52,7 @@ export type AdminSchedulePageDataDTO = {
   /** Published series with calendar sessions but no session_claims yet. */
   seriesIdsNeedingClaimSync: string[];
   pendingChangeRequests: ScheduleChangeRequestDTO[];
+  unlockStatusBySessionId: Record<string, SessionUnlockStatusDTO>;
   scope: AdminScheduleCalendarScope;
   scopeEntityId: string | null;
 };

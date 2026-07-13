@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-r
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Shield } from "lucide-react";
+import * as z from "zod";
 import {
   AuthMarketingLayout,
   AuthPageLoading,
@@ -28,11 +29,26 @@ import { toast } from "#/lib/toast";
 import { getPostAuthDashboardPath, getUserRole } from "#/lib/user-role";
 import { logSecurityEventFn } from "#/server-actions/settings";
 
+const mfaSearchSchema = z.object({
+  returnTo: z.string().optional(),
+});
+
 export const Route = createFileRoute("/auth/mfa")({
+  validateSearch: mfaSearchSchema,
   component: MfaVerify,
 });
 
+const decodeURIComponentSafe = (value: string) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
 function MfaVerify() {
+  const { returnTo } = Route.useSearch();
+  const decodedReturnTo = returnTo ? decodeURIComponentSafe(returnTo) : undefined;
   const navigate = useNavigate();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -52,7 +68,11 @@ function MfaVerify() {
       if (cancelled) return;
 
       if (!user) {
-        navigate({ to: APP_PATHS.auth.login, replace: true });
+        navigate({
+          to: APP_PATHS.auth.login,
+          replace: true,
+          search: decodedReturnTo ? { returnTo: encodeURIComponent(decodedReturnTo) } : undefined,
+        });
         return;
       }
 
@@ -64,7 +84,10 @@ function MfaVerify() {
         const lifecycle = await getAuthUserLifecycleFn();
         const destination =
           lifecycle?.destination ?? getPostAuthDashboardPath(role);
-        navigate({ to: destination, replace: true });
+        navigate({
+          to: decodedReturnTo ?? destination,
+          replace: true,
+        });
         return;
       }
 
@@ -75,7 +98,7 @@ function MfaVerify() {
     return () => {
       cancelled = true;
     };
-  }, [navigate]);
+  }, [navigate, returnTo]);
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,7 +132,7 @@ function MfaVerify() {
       const lifecycle = await getAuthUserLifecycleFn();
       const destination =
         lifecycle?.destination ?? getPostAuthDashboardPath(role);
-      await navigate({ to: destination });
+      await navigate({ to: decodedReturnTo ?? destination });
     } catch (err: unknown) {
       toast.error(
         err instanceof Error ? err.message : "Verification failed. Try again.",

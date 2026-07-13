@@ -1,6 +1,9 @@
 import { format, parseISO } from "date-fns";
+import { Smartphone } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Badge } from "#/components/ui/badge";
+import { Button } from "#/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +38,8 @@ export function TutorSessionAttendanceDialog({
 }) {
   const [rows, setRows] = useState<AttendanceRecordDTO[] | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [phoneScannerOpen, setPhoneScannerOpen] = useState(false);
+  const [phoneScannerUrl, setPhoneScannerUrl] = useState("");
 
   const loadRows = useCallback(async (claimId: string) => {
     const data = await getAttendanceDataFn({ data: { claimId } });
@@ -63,6 +68,23 @@ export function TutorSessionAttendanceDialog({
       end_time: claim.end_time,
     });
   }, [claim]);
+
+  const handleOpenPhoneScanner = () => {
+    if (!claim) return;
+    const url = `${window.location.origin}/tutor/mobile-scan?sessionId=${claim.id}`;
+    setPhoneScannerUrl(url);
+    setPhoneScannerOpen(true);
+  };
+
+  const handleCopyPhoneScannerLink = async () => {
+    if (!phoneScannerUrl || typeof navigator === "undefined") return;
+    try {
+      await navigator.clipboard.writeText(phoneScannerUrl);
+      toast.success("Phone scanner link copied.");
+    } catch {
+      toast.error("Could not copy the phone scanner link.");
+    }
+  };
 
   const handleScan = async (payload: string) => {
     if (!claim) return;
@@ -107,11 +129,34 @@ export function TutorSessionAttendanceDialog({
           </DialogDescription>
         </DialogHeader>
         {claim ? (
-          <StudentCardScanner
-            enabled={scanEnabled}
-            busy={scanning}
-            onScan={handleScan}
-          />
+          <div className="space-y-3">
+            <div className="rounded-lg border border-dashed border-primary/20 bg-primary/5 p-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium">Use a phone as the scanner</p>
+                  <p className="text-xs text-muted-foreground">
+                    Open the mobile scanner on another device and keep this
+                    attendance dialog open.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={handleOpenPhoneScanner}
+                >
+                  <Smartphone className="size-4" />
+                  Open phone scanner
+                </Button>
+              </div>
+            </div>
+            <StudentCardScanner
+              enabled={scanEnabled}
+              busy={scanning}
+              onScan={handleScan}
+            />
+          </div>
         ) : null}
         {!scanEnabled && claim ? (
           <p className="text-xs text-amber-700 dark:text-amber-200">
@@ -161,6 +206,43 @@ export function TutorSessionAttendanceDialog({
             </div>
           </ScrollArea>
         </div>
+        <Dialog open={phoneScannerOpen} onOpenChange={setPhoneScannerOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Phone scanner link</DialogTitle>
+              <DialogDescription>
+                Open this link on the phone you want to use for scanning.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="flex justify-center rounded-lg border bg-muted/40 p-3">
+                {phoneScannerUrl ? (
+                  <QRCodeSVG value={phoneScannerUrl} size={220} level="M" />
+                ) : null}
+              </div>
+              <div className="rounded-lg border bg-muted/40 p-3">
+                <p className="break-all text-sm font-mono">{phoneScannerUrl}</p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={handleCopyPhoneScannerLink}
+                >
+                  Copy link
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-1"
+                  onClick={() => setPhoneScannerOpen(false)}
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );

@@ -1,3 +1,5 @@
+import type { VenueAccessControl } from "#/lib/venue-access";
+
 export type AdminVenueDTO = {
   id: string;
   name: string;
@@ -5,6 +7,7 @@ export type AdminVenueDTO = {
   capacity: number | null;
   campusId: string | null;
   campusName: string | null;
+  accessControl: VenueAccessControl;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

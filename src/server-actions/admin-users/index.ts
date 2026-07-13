@@ -1,5 +1,6 @@
 export { listAdminUsersFn } from "./list-admin-users";
 export { getAdminUserDetailFn } from "./get-admin-user-detail";
+export { updateUserUnlockAccessFn } from "./update-user-unlock-access";
 export { updateUserRoleFn } from "./update-user-role";
 export { setUserActiveFn } from "./set-user-active";
 export { reviewOnboardingFn } from "./review-onboarding";

@@ -10,6 +10,7 @@ import {
   UserRound,
   XCircle,
 } from "lucide-react";
+import { StudentCardScanner } from "#/components/tutor/attendance/student-card-scanner";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import { Badge } from "#/components/ui/badge";
@@ -25,6 +26,7 @@ import {
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import { Separator } from "#/components/ui/separator";
+import { parseStudentCardPayload } from "#/lib/student-card-payload";
 import { cn } from "#/lib/utils";
 import { toast } from "#/lib/toast";
 import {
@@ -237,9 +239,20 @@ function StudentCheckInPage() {
     };
   }, [token, sessionId]);
 
-  const handleCheckIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!fullName.trim() || !studentReference.trim()) {
+  const submitCheckIn = async ({
+    fullName: incomingFullName,
+    studentReference: incomingStudentReference,
+    email: incomingEmail,
+  }: {
+    fullName: string;
+    studentReference: string;
+    email: string;
+  }) => {
+    const trimmedFullName = incomingFullName.trim();
+    const trimmedStudentReference = incomingStudentReference.trim();
+    const trimmedEmail = incomingEmail.trim();
+
+    if (!trimmedFullName || !trimmedStudentReference) {
       toast.error("Please enter your full name and student number.");
       return;
     }
@@ -251,9 +264,9 @@ function StudentCheckInPage() {
         data: {
           token,
           sessionId,
-          fullName: fullName.trim(),
-          studentReference: studentReference.trim(),
-          email: email.trim() || undefined,
+          fullName: trimmedFullName,
+          studentReference: trimmedStudentReference,
+          email: trimmedEmail || undefined,
         },
       });
       setSuccess(result.studentName);
@@ -269,6 +282,41 @@ function StudentCheckInPage() {
       toast.error(msg);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCheckIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitCheckIn({ fullName, studentReference, email });
+  };
+
+  const handleCardScan = async (payload: string) => {
+    try {
+      const card = parseStudentCardPayload(payload);
+      const nextFullName = card.fullName?.trim() ?? "";
+      const nextStudentReference = card.studentReference.trim();
+      const nextEmail = card.email?.trim() ?? "";
+
+      setStudentReference(nextStudentReference);
+      setFullName(nextFullName);
+      setEmail(nextEmail);
+
+      if (!nextFullName || !nextStudentReference) {
+        setError("The card was scanned, but it is missing the required details. Please complete the form and submit.");
+        toast.error("The card is missing the required details. Please complete the form and submit.");
+        return;
+      }
+
+      await submitCheckIn({
+        fullName: nextFullName,
+        studentReference: nextStudentReference,
+        email: nextEmail,
+      });
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : "Could not read the card.";
+      setError(msg);
+      toast.error(msg);
     }
   };
 
@@ -344,6 +392,33 @@ function StudentCheckInPage() {
           <form onSubmit={handleCheckIn}>
             <CardContent className="space-y-4">
               {bannerMessage ? <AlertBanner message={bannerMessage} /> : null}
+
+              <div className="rounded-xl border border-(--line)/70 bg-(--foam)/70 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-(--sea-ink)">
+                      Scan from your phone
+                    </p>
+                    <p className="text-xs text-(--sea-ink-soft)">
+                      Open this link on your phone and scan the student card to
+                      fill your details.
+                    </p>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className="border-(--lagoon-deep)/25 bg-(--lagoon-deep)/10 text-[10px] text-(--lagoon-deep)"
+                  >
+                    Mobile ready
+                  </Badge>
+                </div>
+                <div className="mt-4">
+                  <StudentCardScanner
+                    enabled={Boolean(token && sessionId && !previewError)}
+                    busy={loading}
+                    onScan={handleCardScan}
+                  />
+                </div>
+              </div>
 
               <div className="space-y-2">
                 <Label htmlFor="fullName" className="text-(--sea-ink)">

@@ -4,6 +4,7 @@ import { useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import type { AppShellUser } from "#/components/app-shell";
 import type { RootSessionData, RootSessionUser } from "#/lib/root-session";
+import { resetQueryCache } from "#/lib/query-client";
 import { supabase } from "#/lib/supabase";
 
 function toAppShellUser(
@@ -46,7 +47,7 @@ export function useRootAuthSync(
     } = supabase.auth.onAuthStateChange((event, session) => {
       setSessionUser(toAppShellUser(session?.user));
       if (event === "SIGNED_IN" || event === "SIGNED_OUT") {
-        queryClient.clear();
+        resetQueryCache(queryClient);
         void router.invalidate();
       }
     });

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAdminContext } from "#/lib/admin-server";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
+import type { VenueAccessControl } from "#/lib/venue-access";
 import type { AdminVenueDTO } from "./types";
 
 export const getAdminVenuesFn = createServerFn({ method: "GET" }).handler(
@@ -11,7 +12,7 @@ export const getAdminVenuesFn = createServerFn({ method: "GET" }).handler(
     const { data: rows, error } = await supabase
       .from("venues")
       .select(
-        "id, name, code, capacity, campus_id, is_active, created_at, updated_at, campuses(name)",
+        "id, name, code, capacity, campus_id, access_control, is_active, created_at, updated_at, campuses(name)",
       )
       .eq("institution_id", institutionId)
       .order("name", { ascending: true });
@@ -46,6 +47,7 @@ export const getAdminVenuesFn = createServerFn({ method: "GET" }).handler(
         capacity: (row.capacity as number | null) ?? null,
         campusId: (row.campus_id as string | null) ?? null,
         campusName: campus?.name ?? null,
+        accessControl: (row.access_control as VenueAccessControl) ?? "OPEN",
         isActive: row.is_active as boolean,
         createdAt: row.created_at as string,
         updatedAt: row.updated_at as string,

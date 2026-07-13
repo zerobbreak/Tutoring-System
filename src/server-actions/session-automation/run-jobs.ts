@@ -9,6 +9,7 @@ import { processJobOutbox } from "#/lib/job-outbox/process-outbox";
 import { repairDraftClaimScheduleMismatches } from "#/lib/schedule-sync/repair-draft-mismatches";
 import { isAttendanceLocked, qrWindowForScheduledSession } from "#/lib/session-qr-window";
 import { normalizeSupabaseNestedRow } from "#/lib/supabase-nested-row";
+import { runVenueUnlockAutomation } from "#/server-actions/session-automation/venue-unlock-jobs";
 
 const AUTO_SUBMIT_GRACE_HOURS = 2;
 const DRAFT_REMINDER_HOURS = 48;
@@ -23,6 +24,10 @@ export type SessionAutomationJobResult = {
   draftClaimsRepaired: number;
   outboxProcessed: number;
   outboxFailed: number;
+  unlockCompleted: number;
+  unlockDigestSent: number;
+  unlockJitSent: number;
+  unlockUrgentSent: number;
 };
 
 async function lockEndedAttendance(db: SupabaseClient): Promise<number> {
@@ -258,7 +263,7 @@ async function insertReminderIfNew(
     .eq("recipient_id", input.recipientId)
     .eq("claim_id", input.claimId)
     .eq("type", input.type)
-    .gte("created_at", since)
+    .gte("sent_at", since)
     .maybeSingle();
 
   if (existing?.id) return false;
@@ -415,6 +420,12 @@ export async function runSessionAutomationJobs(
   const draftClaimsRepaired = await repairDraftClaimsAllInstitutions(db);
   const { processed: outboxProcessed, failed: outboxFailed } =
     await processJobOutbox(db);
+  const {
+    unlockCompleted,
+    unlockDigestSent,
+    unlockJitSent,
+    unlockUrgentSent,
+  } = await runVenueUnlockAutomation(db);
 
   return {
     seriesExtended,
@@ -425,6 +436,10 @@ export async function runSessionAutomationJobs(
     draftClaimsRepaired,
     outboxProcessed,
     outboxFailed,
+    unlockCompleted,
+    unlockDigestSent,
+    unlockJitSent,
+    unlockUrgentSent,
   };
 }
 

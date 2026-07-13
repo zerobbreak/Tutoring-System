@@ -41,6 +41,8 @@ import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Card, CardContent } from "#/components/ui/card";
 import { Label } from "#/components/ui/label";
+import { Switch } from "#/components/ui/switch";
+import { venueUnlockStatusLabel } from "#/lib/venue-access";
 import {
   Select,
   SelectContent,
@@ -191,7 +193,10 @@ export function AdminSchedulesView({
   const [issueFilter, setIssueFilter] = useState<SchedulingIssue["kind"] | "all">(
     "all",
   );
+  const [unlockOnly, setUnlockOnly] = useState(false);
   const issuesRef = useRef<HTMLDivElement>(null);
+
+  const unlockStatusBySessionId = data?.unlockStatusBySessionId ?? {};
 
   const events = data?.events ?? [];
   const range = rangeForView(view, focusDate);
@@ -199,9 +204,13 @@ export function AdminSchedulesView({
   const eventsInRange = useMemo(() => {
     return events.filter((e) => {
       const start = new Date(e.startsAt);
-      return isWithinInterval(start, { start: range.from, end: range.to });
+      if (!isWithinInterval(start, { start: range.from, end: range.to })) {
+        return false;
+      }
+      if (!unlockOnly) return true;
+      return unlockStatusBySessionId[e.id]?.requiresUnlock === true;
     });
-  }, [events, range.from, range.to]);
+  }, [events, range.from, range.to, unlockOnly, unlockStatusBySessionId]);
 
   const headerLabel = useMemo(() => {
     if (view === "month") return format(focusDate, "MMMM yyyy");
@@ -367,6 +376,22 @@ export function AdminSchedulesView({
             retrying={retryingLoad}
           />
         ) : null}
+
+        <div className="flex items-center justify-between gap-4 rounded-xl border bg-card px-4 py-3">
+          <div>
+            <Label htmlFor="unlock-only" className="text-sm font-medium">
+              Needs staff unlock only
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Show computer rooms requiring facial-access unlock
+            </p>
+          </div>
+          <Switch
+            id="unlock-only"
+            checked={unlockOnly}
+            onCheckedChange={setUnlockOnly}
+          />
+        </div>
 
         <div className="grid shrink-0 gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {(

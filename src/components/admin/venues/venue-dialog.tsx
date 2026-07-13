@@ -25,6 +25,11 @@ import {
   type AdminVenueDTO,
 } from "#/server-actions/admin-venues";
 import type { CampusDTO } from "#/server-actions/admin-institutions";
+import {
+  VENUE_ACCESS_CONTROLS,
+  venueAccessControlLabel,
+  type VenueAccessControl,
+} from "#/lib/venue-access";
 
 type VenueDialogProps = {
   open: boolean;
@@ -39,6 +44,7 @@ type VenueFormState = {
   code: string;
   capacity: string;
   campusId: string;
+  accessControl: VenueAccessControl;
   is_active: boolean;
 };
 
@@ -47,6 +53,7 @@ const emptyForm = (): VenueFormState => ({
   code: "",
   capacity: "",
   campusId: "",
+  accessControl: "OPEN",
   is_active: true,
 });
 
@@ -56,6 +63,7 @@ export function formFromVenue(venue: AdminVenueDTO): VenueFormState {
     code: venue.code ?? "",
     capacity: venue.capacity != null ? String(venue.capacity) : "",
     campusId: venue.campusId ?? "",
+    accessControl: venue.accessControl,
     is_active: venue.isActive,
   };
 }
@@ -100,6 +108,7 @@ export function VenueDialog({
         code: form.code.trim() || null,
         capacity,
         campusId: form.campusId || null,
+        accessControl: form.accessControl,
         isActive: form.is_active,
       };
 
@@ -181,6 +190,29 @@ export function VenueDialog({
                       {campus.name}
                     </SelectItem>
                   ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="venue-access">Access control</Label>
+            <Select
+              value={form.accessControl}
+              onValueChange={(value) =>
+                setForm((f) => ({
+                  ...f,
+                  accessControl: value as VenueAccessControl,
+                }))
+              }
+            >
+              <SelectTrigger id="venue-access">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {VENUE_ACCESS_CONTROLS.map((value) => (
+                  <SelectItem key={value} value={value}>
+                    {venueAccessControlLabel(value)}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

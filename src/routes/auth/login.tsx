@@ -31,6 +31,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 
 const loginSearchSchema = z.object({
   recovered: z.literal("1").optional(),
+  returnTo: z.string().optional(),
 });
 
 export const Route = createFileRoute("/auth/login")({
@@ -38,8 +39,17 @@ export const Route = createFileRoute("/auth/login")({
   component: Login,
 });
 
+const decodeURIComponentSafe = (value: string) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
 function Login() {
-  const { recovered } = Route.useSearch();
+  const { recovered, returnTo } = Route.useSearch();
+  const decodedReturnTo = returnTo ? decodeURIComponentSafe(returnTo) : undefined;
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const router = useRouter();
@@ -83,7 +93,10 @@ function Login() {
         toast.success("Enter your authenticator code to continue.");
         queryClient.clear();
         await router.invalidate();
-        await navigate({ to: APP_PATHS.auth.mfa });
+        await navigate({
+          to: APP_PATHS.auth.mfa,
+          search: decodedReturnTo ? { returnTo: encodeURIComponent(decodedReturnTo) } : undefined,
+        });
         return;
       }
 
@@ -94,7 +107,9 @@ function Login() {
       const lifecycle = await getAuthUserLifecycleFn();
       const destination =
         lifecycle?.destination ?? getPostAuthDashboardPath(role);
-      await navigate({ to: destination });
+      await navigate({
+        to: decodedReturnTo ?? destination,
+      });
     } catch (error: unknown) {
       toast.error(
         error instanceof Error

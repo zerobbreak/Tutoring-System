@@ -11,6 +11,7 @@ import {
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
+import { Switch } from "#/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -37,6 +38,7 @@ import {
   resetUserMfaFn,
   setUserActiveFn,
   updateUserRoleFn,
+  updateUserUnlockAccessFn,
 } from "#/server-actions/admin-users";
 import { useAdminUserDetailSheet } from "#/components/admin/users/use-admin-user-detail-sheet";
 import {
@@ -243,6 +245,37 @@ export function AdminUserDetailSheet({
                   >
                     {roleDirty ? "Save role change" : "No changes to save"}
                   </Button>
+                </div>
+              </DetailSection>
+
+              <DetailSection
+                title="Room access responder"
+                description="Allow this user to view the master timetable and claim computer room unlocks."
+                icon={KeyRound}
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <Label htmlFor="unlock-responder" className="text-sm">
+                    Can unlock venues
+                  </Label>
+                  <Switch
+                    id="unlock-responder"
+                    checked={user.can_unlock_venues}
+                    disabled={submitting}
+                    onCheckedChange={(checked) =>
+                      void run(
+                        () =>
+                          updateUserUnlockAccessFn({
+                            data: {
+                              userId: user.id,
+                              canUnlockVenues: checked,
+                            },
+                          }),
+                        checked
+                          ? "Room access enabled."
+                          : "Room access disabled.",
+                      )
+                    }
+                  />
                 </div>
               </DetailSection>
 

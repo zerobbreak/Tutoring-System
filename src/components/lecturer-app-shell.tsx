@@ -4,6 +4,7 @@ import {
   Calendar,
   ClipboardCheck,
   FileText,
+  KeyRound,
   LayoutDashboard,
   MessageSquare,
   UserCheck,
@@ -33,6 +34,11 @@ const LECTURER_NAV_GROUPS: readonly AppShellNavGroup[] = [
     label: "Teaching",
     items: [
       { to: APP_PATHS.lecturer.schedule, label: "Schedule", icon: Calendar },
+      {
+        to: APP_PATHS.lecturer.roomAccess,
+        label: "Room access",
+        icon: KeyRound,
+      },
       { to: APP_PATHS.lecturer.sessions, label: "Sessions", icon: Video },
       { to: APP_PATHS.lecturer.tutors, label: "Tutors", icon: Users },
       { to: APP_PATHS.lecturer.attendance, label: "Attendance", icon: UserCheck },
@@ -73,6 +79,7 @@ export function LecturerAppShell({
       navGroups={LECTURER_NAV_GROUPS}
       user={user}
       fallbackDisplayName="Lecturer"
+      notificationsPath={APP_PATHS.lecturer.notifications}
       headerTrailing={null}
     >
       {children}

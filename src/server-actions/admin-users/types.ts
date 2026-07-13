@@ -25,6 +25,7 @@ export type AdminUserRowDTO = {
   /** @deprecated Synced from user_status via DB trigger */
   approval_status: string;
   mfa_enabled: boolean;
+  can_unlock_venues: boolean;
   /** @deprecated Use user_status; kept for list filters during transition */
   is_active: boolean;
   created_at: string;

@@ -15,6 +15,7 @@ import {
   parseSchedulingSettings,
   resolveModuleIdsForScope,
 } from "./helpers";
+import type { VenueUnlockStatus } from "#/lib/venue-access";
 import { pageDataSchema } from "./schemas";
 import type { AdminSchedulePageDataDTO } from "./types";
 
@@ -96,7 +97,7 @@ export const getAdminSchedulePageDataFn = createServerFn({ method: "GET" })
 
     const { data: venues, error: venueErr } = await supabase
       .from("venues")
-      .select("id, name, code, capacity, is_active")
+      .select("id, name, code, capacity, is_active, access_control")
       .eq("institution_id", institutionId)
       .eq("is_active", true)
       .order("name");
@@ -121,6 +122,15 @@ export const getAdminSchedulePageDataFn = createServerFn({ method: "GET" })
         tutorIdsByModule[mid].push(tid);
       }
     }
+
+    const facialVenueIds = new Set(
+      (venues ?? [])
+        .filter((v) => v.access_control === "FACIAL_RECOGNITION")
+        .map((v) => v.id as string),
+    );
+
+    let unlockStatusBySessionId: AdminSchedulePageDataDTO["unlockStatusBySessionId"] =
+      {};
 
     let events: AdminSchedulePageDataDTO["events"] = [];
     if (moduleIds.length) {
@@ -166,6 +176,44 @@ export const getAdminSchedulePageDataFn = createServerFn({ method: "GET" })
           claimIdBySession,
         ),
       );
+
+      if (sessionIds.length) {
+        const { data: unlockRows, error: unlockErr } = await supabase
+          .from("venue_unlock_requests")
+          .select(
+            `
+            scheduled_session_id,
+            status,
+            claimed_by_user:users!venue_unlock_requests_claimed_by_fkey ( full_name )
+          `,
+          )
+          .in("scheduled_session_id", sessionIds);
+
+        if (unlockErr) throw new Error(unlockErr.message);
+
+        for (const row of sessions ?? []) {
+          const sid = row.id as string;
+          const venueId = row.venue_id as string | null;
+          const requiresUnlock = venueId != null && facialVenueIds.has(venueId);
+          const unlock = (unlockRows ?? []).find(
+            (u) => u.scheduled_session_id === sid,
+          );
+          const claimant = unlock?.claimed_by_user as
+            | { full_name: string }
+            | { full_name: string }[]
+            | null
+            | undefined;
+          const claimedByName = Array.isArray(claimant)
+            ? claimant[0]?.full_name ?? null
+            : claimant?.full_name ?? null;
+
+          unlockStatusBySessionId[sid] = {
+            requiresUnlock,
+            status: (unlock?.status as VenueUnlockStatus) ?? "PENDING",
+            claimedByName,
+          };
+        }
+      }
     }
 
     let seriesRows: Parameters<typeof mapSeriesRow>[0][] = [];
@@ -309,6 +357,7 @@ export const getAdminSchedulePageDataFn = createServerFn({ method: "GET" })
       series: mappedSeries,
       seriesIdsNeedingClaimSync,
       pendingChangeRequests,
+      unlockStatusBySessionId,
       scope,
       scopeEntityId,
     };

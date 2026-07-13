@@ -22,6 +22,22 @@ import {
   type TutorSessionClaimDTO,
 } from "#/server-actions/tutor-sessions";
 
+const TIME_SLOTS = (() => {
+  const slots: string[] = [];
+  for (let minutes = 6 * 60; minutes <= 23 * 60 + 45; minutes += 15) {
+    const hour = Math.floor(minutes / 60);
+    const minute = minutes % 60;
+    slots.push(`${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`);
+  }
+  return slots;
+})();
+
+const START_TIME_SLOTS = TIME_SLOTS.slice(0, TIME_SLOTS.length - 1);
+
+function getNextTimeSlot(slot: string) {
+  return TIME_SLOTS.find((value) => value > slot) ?? TIME_SLOTS[TIME_SLOTS.length - 1];
+}
+
 export function TutorRequestSessionDialog({
   open,
   onOpenChange,
@@ -44,6 +60,16 @@ export function TutorRequestSessionDialog({
   const [sessionKind, setSessionKind] = useState("tutorial");
   const [requestReason, setRequestReason] = useState("");
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    if (!TIME_SLOTS.includes(start)) {
+      setStart("09:00");
+    }
+    if (!TIME_SLOTS.includes(end)) {
+      setEnd("10:00");
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -141,20 +167,40 @@ export function TutorRequestSessionDialog({
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="grid gap-1.5">
-              <Label>Start</Label>
-              <Input
+              <Label htmlFor="session-start">Start</Label>
+              <select
+                id="session-start"
+                className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm dark:bg-input/30"
                 value={start}
-                onChange={(e) => setStart(e.target.value)}
-                placeholder="09:00"
-              />
+                onChange={(e) => {
+                  const selectedStart = e.target.value;
+                  setStart(selectedStart);
+                  if (TIME_SLOTS.indexOf(end) <= TIME_SLOTS.indexOf(selectedStart)) {
+                    setEnd(getNextTimeSlot(selectedStart));
+                  }
+                }}
+              >
+                {START_TIME_SLOTS.map((slot) => (
+                  <option key={slot} value={slot}>
+                    {slot}
+                  </option>
+                ))}
+              </select>
             </div>
             <div className="grid gap-1.5">
-              <Label>End</Label>
-              <Input
+              <Label htmlFor="session-end">End</Label>
+              <select
+                id="session-end"
+                className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm dark:bg-input/30"
                 value={end}
                 onChange={(e) => setEnd(e.target.value)}
-                placeholder="10:00"
-              />
+              >
+                {TIME_SLOTS.filter((slot) => slot > start).map((slot) => (
+                  <option key={slot} value={slot}>
+                    {slot}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
           <p className="text-xs text-muted-foreground">

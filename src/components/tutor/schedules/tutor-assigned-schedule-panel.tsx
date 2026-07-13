@@ -36,6 +36,12 @@ import { toast } from "#/lib/toast";
 import { cn } from "#/lib/utils";
 import { tutorCancelScheduledSessionFn } from "#/server-actions/scheduled-sessions";
 import {
+  getVenueUnlockStatusForTutorFn,
+  tutorPingVenueUnlockFn,
+  type TutorVenueUnlockStatusDTO,
+} from "#/server-actions/venue-unlock";
+import { venueUnlockStatusLabel } from "#/lib/venue-access";
+import {
   listTutorAssignedScheduleFn,
   submitTutorScheduleChangeRequestFn,
   type TutorAssignedScheduleEventDTO,
@@ -45,6 +51,10 @@ export function TutorAssignedSchedulePanel() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<TutorAssignedScheduleEventDTO[]>([]);
+  const [unlockBySession, setUnlockBySession] = useState<
+    Record<string, TutorVenueUnlockStatusDTO>
+  >({});
+  const [pingBusyId, setPingBusyId] = useState<string | null>(null);
   const [changeTarget, setChangeTarget] =
     useState<TutorAssignedScheduleEventDTO | null>(null);
   const [proposedStart, setProposedStart] = useState("");
@@ -63,13 +73,22 @@ export function TutorAssignedSchedulePanel() {
     try {
       const from = startOfDay(new Date());
       const to = endOfDay(addWeeks(from, 8));
-      const { events: list } = await listTutorAssignedScheduleFn({
-        data: {
-          from: from.toISOString(),
-          to: to.toISOString(),
-        },
-      });
+      const fromIso = from.toISOString();
+      const toIso = to.toISOString();
+      const [{ events: list }, { items: unlockItems }] = await Promise.all([
+        listTutorAssignedScheduleFn({
+          data: { from: fromIso, to: toIso },
+        }),
+        getVenueUnlockStatusForTutorFn({
+          data: { from: fromIso, to: toIso },
+        }),
+      ]);
       setEvents(list);
+      const unlockMap: Record<string, TutorVenueUnlockStatusDTO> = {};
+      for (const item of unlockItems) {
+        unlockMap[item.scheduledSessionId] = item;
+      }
+      setUnlockBySession(unlockMap);
     } catch (e) {
       toast.error(
         e instanceof Error ? e.message : "Could not load assigned schedule",
@@ -147,6 +166,19 @@ export function TutorAssignedSchedulePanel() {
     }
   };
 
+  const handlePingUnlock = async (sessionId: string) => {
+    setPingBusyId(sessionId);
+    try {
+      await tutorPingVenueUnlockFn({ data: { scheduledSessionId: sessionId } });
+      toast.success("Staff have been notified.");
+      await load();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not notify staff");
+    } finally {
+      setPingBusyId(null);
+    }
+  };
+
   return (
     <>
       <Card className="border-(--lagoon-deep)/20 bg-(--lagoon-deep)/5">
@@ -175,6 +207,7 @@ export function TutorAssignedSchedulePanel() {
             <ul className="flex flex-col gap-2">
               {events.map((ev) => {
                 const cancelled = isCancelledSessionStatus(ev.status);
+                const unlock = unlockBySession[ev.id];
                 return (
                   <li
                     key={ev.id}
@@ -202,6 +235,13 @@ export function TutorAssignedSchedulePanel() {
                           ) : null}
                           {scheduledSessionStatusLabel(ev.status)}
                         </Badge>
+                        {unlock?.status ? (
+                          <Badge variant="outline" className="text-[10px]">
+                            Opening:{" "}
+                            {unlock.claimedByName ??
+                              venueUnlockStatusLabel(unlock.status)}
+                          </Badge>
+                        ) : null}
                       </div>
                       <p className="text-muted-foreground">
                         {format(new Date(ev.startsAt), "EEE d MMM")} ·{" "}
@@ -227,6 +267,18 @@ export function TutorAssignedSchedulePanel() {
                           }
                         >
                           Open session
+                        </Button>
+                      ) : null}
+                      {!cancelled && unlock?.canPing ? (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          disabled={pingBusyId === ev.id}
+                          onClick={() => void handlePingUnlock(ev.id)}
+                        >
+                          {pingBusyId === ev.id
+                            ? "Pinging…"
+                            : "I'm locked out"}
                         </Button>
                       ) : null}
                       {!cancelled ? (

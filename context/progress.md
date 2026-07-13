@@ -16,6 +16,8 @@ This file is the living status board for the codebase. Whenever any meaningful c
 
 ## Completed
 
+- **Venue unlock system:** migration (`venues.access_control`, `users.can_unlock_venues`, `venue_unlock_requests`, notification enum values); admin `/admin/venues` route + access control on venues; admin user `can_unlock_venues` toggle; schedule sync hooks (materialize + `syncVenueUnlockFromSchedule`); server actions (board, claim, release, tutor ping); lecturer `/lecturer/room-access` master timetable + `/lecturer/notifications`; admin schedules unlock filter; tutor opening badges + "I'm locked out" ping; session automation cron jobs (digest, JIT, urgent, auto-complete); unit tests in `venue-access.test.ts`.
+
 - Created `context/audit.md`.
 - Created `context/code-standards.md`.
 - Created `context/theme.md`.

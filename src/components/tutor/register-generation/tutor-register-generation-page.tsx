@@ -3,6 +3,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock,
+  Copy,
   Download,
   FileJson,
   FileSpreadsheet,
@@ -414,6 +415,23 @@ export function TutorRegisterGenerationPage() {
                     {selectedSession?.qr_token && !isTokenExpired
                       ? "Refresh QR Code"
                       : "Generate Secure QR"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={async () => {
+                      if (!qrValue) return;
+                      try {
+                        await navigator.clipboard.writeText(qrValue);
+                        toast.success("Attendance link copied");
+                      } catch {
+                        toast.error("Could not copy attendance link");
+                      }
+                    }}
+                    disabled={!qrValue || isTokenExpired}
+                  >
+                    <Copy className="size-4" />
+                    Copy check-in link
                   </Button>
                 </div>
               </CardContent>

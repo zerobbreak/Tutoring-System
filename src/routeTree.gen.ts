@@ -22,6 +22,7 @@ import { Route as TutorSchedulesRouteImport } from './routes/tutor/schedules'
 import { Route as TutorRegisterGenerationRouteImport } from './routes/tutor/register-generation'
 import { Route as TutorNotificationsRouteImport } from './routes/tutor/notifications'
 import { Route as TutorNotesRouteImport } from './routes/tutor/notes'
+import { Route as TutorMobileScanRouteImport } from './routes/tutor/mobile-scan'
 import { Route as TutorMessagingRouteImport } from './routes/tutor/messaging'
 import { Route as TutorHelpRouteImport } from './routes/tutor/help'
 import { Route as TutorEarningsRouteImport } from './routes/tutor/earnings'
@@ -30,7 +31,9 @@ import { Route as LecturerVerificationQueueRouteImport } from './routes/lecturer
 import { Route as LecturerTutorsRouteImport } from './routes/lecturer/tutors'
 import { Route as LecturerSessionsRouteImport } from './routes/lecturer/sessions'
 import { Route as LecturerScheduleRouteImport } from './routes/lecturer/schedule'
+import { Route as LecturerRoomAccessRouteImport } from './routes/lecturer/room-access'
 import { Route as LecturerReportsRouteImport } from './routes/lecturer/reports'
+import { Route as LecturerNotificationsRouteImport } from './routes/lecturer/notifications'
 import { Route as LecturerMessagesRouteImport } from './routes/lecturer/messages'
 import { Route as LecturerAttendanceRouteImport } from './routes/lecturer/attendance'
 import { Route as LecturerAnalyticsRouteImport } from './routes/lecturer/analytics'
@@ -40,6 +43,7 @@ import { Route as AuthMfaRouteImport } from './routes/auth/mfa'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as AuthForgotPasswordRouteImport } from './routes/auth/forgot-password'
 import { Route as AuthAccountBlockedRouteImport } from './routes/auth/account-blocked'
+import { Route as AdminVenuesRouteImport } from './routes/admin/venues'
 import { Route as AdminUsersRouteImport } from './routes/admin/users'
 import { Route as AdminSessionsRouteImport } from './routes/admin/sessions'
 import { Route as AdminSchedulesRouteImport } from './routes/admin/schedules'
@@ -118,6 +122,11 @@ const TutorNotesRoute = TutorNotesRouteImport.update({
   path: '/notes',
   getParentRoute: () => TutorRouteRoute,
 } as any)
+const TutorMobileScanRoute = TutorMobileScanRouteImport.update({
+  id: '/mobile-scan',
+  path: '/mobile-scan',
+  getParentRoute: () => TutorRouteRoute,
+} as any)
 const TutorMessagingRoute = TutorMessagingRouteImport.update({
   id: '/messaging',
   path: '/messaging',
@@ -159,9 +168,19 @@ const LecturerScheduleRoute = LecturerScheduleRouteImport.update({
   path: '/schedule',
   getParentRoute: () => LecturerRouteRoute,
 } as any)
+const LecturerRoomAccessRoute = LecturerRoomAccessRouteImport.update({
+  id: '/room-access',
+  path: '/room-access',
+  getParentRoute: () => LecturerRouteRoute,
+} as any)
 const LecturerReportsRoute = LecturerReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => LecturerRouteRoute,
+} as any)
+const LecturerNotificationsRoute = LecturerNotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => LecturerRouteRoute,
 } as any)
 const LecturerMessagesRoute = LecturerMessagesRouteImport.update({
@@ -208,6 +227,11 @@ const AuthAccountBlockedRoute = AuthAccountBlockedRouteImport.update({
   id: '/auth/account-blocked',
   path: '/auth/account-blocked',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminVenuesRoute = AdminVenuesRouteImport.update({
+  id: '/venues',
+  path: '/venues',
+  getParentRoute: () => AdminRouteRoute,
 } as any)
 const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
@@ -285,6 +309,7 @@ export interface FileRoutesByFullPath {
   '/admin/schedules': typeof AdminSchedulesRoute
   '/admin/sessions': typeof AdminSessionsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/venues': typeof AdminVenuesRoute
   '/auth/account-blocked': typeof AuthAccountBlockedRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -294,7 +319,9 @@ export interface FileRoutesByFullPath {
   '/lecturer/analytics': typeof LecturerAnalyticsRoute
   '/lecturer/attendance': typeof LecturerAttendanceRoute
   '/lecturer/messages': typeof LecturerMessagesRoute
+  '/lecturer/notifications': typeof LecturerNotificationsRoute
   '/lecturer/reports': typeof LecturerReportsRoute
+  '/lecturer/room-access': typeof LecturerRoomAccessRoute
   '/lecturer/schedule': typeof LecturerScheduleRoute
   '/lecturer/sessions': typeof LecturerSessionsRoute
   '/lecturer/tutors': typeof LecturerTutorsRoute
@@ -303,6 +330,7 @@ export interface FileRoutesByFullPath {
   '/tutor/earnings': typeof TutorEarningsRoute
   '/tutor/help': typeof TutorHelpRoute
   '/tutor/messaging': typeof TutorMessagingRoute
+  '/tutor/mobile-scan': typeof TutorMobileScanRoute
   '/tutor/notes': typeof TutorNotesRoute
   '/tutor/notifications': typeof TutorNotificationsRoute
   '/tutor/register-generation': typeof TutorRegisterGenerationRoute
@@ -327,6 +355,7 @@ export interface FileRoutesByTo {
   '/admin/schedules': typeof AdminSchedulesRoute
   '/admin/sessions': typeof AdminSessionsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/venues': typeof AdminVenuesRoute
   '/auth/account-blocked': typeof AuthAccountBlockedRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -336,7 +365,9 @@ export interface FileRoutesByTo {
   '/lecturer/analytics': typeof LecturerAnalyticsRoute
   '/lecturer/attendance': typeof LecturerAttendanceRoute
   '/lecturer/messages': typeof LecturerMessagesRoute
+  '/lecturer/notifications': typeof LecturerNotificationsRoute
   '/lecturer/reports': typeof LecturerReportsRoute
+  '/lecturer/room-access': typeof LecturerRoomAccessRoute
   '/lecturer/schedule': typeof LecturerScheduleRoute
   '/lecturer/sessions': typeof LecturerSessionsRoute
   '/lecturer/tutors': typeof LecturerTutorsRoute
@@ -345,6 +376,7 @@ export interface FileRoutesByTo {
   '/tutor/earnings': typeof TutorEarningsRoute
   '/tutor/help': typeof TutorHelpRoute
   '/tutor/messaging': typeof TutorMessagingRoute
+  '/tutor/mobile-scan': typeof TutorMobileScanRoute
   '/tutor/notes': typeof TutorNotesRoute
   '/tutor/notifications': typeof TutorNotificationsRoute
   '/tutor/register-generation': typeof TutorRegisterGenerationRoute
@@ -373,6 +405,7 @@ export interface FileRoutesById {
   '/admin/schedules': typeof AdminSchedulesRoute
   '/admin/sessions': typeof AdminSessionsRoute
   '/admin/users': typeof AdminUsersRoute
+  '/admin/venues': typeof AdminVenuesRoute
   '/auth/account-blocked': typeof AuthAccountBlockedRoute
   '/auth/forgot-password': typeof AuthForgotPasswordRoute
   '/auth/login': typeof AuthLoginRoute
@@ -382,7 +415,9 @@ export interface FileRoutesById {
   '/lecturer/analytics': typeof LecturerAnalyticsRoute
   '/lecturer/attendance': typeof LecturerAttendanceRoute
   '/lecturer/messages': typeof LecturerMessagesRoute
+  '/lecturer/notifications': typeof LecturerNotificationsRoute
   '/lecturer/reports': typeof LecturerReportsRoute
+  '/lecturer/room-access': typeof LecturerRoomAccessRoute
   '/lecturer/schedule': typeof LecturerScheduleRoute
   '/lecturer/sessions': typeof LecturerSessionsRoute
   '/lecturer/tutors': typeof LecturerTutorsRoute
@@ -391,6 +426,7 @@ export interface FileRoutesById {
   '/tutor/earnings': typeof TutorEarningsRoute
   '/tutor/help': typeof TutorHelpRoute
   '/tutor/messaging': typeof TutorMessagingRoute
+  '/tutor/mobile-scan': typeof TutorMobileScanRoute
   '/tutor/notes': typeof TutorNotesRoute
   '/tutor/notifications': typeof TutorNotificationsRoute
   '/tutor/register-generation': typeof TutorRegisterGenerationRoute
@@ -420,6 +456,7 @@ export interface FileRouteTypes {
     | '/admin/schedules'
     | '/admin/sessions'
     | '/admin/users'
+    | '/admin/venues'
     | '/auth/account-blocked'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -429,7 +466,9 @@ export interface FileRouteTypes {
     | '/lecturer/analytics'
     | '/lecturer/attendance'
     | '/lecturer/messages'
+    | '/lecturer/notifications'
     | '/lecturer/reports'
+    | '/lecturer/room-access'
     | '/lecturer/schedule'
     | '/lecturer/sessions'
     | '/lecturer/tutors'
@@ -438,6 +477,7 @@ export interface FileRouteTypes {
     | '/tutor/earnings'
     | '/tutor/help'
     | '/tutor/messaging'
+    | '/tutor/mobile-scan'
     | '/tutor/notes'
     | '/tutor/notifications'
     | '/tutor/register-generation'
@@ -462,6 +502,7 @@ export interface FileRouteTypes {
     | '/admin/schedules'
     | '/admin/sessions'
     | '/admin/users'
+    | '/admin/venues'
     | '/auth/account-blocked'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -471,7 +512,9 @@ export interface FileRouteTypes {
     | '/lecturer/analytics'
     | '/lecturer/attendance'
     | '/lecturer/messages'
+    | '/lecturer/notifications'
     | '/lecturer/reports'
+    | '/lecturer/room-access'
     | '/lecturer/schedule'
     | '/lecturer/sessions'
     | '/lecturer/tutors'
@@ -480,6 +523,7 @@ export interface FileRouteTypes {
     | '/tutor/earnings'
     | '/tutor/help'
     | '/tutor/messaging'
+    | '/tutor/mobile-scan'
     | '/tutor/notes'
     | '/tutor/notifications'
     | '/tutor/register-generation'
@@ -507,6 +551,7 @@ export interface FileRouteTypes {
     | '/admin/schedules'
     | '/admin/sessions'
     | '/admin/users'
+    | '/admin/venues'
     | '/auth/account-blocked'
     | '/auth/forgot-password'
     | '/auth/login'
@@ -516,7 +561,9 @@ export interface FileRouteTypes {
     | '/lecturer/analytics'
     | '/lecturer/attendance'
     | '/lecturer/messages'
+    | '/lecturer/notifications'
     | '/lecturer/reports'
+    | '/lecturer/room-access'
     | '/lecturer/schedule'
     | '/lecturer/sessions'
     | '/lecturer/tutors'
@@ -525,6 +572,7 @@ export interface FileRouteTypes {
     | '/tutor/earnings'
     | '/tutor/help'
     | '/tutor/messaging'
+    | '/tutor/mobile-scan'
     | '/tutor/notes'
     | '/tutor/notifications'
     | '/tutor/register-generation'
@@ -646,6 +694,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TutorNotesRouteImport
       parentRoute: typeof TutorRouteRoute
     }
+    '/tutor/mobile-scan': {
+      id: '/tutor/mobile-scan'
+      path: '/mobile-scan'
+      fullPath: '/tutor/mobile-scan'
+      preLoaderRoute: typeof TutorMobileScanRouteImport
+      parentRoute: typeof TutorRouteRoute
+    }
     '/tutor/messaging': {
       id: '/tutor/messaging'
       path: '/messaging'
@@ -702,11 +757,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LecturerScheduleRouteImport
       parentRoute: typeof LecturerRouteRoute
     }
+    '/lecturer/room-access': {
+      id: '/lecturer/room-access'
+      path: '/room-access'
+      fullPath: '/lecturer/room-access'
+      preLoaderRoute: typeof LecturerRoomAccessRouteImport
+      parentRoute: typeof LecturerRouteRoute
+    }
     '/lecturer/reports': {
       id: '/lecturer/reports'
       path: '/reports'
       fullPath: '/lecturer/reports'
       preLoaderRoute: typeof LecturerReportsRouteImport
+      parentRoute: typeof LecturerRouteRoute
+    }
+    '/lecturer/notifications': {
+      id: '/lecturer/notifications'
+      path: '/notifications'
+      fullPath: '/lecturer/notifications'
+      preLoaderRoute: typeof LecturerNotificationsRouteImport
       parentRoute: typeof LecturerRouteRoute
     }
     '/lecturer/messages': {
@@ -771,6 +840,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/account-blocked'
       preLoaderRoute: typeof AuthAccountBlockedRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/venues': {
+      id: '/admin/venues'
+      path: '/venues'
+      fullPath: '/admin/venues'
+      preLoaderRoute: typeof AdminVenuesRouteImport
+      parentRoute: typeof AdminRouteRoute
     }
     '/admin/users': {
       id: '/admin/users'
@@ -870,6 +946,7 @@ interface AdminRouteRouteChildren {
   AdminSchedulesRoute: typeof AdminSchedulesRoute
   AdminSessionsRoute: typeof AdminSessionsRoute
   AdminUsersRoute: typeof AdminUsersRoute
+  AdminVenuesRoute: typeof AdminVenuesRoute
   AdminIndexRoute: typeof AdminIndexRoute
 }
 
@@ -884,6 +961,7 @@ const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminSchedulesRoute: AdminSchedulesRoute,
   AdminSessionsRoute: AdminSessionsRoute,
   AdminUsersRoute: AdminUsersRoute,
+  AdminVenuesRoute: AdminVenuesRoute,
   AdminIndexRoute: AdminIndexRoute,
 }
 
@@ -895,7 +973,9 @@ interface LecturerRouteRouteChildren {
   LecturerAnalyticsRoute: typeof LecturerAnalyticsRoute
   LecturerAttendanceRoute: typeof LecturerAttendanceRoute
   LecturerMessagesRoute: typeof LecturerMessagesRoute
+  LecturerNotificationsRoute: typeof LecturerNotificationsRoute
   LecturerReportsRoute: typeof LecturerReportsRoute
+  LecturerRoomAccessRoute: typeof LecturerRoomAccessRoute
   LecturerScheduleRoute: typeof LecturerScheduleRoute
   LecturerSessionsRoute: typeof LecturerSessionsRoute
   LecturerTutorsRoute: typeof LecturerTutorsRoute
@@ -907,7 +987,9 @@ const LecturerRouteRouteChildren: LecturerRouteRouteChildren = {
   LecturerAnalyticsRoute: LecturerAnalyticsRoute,
   LecturerAttendanceRoute: LecturerAttendanceRoute,
   LecturerMessagesRoute: LecturerMessagesRoute,
+  LecturerNotificationsRoute: LecturerNotificationsRoute,
   LecturerReportsRoute: LecturerReportsRoute,
+  LecturerRoomAccessRoute: LecturerRoomAccessRoute,
   LecturerScheduleRoute: LecturerScheduleRoute,
   LecturerSessionsRoute: LecturerSessionsRoute,
   LecturerTutorsRoute: LecturerTutorsRoute,
@@ -923,6 +1005,7 @@ interface TutorRouteRouteChildren {
   TutorEarningsRoute: typeof TutorEarningsRoute
   TutorHelpRoute: typeof TutorHelpRoute
   TutorMessagingRoute: typeof TutorMessagingRoute
+  TutorMobileScanRoute: typeof TutorMobileScanRoute
   TutorNotesRoute: typeof TutorNotesRoute
   TutorNotificationsRoute: typeof TutorNotificationsRoute
   TutorRegisterGenerationRoute: typeof TutorRegisterGenerationRoute
@@ -937,6 +1020,7 @@ const TutorRouteRouteChildren: TutorRouteRouteChildren = {
   TutorEarningsRoute: TutorEarningsRoute,
   TutorHelpRoute: TutorHelpRoute,
   TutorMessagingRoute: TutorMessagingRoute,
+  TutorMobileScanRoute: TutorMobileScanRoute,
   TutorNotesRoute: TutorNotesRoute,
   TutorNotificationsRoute: TutorNotificationsRoute,
   TutorRegisterGenerationRoute: TutorRegisterGenerationRoute,

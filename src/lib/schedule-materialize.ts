@@ -9,6 +9,7 @@ import {
   loadScheduledSessionSnapshotsForIds,
   syncCancelledSessionsBatch,
 } from "#/lib/schedule-sync";
+import { syncVenueUnlockForSessionRow } from "#/lib/schedule-sync/effects/venue-unlock";
 import { restoreSoftDeleteFields } from "#/lib/soft-delete";
 import {
   DEFAULT_PUBLISH_HORIZON_WEEKS,
@@ -234,7 +235,7 @@ async function applyMaterializePlan(
 
   for (const action of plan.actions) {
     if (action.kind === "insert") {
-      const { error } = await db.from("scheduled_sessions").insert({
+      const { data: insertedRow, error } = await db.from("scheduled_sessions").insert({
         series_id: series.id,
         module_id: series.module_id,
         tutor_id: series.tutor_id,
@@ -244,9 +245,16 @@ async function applyMaterializePlan(
         venue_text: series.venue_text,
         status: "SCHEDULED",
         original_starts_at: action.startsAt,
-      });
+      }).select("id").single();
       if (error) throw new Error(error.message);
       inserted += 1;
+      const institutionId = await getModuleInstitutionId(db, series.module_id);
+      await syncVenueUnlockForSessionRow(db, {
+        institutionId,
+        scheduledSessionId: insertedRow.id as string,
+        venueId: series.venue_id,
+        status: "SCHEDULED",
+      });
     } else if (action.kind === "update") {
       const { error } = await db
         .from("scheduled_sessions")
@@ -262,6 +270,13 @@ async function applyMaterializePlan(
         .is("deleted_at", null);
       if (error) throw new Error(error.message);
       updated += 1;
+      const institutionId = await getModuleInstitutionId(db, series.module_id);
+      await syncVenueUnlockForSessionRow(db, {
+        institutionId,
+        scheduledSessionId: action.sessionId,
+        venueId: series.venue_id,
+        status: "SCHEDULED",
+      });
     } else if (action.kind === "restore") {
       const { error } = await db
         .from("scheduled_sessions")
@@ -277,6 +292,13 @@ async function applyMaterializePlan(
         .eq("id", action.sessionId);
       if (error) throw new Error(error.message);
       restored += 1;
+      const institutionId = await getModuleInstitutionId(db, series.module_id);
+      await syncVenueUnlockForSessionRow(db, {
+        institutionId,
+        scheduledSessionId: action.sessionId,
+        venueId: series.venue_id,
+        status: "SCHEDULED",
+      });
     } else if (action.kind === "cancel") {
       const { error } = await db
         .from("scheduled_sessions")
