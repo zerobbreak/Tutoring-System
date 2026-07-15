@@ -16,6 +16,7 @@ This file is the living status board for the codebase. Whenever any meaningful c
 
 ## Completed
 
+- Added a rule to delete any temporary files, test files, scratch files, or scripts created to test or work on something after finding the solution (appended to [AGENTS.md](file:///c:/Users/uthac/OneDrive/Documents/programing/MERN/tutoring_system/AGENTS.md) and [.cursor/rules/codebase-maintenance.mdc](file:///c:/Users/uthac/OneDrive/Documents/programing/MERN/tutoring_system/.cursor/rules/codebase-maintenance.mdc)).
 - Replaced the venue text input in the tutor session request dialog (`src/components/tutor/sessions/tutor-request-session-dialog.tsx`) with a select dropdown listing active venues fetched via a new server action `listActiveVenuesFn` in `src/server-actions/tutor-sessions/list-active-venues.ts`. The dropdown preserves existing/custom venue values when resubmitting a session request.
 - Implemented a session delete cycle (`deleteCompletedSessions`) in `src/server-actions/session-automation/run-jobs.ts` that soft-deletes `scheduled_sessions` once their linked `session_claims` are fully completed (i.e. status is `APPROVED` and they exist in `payroll_export_claims` junction table). Associated venue unlock requests are cancelled on best-effort basis, and unit tests are colocated in `run-jobs.test.ts`.
 - Pushed database migrations to remote Supabase database (`20260606120000_venue_unlock_system.sql` and `20260714120000_fix_missing_venues_access_control.sql`) using `pnpm dlx supabase db push --include-all`.

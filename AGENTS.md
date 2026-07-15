@@ -176,6 +176,7 @@ Vitest + Testing Library. Colocate tests with the code they cover (e.g. `src/lib
 - **Do not** add payment processing — payroll is export-only (CSV batches).
 - **Do not** create git commits or push unless the user explicitly asks.
 - **Do not** add README or docs sections unless the user asks.
+- **Do** delete any temporary files, test files, scratch files, or scripts created to test/work on something once you have found the solution or completed the task.
 
 ## Core workflow (claims → payroll)
 

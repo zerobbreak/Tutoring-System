@@ -16,6 +16,7 @@ Every change should leave the project easier to work in, not harder.
 ## Quality bar
 
 - Remove unused imports, dead code, and commented-out blocks you introduced.
+- Delete any temporary files, test files, scratch files, or scripts created to test/work on something once you have found the solution.
 - Prefer clear names and small functions over clever one-liners.
 - Reuse existing utilities and UI primitives (`src/components/ui/`) before adding new ones.
 - Keep types accurate; avoid `any` unless the surrounding code already does and you are unblocking a fix.
