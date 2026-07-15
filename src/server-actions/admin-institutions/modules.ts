@@ -88,7 +88,7 @@ function parseModuleRateCents(
 }
 
 export const createModuleFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => createSchema.parse(input))
+  .validator((input: unknown) => createSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const ctx = await requireAdminContext(supabase);
@@ -133,7 +133,7 @@ export const createModuleFn = createServerFn({ method: "POST" })
   });
 
 export const updateModuleFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => updateSchema.parse(input))
+  .validator((input: unknown) => updateSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const ctx = await requireAdminContext(supabase);

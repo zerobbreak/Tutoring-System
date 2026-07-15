@@ -21,7 +21,7 @@ const claimIdSchema = z.object({
 });
 
 export const getApprovalClaimFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => claimIdSchema.parse(input))
+  .validator((input: unknown) => claimIdSchema.parse(input))
   .handler(async ({ data }): Promise<AdminApprovalClaimDetailDTO> => {
     const supabase = createSupabaseServerClient();
     await requireAdminContext(supabase);

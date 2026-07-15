@@ -53,7 +53,7 @@ async function loadClaimParties(supabase: ReturnType<typeof createSupabaseServer
 }
 
 export const getOrCreateClaimConversationFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => claimSchema.parse(input))
+  .validator((input: unknown) => claimSchema.parse(input))
   .handler(async ({ data }): Promise<{ conversationId: string }> => {
     const supabase = createSupabaseServerClient();
     const userId = await requireUserId(supabase);
@@ -90,7 +90,7 @@ export const getOrCreateClaimConversationFn = createServerFn({ method: "POST" })
   });
 
 export const getOrCreateSessionConversationFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => claimSchema.parse(input))
+  .validator((input: unknown) => claimSchema.parse(input))
   .handler(async ({ data }): Promise<{ conversationId: string }> => {
     const supabase = createSupabaseServerClient();
     const userId = await requireUserId(supabase);
@@ -129,7 +129,7 @@ export const getOrCreateSessionConversationFn = createServerFn({ method: "POST" 
 export const getOrCreateAttendanceConversationFn = createServerFn({
   method: "POST",
 })
-  .inputValidator((input: unknown) => claimSchema.parse(input))
+  .validator((input: unknown) => claimSchema.parse(input))
   .handler(async ({ data }): Promise<{ conversationId: string }> => {
     const supabase = createSupabaseServerClient();
     const userId = await requireUserId(supabase);
@@ -166,7 +166,7 @@ export const getOrCreateAttendanceConversationFn = createServerFn({
   });
 
 export const getOrCreateDisputeConversationFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => disputeSchema.parse(input))
+  .validator((input: unknown) => disputeSchema.parse(input))
   .handler(async ({ data }): Promise<{ conversationId: string }> => {
     const supabase = createSupabaseServerClient();
     const userId = await requireUserId(supabase);
@@ -218,7 +218,7 @@ export const getOrCreateDisputeConversationFn = createServerFn({ method: "POST" 
   });
 
 export const getOrCreateDirectConversationFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z.object({ tutorId: z.string().uuid() }).parse(input),
   )
   .handler(async ({ data }): Promise<{ conversationId: string }> => {
@@ -243,7 +243,7 @@ export const getOrCreateDirectConversationFn = createServerFn({ method: "POST" }
   });
 
 export const getOrCreatePeerConversationFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z.object({ peerUserId: z.string().uuid() }).parse(input),
   )
   .handler(async ({ data }): Promise<{ conversationId: string }> => {

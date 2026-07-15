@@ -46,7 +46,7 @@ function actionLabel(action: VerificationActionKind): string {
 }
 
 export const performVerificationActionFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => actionSchema.parse(input))
+  .validator((input: unknown) => actionSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const lecturerId = await requireLecturerId(supabase);

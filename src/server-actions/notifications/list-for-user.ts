@@ -21,7 +21,7 @@ const listSchema = z.object({
 });
 
 export const listNotificationsForUserFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => listSchema.parse(input ?? {}))
+  .validator((input: unknown) => listSchema.parse(input ?? {}))
   .handler(async ({ data }): Promise<NotificationRowDTO[]> => {
     const supabase = createSupabaseServerClient();
     const userId = await requireNotificationUserId(supabase);

@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { logInstitutionAudit } from "#/lib/audit-log";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import type { VenueUnlockStatus } from "#/lib/venue-access";
 import { requireUnlockResponderContext } from "#/lib/venue-unlock-server";
@@ -12,7 +11,7 @@ const boardSchema = z.object({
 });
 
 export const getVenueUnlockBoardFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => boardSchema.parse(input))
+  .validator((input: unknown) => boardSchema.parse(input))
   .handler(async ({ data }): Promise<{ items: VenueUnlockBoardItemDTO[] }> => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireUnlockResponderContext(supabase);
@@ -75,9 +74,9 @@ export const getVenueUnlockBoardFn = createServerFn({ method: "GET" })
 
     const items: VenueUnlockBoardItemDTO[] = (sessions ?? [])
       .filter((row) => {
-        const mod = row.module as { institution_id: string } | null;
+        const mod = row.module as unknown as { institution_id: string } | null;
         if (mod?.institution_id !== institutionId) return false;
-        const venue = row.venue as { access_control: string } | null;
+        const venue = row.venue as unknown as { access_control: string } | null;
         return venue?.access_control === "FACIAL_RECOGNITION";
       })
       .map((row) => {
@@ -100,10 +99,10 @@ export const getVenueUnlockBoardFn = createServerFn({ method: "GET" })
             }[]
           | null;
         const unlock = Array.isArray(unlockRaw) ? unlockRaw[0] : unlockRaw;
-        const mod = row.module as { code: string; name: string };
-        const tutor = row.tutor as { full_name: string } | null;
-        const series = row.series as { title: string } | null;
-        const venue = row.venue as { id: string; name: string } | null;
+        const mod = row.module as unknown as { code: string; name: string };
+        const tutor = row.tutor as unknown as { full_name: string } | null;
+        const series = row.series as unknown as { title: string } | null;
+        const venue = row.venue as unknown as { id: string; name: string } | null;
         const claimant = unlock?.claimed_by_user;
         const claimantName = Array.isArray(claimant)
           ? claimant[0]?.full_name ?? null

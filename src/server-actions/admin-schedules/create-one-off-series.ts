@@ -17,7 +17,7 @@ const oneOffSchema = z.object({
 });
 
 export const adminCreateOneOffScheduleSeriesFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => oneOffSchema.parse(input))
+  .validator((input: unknown) => oneOffSchema.parse(input))
   .handler(async ({ data }): Promise<{ seriesId: string; sessionCount: number }> => {
     const supabase = createSupabaseServerClient();
     const { userId, institutionId } = await requireAdminContext(supabase);

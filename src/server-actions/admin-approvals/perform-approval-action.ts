@@ -50,7 +50,7 @@ const ACTION_MAP: Record<AdminApprovalActionKind, ActionConfig> = {
 };
 
 export const performAdminApprovalActionFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => actionSchema.parse(input))
+  .validator((input: unknown) => actionSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { userId } = await requireAdminContext(supabase);

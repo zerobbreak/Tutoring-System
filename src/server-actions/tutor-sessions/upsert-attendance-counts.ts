@@ -11,7 +11,7 @@ const attendanceCountsSchema = z.object({
 });
 
 export const upsertAttendanceCountsFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => attendanceCountsSchema.parse(input))
+  .validator((input: unknown) => attendanceCountsSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const tutorId = await requireUserId(supabase);

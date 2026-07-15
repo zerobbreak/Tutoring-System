@@ -11,12 +11,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "#/components/ui/dialog";
-import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import { formatClock } from "#/lib/session-claim-display";
 import { toast } from "#/lib/toast";
 import {
   createSessionClaimFn,
+  listActiveVenuesFn,
   listTutorModuleAssignmentsFn,
   resubmitSessionRequestFn,
   type TutorSessionClaimDTO,
@@ -27,7 +27,9 @@ const TIME_SLOTS = (() => {
   for (let minutes = 6 * 60; minutes <= 23 * 60 + 45; minutes += 15) {
     const hour = Math.floor(minutes / 60);
     const minute = minutes % 60;
-    slots.push(`${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`);
+    slots.push(
+      `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
+    );
   }
   return slots;
 })();
@@ -36,6 +38,21 @@ const START_TIME_SLOTS = TIME_SLOTS.slice(0, TIME_SLOTS.length - 1);
 
 function getNextTimeSlot(slot: string) {
   return TIME_SLOTS.find((value) => value > slot) ?? TIME_SLOTS[TIME_SLOTS.length - 1];
+}
+
+function parseClockMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function isSameLocalDay(left: Date, right: Date) {
+  return format(left, "yyyy-MM-dd") === format(right, "yyyy-MM-dd");
+}
+
+function getAvailableStartSlots(date: Date, now: Date) {
+  if (!isSameLocalDay(date, now)) return START_TIME_SLOTS;
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  return START_TIME_SLOTS.filter((slot) => parseClockMinutes(slot) > currentMinutes);
 }
 
 export function TutorRequestSessionDialog({
@@ -52,6 +69,9 @@ export function TutorRequestSessionDialog({
   const [modules, setModules] = useState<
     Awaited<ReturnType<typeof listTutorModuleAssignmentsFn>>
   >([]);
+  const [venuesList, setVenuesList] = useState<
+    Awaited<ReturnType<typeof listActiveVenuesFn>>
+  >([]);
   const [moduleId, setModuleId] = useState("");
   const [date, setDate] = useState(() => new Date());
   const [start, setStart] = useState("09:00");
@@ -60,15 +80,13 @@ export function TutorRequestSessionDialog({
   const [sessionKind, setSessionKind] = useState("tutorial");
   const [requestReason, setRequestReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
     if (!open) return;
-    if (!TIME_SLOTS.includes(start)) {
-      setStart("09:00");
-    }
-    if (!TIME_SLOTS.includes(end)) {
-      setEnd("10:00");
-    }
+    setNow(new Date());
+    const timer = window.setInterval(() => setNow(new Date()), 60000);
+    return () => window.clearInterval(timer);
   }, [open]);
 
   useEffect(() => {
@@ -104,7 +122,47 @@ export function TutorRequestSessionDialog({
         setModules([]);
       }
     })();
+    void (async () => {
+      try {
+        const v = await listActiveVenuesFn();
+        setVenuesList(v);
+      } catch {
+        setVenuesList([]);
+      }
+    })();
   }, [open, resubmitClaim]);
+
+  const availableStartSlots = getAvailableStartSlots(date, now);
+  const sameDayTimeBlocked =
+    isSameLocalDay(date, now) &&
+    parseClockMinutes(start) <= now.getHours() * 60 + now.getMinutes();
+  const noFutureStartSlots = isSameLocalDay(date, now) && availableStartSlots.length === 0;
+  const blockedRequestMessage = noFutureStartSlots
+    ? "No future start times remain for today. Please choose another date."
+    : sameDayTimeBlocked
+      ? "This same-day start time has already passed."
+      : null;
+  const endSlots = TIME_SLOTS.filter((slot) => slot > start);
+
+  useEffect(() => {
+    if (!open) return;
+    if (availableStartSlots.length === 0) return;
+    if (availableStartSlots.includes(start)) return;
+
+    const nextStart = availableStartSlots[0] ?? START_TIME_SLOTS[0];
+    setStart(nextStart);
+    setEnd((prev) =>
+      TIME_SLOTS.indexOf(prev) > TIME_SLOTS.indexOf(nextStart)
+        ? prev
+        : getNextTimeSlot(nextStart),
+    );
+  }, [availableStartSlots, open, start]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (TIME_SLOTS.indexOf(end) > TIME_SLOTS.indexOf(start)) return;
+    setEnd(getNextTimeSlot(start));
+  }, [end, open, start]);
 
   const durationLabel = (() => {
     const [sh, sm] = start.split(":").map(Number);
@@ -138,7 +196,7 @@ export function TutorRequestSessionDialog({
             >
               {modules.map((m) => (
                 <option key={m.moduleId} value={m.moduleId}>
-                  {m.code} — {m.name}
+                  {m.code} - {m.name}
                 </option>
               ))}
             </select>
@@ -179,8 +237,9 @@ export function TutorRequestSessionDialog({
                     setEnd(getNextTimeSlot(selectedStart));
                   }
                 }}
+                disabled={noFutureStartSlots}
               >
-                {START_TIME_SLOTS.map((slot) => (
+                {availableStartSlots.map((slot) => (
                   <option key={slot} value={slot}>
                     {slot}
                   </option>
@@ -194,8 +253,9 @@ export function TutorRequestSessionDialog({
                 className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm dark:bg-input/30"
                 value={end}
                 onChange={(e) => setEnd(e.target.value)}
+                disabled={noFutureStartSlots}
               >
-                {TIME_SLOTS.filter((slot) => slot > start).map((slot) => (
+                {endSlots.map((slot) => (
                   <option key={slot} value={slot}>
                     {slot}
                   </option>
@@ -206,13 +266,35 @@ export function TutorRequestSessionDialog({
           <p className="text-xs text-muted-foreground">
             Duration: {durationLabel}
           </p>
+          {blockedRequestMessage ? (
+            <p className="text-xs font-medium text-destructive">
+              {blockedRequestMessage}
+            </p>
+          ) : null}
           <div className="grid gap-1.5">
-            <Label>Venue</Label>
-            <Input
+            <Label htmlFor="session-venue">Venue</Label>
+            <select
+              id="session-venue"
+              className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm dark:bg-input/30"
               value={venue}
               onChange={(e) => setVenue(e.target.value)}
-              placeholder="Room or link"
-            />
+            >
+              <option value="">Select a venue...</option>
+              {venuesList.map((v) => {
+                const val = v.name + (v.code ? ` (${v.code})` : "");
+                return (
+                  <option key={v.id} value={val}>
+                    {v.name}
+                    {v.code ? ` (${v.code})` : ""}
+                  </option>
+                );
+              })}
+              {venue &&
+                !venuesList.some(
+                  (v) =>
+                    v.name + (v.code ? ` (${v.code})` : "") === venue,
+                ) && <option value={venue}>{venue}</option>}
+            </select>
           </div>
           <div className="grid gap-1.5">
             <Label>Reason</Label>
@@ -226,8 +308,18 @@ export function TutorRequestSessionDialog({
         </div>
         <DialogFooter>
           <Button
-            disabled={busy || !moduleId || requestReason.trim().length < 10}
+            disabled={
+              busy ||
+              !moduleId ||
+              requestReason.trim().length < 10 ||
+              Boolean(blockedRequestMessage)
+            }
             onClick={async () => {
+              if (blockedRequestMessage) {
+                toast.error(blockedRequestMessage);
+                return;
+              }
+
               setBusy(true);
               try {
                 const payload = {
@@ -249,9 +341,7 @@ export function TutorRequestSessionDialog({
                   if (result.budgetWarning) {
                     toast.warning(result.budgetWarning);
                   }
-                  toast.success(
-                    "Session request sent — awaiting admin approval",
-                  );
+                  toast.success("Session request sent - awaiting admin approval");
                 }
                 onOpenChange(false);
                 await onSaved();

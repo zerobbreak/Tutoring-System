@@ -168,7 +168,7 @@ export const listPendingTutorSessionCreationsFn = createServerFn({
 });
 
 export const approveTutorSessionCreationFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => claimIdSchema.parse(input))
+  .validator((input: unknown) => claimIdSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { userId } = await requireAdminContext(supabase);
@@ -181,7 +181,7 @@ export const approveTutorSessionCreationFn = createServerFn({ method: "POST" })
   });
 
 export const rejectTutorSessionCreationFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => rejectSchema.parse(input))
+  .validator((input: unknown) => rejectSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { userId } = await requireAdminContext(supabase);
@@ -223,7 +223,7 @@ export const rejectTutorSessionCreationFn = createServerFn({ method: "POST" })
 export const suggestChangesTutorSessionCreationFn = createServerFn({
   method: "POST",
 })
-  .inputValidator((input: unknown) => suggestChangesSchema.parse(input))
+  .validator((input: unknown) => suggestChangesSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { userId } = await requireAdminContext(supabase);

@@ -71,7 +71,7 @@ function attendanceRate(
 }
 
 export const generateLecturerReportFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => reportFiltersSchema.parse(input))
+  .validator((input: unknown) => reportFiltersSchema.parse(input))
   .handler(async ({ data }): Promise<ReportResultDTO> => {
     const supabase = createSupabaseServerClient();
     await requireLecturerId(supabase);

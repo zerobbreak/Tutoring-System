@@ -65,7 +65,7 @@ function workflowMetadataForType(
 }
 
 export const createConversationFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => createConversationSchema.parse(d))
+  .validator((d: unknown) => createConversationSchema.parse(d))
   .handler(async ({ data: { type, participants, title, metadata } }) => {
     const supabase = createSupabaseServerClient();
     const userId = await requireUserId(supabase);

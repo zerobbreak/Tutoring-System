@@ -15,7 +15,7 @@ const deleteDraftClaimsSchema = z.object({
 
 /** Discard a draft claim (tutor-owned only). */
 export const deleteDraftSessionClaimFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => deleteDraftClaimSchema.parse(input))
+  .validator((input: unknown) => deleteDraftClaimSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const tutorId = await requireUserId(supabase);
@@ -45,7 +45,7 @@ export const deleteDraftSessionClaimFn = createServerFn({ method: "POST" })
 
 /** Discard multiple draft claims (tutor-owned only). */
 export const deleteDraftSessionClaimsFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => deleteDraftClaimsSchema.parse(input))
+  .validator((input: unknown) => deleteDraftClaimsSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const tutorId = await requireUserId(supabase);

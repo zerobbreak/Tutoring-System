@@ -19,7 +19,7 @@ const updateSchedulingSchema = z.object({
 export const updateSessionClaimSchedulingFn = createServerFn({
   method: "POST",
 })
-  .inputValidator((input: unknown) => updateSchedulingSchema.parse(input))
+  .validator((input: unknown) => updateSchedulingSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const tutorId = await requireUserId(supabase);

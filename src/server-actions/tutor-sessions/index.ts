@@ -14,6 +14,7 @@ export {
   registerAttendanceEvidenceFn,
 } from "./attendance-evidence";
 export { listTutorModuleAssignmentsFn } from "./list-tutor-module-assignments";
+export { listActiveVenuesFn } from "./list-active-venues";
 export { generateSessionTokenFn } from "./generate-session-token";
 export {
   getAttendanceDataFn,
@@ -36,5 +37,6 @@ export type {
   ClaimDetailsDTO,
   AttendanceEvidenceRow,
   TutorModuleOption,
+  TutorActiveVenueOption,
   ScanStudentForSessionResult,
 } from "./types";

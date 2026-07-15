@@ -16,7 +16,7 @@ const schema = z.object({
 });
 
 export const getVenueUnlockStatusForTutorFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => schema.parse(input))
+  .validator((input: unknown) => schema.parse(input))
   .handler(async ({ data }): Promise<{ items: TutorVenueUnlockStatusDTO[] }> => {
     const supabase = createSupabaseServerClient();
     const tutorId = await requireUserId(supabase);
@@ -67,7 +67,7 @@ export const getVenueUnlockStatusForTutorFn = createServerFn({ method: "GET" })
 
     const items: TutorVenueUnlockStatusDTO[] = (sessions ?? [])
       .filter((row) => {
-        const venue = row.venue as { access_control: string } | null;
+        const venue = row.venue as unknown as { access_control: string } | null;
         return venue?.access_control === "FACIAL_RECOGNITION";
       })
       .map((row) => {
@@ -82,7 +82,7 @@ export const getVenueUnlockStatusForTutorFn = createServerFn({ method: "GET" })
             }[]
           | null;
         const unlock = Array.isArray(unlockRaw) ? unlockRaw[0] : unlockRaw;
-        const venue = row.venue as { name: string } | null;
+        const venue = row.venue as unknown as { name: string } | null;
         const claimant = unlock?.claimed_by_user;
         const claimedByName = Array.isArray(claimant)
           ? claimant[0]?.full_name ?? null

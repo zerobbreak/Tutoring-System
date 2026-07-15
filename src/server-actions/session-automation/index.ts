@@ -15,7 +15,7 @@ function assertCronSecret(secret: string): void {
 }
 
 export const runSessionAutomationCronFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => cronSchema.parse(input))
+  .validator((input: unknown) => cronSchema.parse(input))
   .handler(async ({ data }) => {
     assertCronSecret(data.secret);
     const db = getSupabaseAdmin();

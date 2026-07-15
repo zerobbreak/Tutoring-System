@@ -8,7 +8,7 @@ const deleteSchema = z.object({
 });
 
 export const deleteVenueFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => deleteSchema.parse(input))
+  .validator((input: unknown) => deleteSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);

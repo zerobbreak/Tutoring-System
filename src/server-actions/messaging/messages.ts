@@ -43,7 +43,7 @@ function mapAttachments(rows: unknown[]): MessageAttachmentDTO[] {
 }
 
 export const getConversationMessagesFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => getMessagesSchema.parse(input ?? {}))
+  .validator((input: unknown) => getMessagesSchema.parse(input ?? {}))
   // @ts-expect-error TanStack ServerFn handler inference
   .handler(async ({ data: input }) => {
     const { conversationId, limit, offset } = input;
@@ -92,7 +92,7 @@ export const getConversationMessagesFn = createServerFn({ method: "POST" })
   });
 
 export const sendMessageFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => sendMessageSchema.parse(d))
+  .validator((d: unknown) => sendMessageSchema.parse(d))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const userId = await requireUserId(supabase);
@@ -156,7 +156,7 @@ export const sendMessageFn = createServerFn({ method: "POST" })
   });
 
 export const markConversationAsReadFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => markReadSchema.parse(d))
+  .validator((d: unknown) => markReadSchema.parse(d))
   .handler(async ({ data: { conversationId } }) => {
     const supabase = createSupabaseServerClient();
     const userId = await requireUserId(supabase);

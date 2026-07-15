@@ -4,7 +4,7 @@ import { requireUserId } from "./require-user";
 import { avatarSchema, uploadAvatarSchema } from "./types";
 
 export const updateAvatarUrlFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => avatarSchema.parse(input))
+  .validator((input: unknown) => avatarSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     await requireUserId(supabase);
@@ -18,7 +18,7 @@ export const updateAvatarUrlFn = createServerFn({ method: "POST" })
   });
 
 export const uploadAvatarFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => uploadAvatarSchema.parse(input))
+  .validator((input: unknown) => uploadAvatarSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const userId = await requireUserId(supabase);

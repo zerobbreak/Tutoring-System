@@ -97,7 +97,7 @@ const uploadSchema = z.object({
 });
 
 export const uploadOnboardingDocumentFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => uploadSchema.parse(input))
+  .validator((input: unknown) => uploadSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const userId = await requireUserId(supabase);

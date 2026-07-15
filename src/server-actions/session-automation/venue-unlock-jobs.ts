@@ -77,7 +77,7 @@ export async function completeStartedUnlockRequests(
 
   let completed = 0;
   for (const row of data ?? []) {
-    const session = row.scheduled_session as { starts_at: string } | null;
+    const session = row.scheduled_session as unknown as { starts_at: string } | null;
     if (!session?.starts_at) continue;
     if (isAfter(now, parseISO(session.starts_at))) {
       const { error: upErr } = await db
@@ -126,7 +126,7 @@ export async function runVenueUnlockDailyDigest(
     const requestIds: string[] = [];
 
     for (const req of requests ?? []) {
-      const session = req.scheduled_session as {
+      const session = req.scheduled_session as unknown as {
         starts_at: string;
         module: { code: string } | null;
         venue: { name: string } | null;
@@ -201,7 +201,7 @@ export async function runVenueUnlockJitAlerts(
     if (error) throw new Error(error.message);
 
     for (const req of requests ?? []) {
-      const session = req.scheduled_session as {
+      const session = req.scheduled_session as unknown as {
         starts_at: string;
         module: { code: string } | null;
         venue: { name: string } | null;
@@ -276,7 +276,7 @@ export async function runVenueUnlockUrgentEscalation(
     if (error) throw new Error(error.message);
 
     for (const req of requests ?? []) {
-      const session = req.scheduled_session as {
+      const session = req.scheduled_session as unknown as {
         starts_at: string;
         module: { code: string } | null;
         venue: { name: string } | null;

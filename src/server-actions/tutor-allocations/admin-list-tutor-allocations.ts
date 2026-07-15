@@ -7,7 +7,7 @@ import type { TutorHourAllocationDTO } from "./list-tutor-allocations";
 const schema = z.object({ tutorId: z.string().uuid() });
 
 export const adminListTutorAllocationsFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => schema.parse(input))
+  .validator((input: unknown) => schema.parse(input))
   .handler(async ({ data }): Promise<TutorHourAllocationDTO[]> => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);

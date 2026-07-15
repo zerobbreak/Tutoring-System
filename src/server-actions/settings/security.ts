@@ -6,7 +6,7 @@ import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import { requireUserId } from "./require-user";
 
 export const syncMfaEnabledFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z.object({ enabled: z.boolean() }).parse(input),
   )
   .handler(async ({ data }) => {
@@ -36,7 +36,7 @@ export const syncMfaEnabledFn = createServerFn({ method: "POST" })
   });
 
 export const logSecurityEventFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         eventType: z.string().min(1),

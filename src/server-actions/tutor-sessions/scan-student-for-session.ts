@@ -13,7 +13,7 @@ import type { ScanStudentForSessionResult } from "#/server-actions/tutor-session
 
 /** Tutor scans a student card to mark them present for the active session. */
 export const scanStudentForSessionFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         claimId: z.string().uuid(),

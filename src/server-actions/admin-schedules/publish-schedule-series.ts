@@ -6,7 +6,7 @@ import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { publishSeriesSchema } from "./schemas";
 
 export const adminPublishScheduleSeriesFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => publishSeriesSchema.parse(input))
+  .validator((input: unknown) => publishSeriesSchema.parse(input))
   .handler(async ({ data }): Promise<{ sessionCount: number; repairedOnly: boolean }> => {
     const supabase = createSupabaseServerClient();
     const { userId, institutionId } = await requireAdminContext(supabase);

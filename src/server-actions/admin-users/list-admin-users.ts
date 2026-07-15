@@ -10,7 +10,7 @@ const listSchema = z.object({
 });
 
 export const listAdminUsersFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => listSchema.parse(input ?? {}))
+  .validator((input: unknown) => listSchema.parse(input ?? {}))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);

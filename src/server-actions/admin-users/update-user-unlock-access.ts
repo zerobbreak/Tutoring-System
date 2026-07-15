@@ -12,7 +12,7 @@ const schema = z.object({
 });
 
 export const updateUserUnlockAccessFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => schema.parse(input))
+  .validator((input: unknown) => schema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const ctx = await requireAdminContext(supabase);

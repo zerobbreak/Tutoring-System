@@ -70,7 +70,7 @@ function formatScheduleAuditLabel(
 }
 
 export const getSessionTimelineFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => inputSchema.parse(input))
+  .validator((input: unknown) => inputSchema.parse(input))
   .handler(async ({ data }): Promise<SessionTimelineEntryDTO[]> => {
     const supabase = createSupabaseServerClient();
     const entries: SessionTimelineEntryDTO[] = [];

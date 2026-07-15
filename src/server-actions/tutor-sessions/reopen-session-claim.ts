@@ -15,7 +15,7 @@ const reopenClaimSchema = z.object({
 
 /** Reopen a rejected/disputed claim so the tutor can correct and resubmit it. */
 export const reopenSessionClaimFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => reopenClaimSchema.parse(input))
+  .validator((input: unknown) => reopenClaimSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const tutorId = await requireUserId(supabase);

@@ -124,7 +124,7 @@ function buildEscalated(
 }
 
 export const listApprovalsQueueFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => listSchema.parse(input ?? {}))
+  .validator((input: unknown) => listSchema.parse(input ?? {}))
   .handler(async ({ data }): Promise<AdminApprovalsQueueDTO> => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);

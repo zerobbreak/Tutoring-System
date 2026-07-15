@@ -10,7 +10,7 @@ const createVenueSchema = z.object({
 });
 
 export const createVenueFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => createVenueSchema.parse(input))
+  .validator((input: unknown) => createVenueSchema.parse(input))
   .handler(async ({ data }): Promise<{ venueId: string }> => {
     const supabase = createSupabaseServerClient();
     const lecturerId = await requireLecturerId(supabase);

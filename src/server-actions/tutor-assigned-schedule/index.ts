@@ -28,7 +28,7 @@ export type TutorAssignedScheduleEventDTO = {
 };
 
 export const listTutorAssignedScheduleFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => rangeSchema.parse(input))
+  .validator((input: unknown) => rangeSchema.parse(input))
   .handler(async ({ data }): Promise<{ events: TutorAssignedScheduleEventDTO[] }> => {
     const supabase = createSupabaseServerClient();
     const {
@@ -148,7 +148,7 @@ const changeRequestSchema = z.object({
 });
 
 export const submitTutorScheduleChangeRequestFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => changeRequestSchema.parse(input))
+  .validator((input: unknown) => changeRequestSchema.parse(input))
   .handler(async ({ data }): Promise<{ requestId: string }> => {
     const supabase = createSupabaseServerClient();
     const {

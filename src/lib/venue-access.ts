@@ -2,6 +2,13 @@ export const VENUE_ACCESS_CONTROLS = ["OPEN", "FACIAL_RECOGNITION"] as const;
 
 export type VenueAccessControl = (typeof VENUE_ACCESS_CONTROLS)[number];
 
+export function isMissingVenueAccessControlColumnError(
+  error: { message?: string | null } | null | undefined,
+): boolean {
+  const message = error?.message ?? "";
+  return message.includes("access_control") && message.includes("does not exist");
+}
+
 export const VENUE_UNLOCK_STATUSES = [
   "PENDING",
   "CLAIMED",

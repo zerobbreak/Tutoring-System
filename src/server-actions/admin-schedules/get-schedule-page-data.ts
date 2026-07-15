@@ -15,18 +15,31 @@ import {
   parseSchedulingSettings,
   resolveModuleIdsForScope,
 } from "./helpers";
-import type { VenueUnlockStatus } from "#/lib/venue-access";
+import {
+  isMissingVenueAccessControlColumnError,
+  type VenueAccessControl,
+  type VenueUnlockStatus,
+} from "#/lib/venue-access";
 import { pageDataSchema } from "./schemas";
 import type { AdminSchedulePageDataDTO } from "./types";
 
 export const getAdminSchedulePageDataFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => pageDataSchema.parse(input))
+  .validator((input: unknown) => pageDataSchema.parse(input))
   .handler(async ({ data }): Promise<AdminSchedulePageDataDTO> => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);
 
     const scope = data.scope;
     const scopeEntityId = data.scopeEntityId ?? null;
+
+    type VenueRow = {
+      id: string;
+      name: string;
+      code: string | null;
+      capacity: number | null;
+      is_active: boolean;
+      access_control?: VenueAccessControl;
+    };
 
     const { data: institution, error: instErr } = await supabase
       .from("institutions")
@@ -95,14 +108,32 @@ export const getAdminSchedulePageDataFn = createServerFn({ method: "GET" })
 
     if (lecErr) throw new Error(lecErr.message);
 
-    const { data: venues, error: venueErr } = await supabase
+    const venueSelect =
+      "id, name, code, capacity, is_active, access_control";
+    const fallbackVenueSelect = "id, name, code, capacity, is_active";
+
+    let venues: VenueRow[] | null = null;
+    let venueErr: { message?: string | null } | null = null;
+
+    ({ data: venues, error: venueErr } = await supabase
       .from("venues")
-      .select("id, name, code, capacity, is_active, access_control")
+      .select(venueSelect)
       .eq("institution_id", institutionId)
       .eq("is_active", true)
-      .order("name");
+      .order("name"));
 
-    if (venueErr) throw new Error(venueErr.message);
+    if (venueErr && isMissingVenueAccessControlColumnError(venueErr)) {
+      ({ data: venues, error: venueErr } = await supabase
+        .from("venues")
+        .select(fallbackVenueSelect)
+        .eq("institution_id", institutionId)
+        .eq("is_active", true)
+        .order("name"));
+    }
+
+    if (venueErr) {
+      throw new Error(venueErr.message ?? "Failed to load venues.");
+    }
 
     const tutorIdsByModule: Record<string, string[]> = {};
     const allModuleIds = (modules ?? []).map((m) => m.id as string);
@@ -125,7 +156,12 @@ export const getAdminSchedulePageDataFn = createServerFn({ method: "GET" })
 
     const facialVenueIds = new Set(
       (venues ?? [])
-        .filter((v) => v.access_control === "FACIAL_RECOGNITION")
+        .filter(
+          (v) =>
+            (((v as { access_control?: unknown }).access_control as
+              | VenueAccessControl
+              | undefined) ?? "OPEN") === "FACIAL_RECOGNITION",
+        )
         .map((v) => v.id as string),
     );
 

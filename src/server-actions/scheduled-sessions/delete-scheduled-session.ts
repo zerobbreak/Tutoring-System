@@ -9,7 +9,7 @@ import {
 import { sessionActionSchema } from "./schemas";
 
 export const adminDeleteScheduledSessionFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => sessionActionSchema.parse(input))
+  .validator((input: unknown) => sessionActionSchema.parse(input))
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const supabase = createSupabaseServerClient();
     const { userId, institutionId } = await requireAdminContext(supabase);

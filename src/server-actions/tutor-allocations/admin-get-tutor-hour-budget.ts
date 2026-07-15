@@ -8,7 +8,7 @@ import { loadTutorBudgetContext } from "./load-budget-context";
 const schema = z.object({ tutorId: z.string().uuid() });
 
 export const adminGetTutorHourBudgetFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => schema.parse(input))
+  .validator((input: unknown) => schema.parse(input))
   .handler(async ({ data }): Promise<TutorHourBudgetSummary> => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);

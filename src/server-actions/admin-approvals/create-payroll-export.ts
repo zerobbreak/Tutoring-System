@@ -21,7 +21,7 @@ function escapeCsv(value: string): string {
 }
 
 export const createPayrollExportFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => exportSchema.parse(input))
+  .validator((input: unknown) => exportSchema.parse(input))
   .handler(async ({ data }): Promise<PayrollExportResultDTO> => {
     const supabase = createSupabaseServerClient();
     const { userId, institutionId } = await requireAdminContext(supabase);

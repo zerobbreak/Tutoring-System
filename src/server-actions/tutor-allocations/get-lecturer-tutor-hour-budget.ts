@@ -11,7 +11,7 @@ const schema = z.object({
 });
 
 export const getLecturerTutorHourBudgetFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => schema.parse(input))
+  .validator((input: unknown) => schema.parse(input))
   .handler(async ({ data }): Promise<TutorHourBudgetSummary> => {
     const supabase = createSupabaseServerClient();
     const lecturerId = await requireLecturerId(supabase);

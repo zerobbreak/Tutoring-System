@@ -12,7 +12,7 @@ import { mapFeedbackRow } from "#/server-actions/private-session-feedback/map-ro
 import type { PrivateSessionFeedbackDTO } from "#/server-actions/private-session-feedback/types";
 
 export const upsertPrivateSessionFeedbackFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     upsertPrivateFeedbackInputSchema.parse(input),
   )
   .handler(async ({ data }): Promise<PrivateSessionFeedbackDTO> => {

@@ -10,6 +10,7 @@ import { repairDraftClaimScheduleMismatches } from "#/lib/schedule-sync/repair-d
 import { isAttendanceLocked, qrWindowForScheduledSession } from "#/lib/session-qr-window";
 import { normalizeSupabaseNestedRow } from "#/lib/supabase-nested-row";
 import { runVenueUnlockAutomation } from "#/server-actions/session-automation/venue-unlock-jobs";
+import { cancelVenueUnlockForSoftDeletedSession } from "#/lib/schedule-sync/effects/venue-unlock";
 
 const AUTO_SUBMIT_GRACE_HOURS = 2;
 const DRAFT_REMINDER_HOURS = 48;
@@ -28,6 +29,7 @@ export type SessionAutomationJobResult = {
   unlockDigestSent: number;
   unlockJitSent: number;
   unlockUrgentSent: number;
+  completedSessionsDeleted: number;
 };
 
 async function lockEndedAttendance(db: SupabaseClient): Promise<number> {
@@ -406,6 +408,55 @@ async function repairDraftClaimsAllInstitutions(
   return total;
 }
 
+export async function deleteCompletedSessions(db: SupabaseClient): Promise<number> {
+  const { data: claims, error: claimsErr } = await db
+    .from("session_claims")
+    .select(`
+      source_scheduled_session_id,
+      payroll_export_claims!inner ( claim_id )
+    `)
+    .eq("status", "APPROVED")
+    .is("deleted_at", null)
+    .not("source_scheduled_session_id", "is", null);
+
+  if (claimsErr) throw new Error(claimsErr.message);
+
+  const sessionIds = Array.from(
+    new Set(
+      (claims ?? [])
+        .map((c) => c.source_scheduled_session_id)
+        .filter(Boolean) as string[]
+    )
+  );
+
+  if (sessionIds.length === 0) return 0;
+
+  const now = new Date().toISOString();
+  const { data: updated, error: updateErr } = await db
+    .from("scheduled_sessions")
+    .update({
+      deleted_at: now,
+      deleted_by: null,
+      deletion_reason: "Completed claim processed in payroll",
+    })
+    .in("id", sessionIds)
+    .is("deleted_at", null)
+    .select("id");
+
+  if (updateErr) throw new Error(updateErr.message);
+
+  const updatedIds = (updated ?? []).map((s) => s.id as string);
+  for (const sessionId of updatedIds) {
+    try {
+      await cancelVenueUnlockForSoftDeletedSession(db, sessionId);
+    } catch {
+      // best effort
+    }
+  }
+
+  return updatedIds.length;
+}
+
 export async function runSessionAutomationJobs(
   db: SupabaseClient | null = getSupabaseAdmin(),
 ): Promise<SessionAutomationJobResult> {
@@ -418,6 +469,7 @@ export async function runSessionAutomationJobs(
   const autoSubmitted = await autoSubmitEligibleClaims(db);
   const remindersSent = await runSessionReminders(db);
   const draftClaimsRepaired = await repairDraftClaimsAllInstitutions(db);
+  const completedSessionsDeleted = await deleteCompletedSessions(db);
   const { processed: outboxProcessed, failed: outboxFailed } =
     await processJobOutbox(db);
   const {
@@ -440,6 +492,7 @@ export async function runSessionAutomationJobs(
     unlockDigestSent,
     unlockJitSent,
     unlockUrgentSent,
+    completedSessionsDeleted,
   };
 }
 

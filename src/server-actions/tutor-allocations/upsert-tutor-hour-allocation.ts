@@ -11,7 +11,7 @@ const schema = z.object({
 });
 
 export const upsertTutorHourAllocationFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => schema.parse(input))
+  .validator((input: unknown) => schema.parse(input))
   .handler(async ({ data }): Promise<{ id: string }> => {
     const supabase = createSupabaseServerClient();
     const lecturerId = await requireLecturerId(supabase);

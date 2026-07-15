@@ -30,7 +30,7 @@ function domainErrorMessage(err: { message: string; code?: string }): string {
 }
 
 export const updateInstitutionProfileFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => profileSchema.parse(input))
+  .validator((input: unknown) => profileSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);

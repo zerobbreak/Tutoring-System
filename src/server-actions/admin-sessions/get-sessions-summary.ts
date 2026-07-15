@@ -17,7 +17,7 @@ const EVIDENCE_EXPECTED_STATUSES = [
 
 /** Lightweight summary refresh when list payload is not reloaded. */
 export const getAdminSessionsSummaryFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => sessionFiltersSchema.parse(input))
+  .validator((input: unknown) => sessionFiltersSchema.parse(input))
   .handler(async ({ data }): Promise<AdminSessionsSummaryDTO> => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);

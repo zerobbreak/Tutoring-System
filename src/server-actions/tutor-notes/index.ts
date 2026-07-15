@@ -88,7 +88,7 @@ const updateNotesSchema = z.object({
 });
 
 export const updateSessionNotesFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => updateNotesSchema.parse(input))
+  .validator((input: unknown) => updateNotesSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const uid = await requireUserId(supabase);

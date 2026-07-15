@@ -13,7 +13,7 @@ const reviewSchema = z.object({
 
 /** Lecturer may reject or suggest changes; admin approves and materializes schedule. */
 export const reviewTutorSessionRequestFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => reviewSchema.parse(input))
+  .validator((input: unknown) => reviewSchema.parse(input))
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const supabase = createSupabaseServerClient();
     const lecturerId = await requireLecturerId(supabase);

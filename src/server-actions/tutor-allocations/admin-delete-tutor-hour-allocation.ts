@@ -6,7 +6,7 @@ import { createSupabaseServerClient } from "#/lib/supabase-server";
 const schema = z.object({ allocationId: z.string().uuid() });
 
 export const adminDeleteTutorHourAllocationFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => schema.parse(input))
+  .validator((input: unknown) => schema.parse(input))
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);

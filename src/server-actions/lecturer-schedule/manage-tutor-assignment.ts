@@ -13,7 +13,7 @@ const assignSchema = z.object({
 });
 
 export const assignTutorToModuleFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => assignSchema.parse(input))
+  .validator((input: unknown) => assignSchema.parse(input))
   .handler(async ({ data }): Promise<{ assignmentId: string }> => {
     const supabase = createSupabaseServerClient();
     const lecturerId = await requireLecturerId(supabase);

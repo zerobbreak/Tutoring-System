@@ -19,7 +19,7 @@ const uploadEvidenceSchema = z.object({
 
 /** Evidence rows for a claim, with short-lived signed URLs when possible. */
 export const listAttendanceEvidenceFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => listEvidenceSchema.parse(input))
+  .validator((input: unknown) => listEvidenceSchema.parse(input))
   .handler(async ({ data }): Promise<AttendanceEvidenceRow[]> => {
     const supabase = createSupabaseServerClient();
     const tutorId = await requireUserId(supabase);
@@ -65,7 +65,7 @@ export const listAttendanceEvidenceFn = createServerFn({ method: "POST" })
 export const registerAttendanceEvidenceFn = createServerFn({
   method: "POST",
 })
-  .inputValidator((input: unknown) => uploadEvidenceSchema.parse(input))
+  .validator((input: unknown) => uploadEvidenceSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const tutorId = await requireUserId(supabase);

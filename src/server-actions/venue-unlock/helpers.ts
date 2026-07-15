@@ -35,7 +35,7 @@ export async function loadUnlockSessionContext(
   if (error) throw new Error(error.message);
   if (!session) throw new Error("Session not found.");
 
-  const mod = session.module as {
+  const mod = session.module as unknown as {
     code: string;
     name: string;
     institution_id: string;
@@ -44,7 +44,7 @@ export async function loadUnlockSessionContext(
     throw new Error("Session not found or access denied.");
   }
 
-  const venue = session.venue as { name: string } | null;
+  const venue = session.venue as unknown as { name: string } | null;
   const venueName =
     venue?.name ?? (session.venue_text as string | null)?.trim() ?? "the room";
 

@@ -14,7 +14,7 @@ import type {
 const idSchema = z.object({ userId: z.string().uuid() });
 
 export const getAdminUserDetailFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => idSchema.parse(input))
+  .validator((input: unknown) => idSchema.parse(input))
   .handler(async ({ data }): Promise<AdminUserDetailDTO> => {
     const supabase = createSupabaseServerClient();
     const ctx = await requireAdminContext(supabase);

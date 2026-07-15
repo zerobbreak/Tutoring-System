@@ -9,7 +9,7 @@ const claimIdSchema = z.object({ claimId: z.string().uuid() });
 export const getPrivateSessionFeedbackForClaimFn = createServerFn({
   method: "GET",
 })
-  .inputValidator((input: unknown) => claimIdSchema.parse(input))
+  .validator((input: unknown) => claimIdSchema.parse(input))
   .handler(async ({ data }): Promise<PrivateSessionFeedbackDTO | null> => {
     const supabase = createSupabaseServerClient();
     const {

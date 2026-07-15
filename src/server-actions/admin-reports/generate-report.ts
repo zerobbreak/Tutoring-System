@@ -33,7 +33,7 @@ function toFilters(data: {
 }
 
 export const generateAdminReportFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => adminReportFiltersSchema.parse(input))
+  .validator((input: unknown) => adminReportFiltersSchema.parse(input))
   .handler(async ({ data }): Promise<AdminReportResultDTO> => {
     const supabase = createSupabaseServerClient();
     const ctx = await loadAdminInstitutionContext(supabase);

@@ -28,7 +28,7 @@ export const getDashboardPreferencesFn = createServerFn({ method: "GET" }).handl
 );
 
 export const updateUserPreferencesFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => preferencesSchema.parse(input))
+  .validator((input: unknown) => preferencesSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const userId = await requireUserId(supabase);

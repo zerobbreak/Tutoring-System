@@ -9,7 +9,7 @@ const deleteConversationSchema = z.object({
 });
 
 export const deleteConversationFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => deleteConversationSchema.parse(input))
+  .validator((input: unknown) => deleteConversationSchema.parse(input))
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const supabase = createSupabaseServerClient();
     const userId = await requireUserId(supabase);

@@ -21,7 +21,7 @@ const resubmitSessionRequestSchema = z.object({
 
 /** Update and resubmit a session request after lecturer/admin requested changes. */
 export const resubmitSessionRequestFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => resubmitSessionRequestSchema.parse(input))
+  .validator((input: unknown) => resubmitSessionRequestSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const tutorId = await requireUserId(supabase);

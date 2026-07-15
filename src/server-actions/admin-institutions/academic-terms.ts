@@ -48,7 +48,7 @@ async function clearCurrentTerms(
 }
 
 export const createAcademicTermFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => createSchema.parse(input))
+  .validator((input: unknown) => createSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);
@@ -78,7 +78,7 @@ export const createAcademicTermFn = createServerFn({ method: "POST" })
   });
 
 export const updateAcademicTermFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => updateSchema.parse(input))
+  .validator((input: unknown) => updateSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);
@@ -110,7 +110,7 @@ export const updateAcademicTermFn = createServerFn({ method: "POST" })
   });
 
 export const deleteAcademicTermFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => idSchema.parse(input))
+  .validator((input: unknown) => idSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);
@@ -127,7 +127,7 @@ export const deleteAcademicTermFn = createServerFn({ method: "POST" })
   });
 
 export const setCurrentAcademicTermFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => idSchema.parse(input))
+  .validator((input: unknown) => idSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);

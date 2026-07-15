@@ -5,7 +5,7 @@ import { requireUserId } from "./require-user";
 import { accountProfileSchema, institutionSchema } from "./types";
 
 export const updateAccountProfileFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => accountProfileSchema.parse(input))
+  .validator((input: unknown) => accountProfileSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     await requireUserId(supabase);
@@ -27,7 +27,7 @@ export const updateAccountProfileFn = createServerFn({ method: "POST" })
   });
 
 export const updateInstitutionFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => institutionSchema.parse(input))
+  .validator((input: unknown) => institutionSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     await requireUserId(supabase);

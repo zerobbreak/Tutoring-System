@@ -22,7 +22,7 @@ const EVIDENCE_EXPECTED_STATUSES: readonly ClaimStatus[] = [
 ];
 
 export const getLecturerSessionDetailFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => claimIdSchema.parse(input))
+  .validator((input: unknown) => claimIdSchema.parse(input))
   .handler(async ({ data }): Promise<LecturerSessionDetailDTO> => {
     const supabase = createSupabaseServerClient();
     await requireLecturerId(supabase);

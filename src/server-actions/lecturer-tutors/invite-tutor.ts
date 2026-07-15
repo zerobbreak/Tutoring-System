@@ -15,7 +15,7 @@ const inviteSchema = z.object({
 });
 
 export const inviteTutorToModuleFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => inviteSchema.parse(input))
+  .validator((input: unknown) => inviteSchema.parse(input))
   .handler(
     async ({
       data,

@@ -11,7 +11,7 @@ import { studentRosterInputSchema } from "#/server-actions/tutor-sessions/studen
 
 /** Tutor manually registers a student on the session roster. */
 export const registerStudentForSessionFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         claimId: z.string().uuid(),

@@ -83,7 +83,7 @@ export function parseScheduleWorkbookBuffer(
  * Expects row-oriented sheets with a detectable header (Start + End, or Date + Start + End).
  */
 export const parseScheduleUploadFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => scheduleFileUploadSchema.parse(input))
+  .validator((input: unknown) => scheduleFileUploadSchema.parse(input))
   .handler(async ({ data }): Promise<ScheduleParseResult> => {
     const supabase = createSupabaseServerClient();
     const {

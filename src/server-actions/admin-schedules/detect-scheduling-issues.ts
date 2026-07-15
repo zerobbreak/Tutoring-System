@@ -16,7 +16,7 @@ import { issuesSchema } from "./schemas";
 import type { DetectSchedulingIssuesResultDTO } from "./types";
 
 export const detectSchedulingIssuesFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => issuesSchema.parse(input))
+  .validator((input: unknown) => issuesSchema.parse(input))
   .handler(async ({ data }): Promise<DetectSchedulingIssuesResultDTO> => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);

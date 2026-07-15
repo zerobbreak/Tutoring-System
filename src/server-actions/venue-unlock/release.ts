@@ -14,7 +14,7 @@ const schema = z.object({
 });
 
 export const releaseVenueUnlockFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => schema.parse(input))
+  .validator((input: unknown) => schema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     let ctx: { userId: string; institutionId: string; isAdmin: boolean };

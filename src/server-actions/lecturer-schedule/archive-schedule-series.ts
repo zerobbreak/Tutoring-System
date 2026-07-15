@@ -9,7 +9,7 @@ const schema = z.object({
 });
 
 export const archiveScheduleSeriesFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => schema.parse(input))
+  .validator((input: unknown) => schema.parse(input))
   .handler(async ({ data }): Promise<{ cancelledSessionCount: number }> => {
     const supabase = createSupabaseServerClient();
     const lecturerId = await requireLecturerId(supabase);

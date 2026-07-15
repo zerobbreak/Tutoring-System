@@ -35,7 +35,7 @@ const CLAIM_STATS_SELECT = `
 `;
 
 export const getLecturerTutorDetailFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => tutorIdSchema.parse(input))
+  .validator((input: unknown) => tutorIdSchema.parse(input))
   .handler(async ({ data }): Promise<LecturerTutorDetailDTO> => {
     const supabase = createSupabaseServerClient();
     const lecturerId = await requireLecturerId(supabase);

@@ -20,7 +20,7 @@ const createClaimSchema = z.object({
 
 /** Create a manual session claim (draft). */
 export const createSessionClaimFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => createClaimSchema.parse(input))
+  .validator((input: unknown) => createClaimSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const tutorId = await requireUserId(supabase);

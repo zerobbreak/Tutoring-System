@@ -1,7 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { format, parseISO } from "date-fns";
 import type { ScheduleSyncEvent } from "#/lib/schedule-sync/types";
-import type { VenueUnlockStatus } from "#/lib/venue-access";
+import {
+  isMissingVenueAccessControlColumnError,
+  type VenueUnlockStatus,
+} from "#/lib/venue-access";
 
 type Db = SupabaseClient;
 
@@ -15,9 +18,21 @@ export async function venueRequiresUnlock(
     .select("access_control, is_active")
     .eq("id", venueId)
     .maybeSingle();
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (isMissingVenueAccessControlColumnError(error)) {
+      const { data: fallbackData, error: fallbackError } = await db
+        .from("venues")
+        .select("is_active")
+        .eq("id", venueId)
+        .maybeSingle();
+      if (fallbackError) throw new Error(fallbackError.message);
+      return Boolean(fallbackData?.is_active);
+    }
+    throw new Error(error.message);
+  }
   if (!data?.is_active) return false;
-  return data.access_control === "FACIAL_RECOGNITION";
+  const accessControl = (data as { access_control?: unknown }).access_control;
+  return accessControl === "FACIAL_RECOGNITION";
 }
 
 async function notifyUnlockCancelled(
@@ -256,7 +271,7 @@ export async function cancelVenueUnlockForSoftDeletedSession(
 
   const claimantId = existing.claimed_by as string | null;
   if (claimantId && session) {
-    const mod = session.module as { code: string; name: string } | null;
+    const mod = session.module as unknown as { code: string; name: string } | null;
     const label = mod ? `${mod.code} · ${mod.name}` : "A session";
     const when = session.starts_at && session.ends_at
       ? sessionWhen(session.starts_at as string, session.ends_at as string)

@@ -24,7 +24,7 @@ const exceptionSchema = z.object({
 });
 
 export const createSeriesExceptionFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => exceptionSchema.parse(input))
+  .validator((input: unknown) => exceptionSchema.parse(input))
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const supabase = createSupabaseServerClient();
     const lecturerId = await requireLecturerId(supabase);

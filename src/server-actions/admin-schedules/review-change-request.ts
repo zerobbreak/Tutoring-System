@@ -14,7 +14,7 @@ import { reviewChangeSchema } from "./schemas";
 export const adminReviewScheduleChangeRequestFn = createServerFn({
   method: "POST",
 })
-  .inputValidator((input: unknown) => reviewChangeSchema.parse(input))
+  .validator((input: unknown) => reviewChangeSchema.parse(input))
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const supabase = createSupabaseServerClient();
     const { userId, institutionId } = await requireAdminContext(supabase);

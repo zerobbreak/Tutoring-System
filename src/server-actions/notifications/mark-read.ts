@@ -8,7 +8,7 @@ const idSchema = z.object({
 });
 
 export const markNotificationReadFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => idSchema.parse(input))
+  .validator((input: unknown) => idSchema.parse(input))
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const supabase = createSupabaseServerClient();
     const userId = await requireNotificationUserId(supabase);

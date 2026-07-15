@@ -11,7 +11,7 @@ const schema = z.object({
 });
 
 export const searchMessagesFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => schema.parse(d))
+  .validator((d: unknown) => schema.parse(d))
   .handler(async ({ data }): Promise<MessageSearchResultDTO[]> => {
     const supabase = createSupabaseServerClient();
     const userId = await requireUserId(supabase);

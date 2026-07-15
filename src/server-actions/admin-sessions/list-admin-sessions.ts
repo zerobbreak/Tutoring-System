@@ -19,7 +19,7 @@ const EVIDENCE_EXPECTED_STATUSES = [
 ] as const;
 
 export const listAdminSessionsFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => sessionFiltersSchema.parse(input))
+  .validator((input: unknown) => sessionFiltersSchema.parse(input))
   .handler(async ({ data }): Promise<AdminSessionsPageDataDTO> => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);

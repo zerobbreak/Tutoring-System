@@ -76,7 +76,7 @@ DROP TRIGGER IF EXISTS trg_venue_unlock_requests_updated_at ON public.venue_unlo
 CREATE TRIGGER trg_venue_unlock_requests_updated_at
   BEFORE UPDATE ON public.venue_unlock_requests
   FOR EACH ROW
-  EXECUTE FUNCTION public.set_updated_at();
+  EXECUTE FUNCTION public.update_updated_at_column();
 
 -- ---------------------------------------------------------------------------
 -- notification_type additions

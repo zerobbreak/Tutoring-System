@@ -7,7 +7,7 @@ import { assertModuleInInstitution } from "./helpers";
 import { publishSeriesSchema } from "./schemas";
 
 export const adminDeleteScheduleSeriesFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => publishSeriesSchema.parse(input))
+  .validator((input: unknown) => publishSeriesSchema.parse(input))
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const supabase = createSupabaseServerClient();
     const { userId, institutionId } = await requireAdminContext(supabase);

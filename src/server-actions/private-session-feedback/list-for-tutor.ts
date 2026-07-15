@@ -11,7 +11,7 @@ const listSchema = z.object({
 export const listPrivateSessionFeedbackForTutorFn = createServerFn({
   method: "GET",
 })
-  .inputValidator((input: unknown) => listSchema.parse(input ?? {}))
+  .validator((input: unknown) => listSchema.parse(input ?? {}))
   .handler(async ({ data }): Promise<TutorPrivateFeedbackListItemDTO[]> => {
     const supabase = createSupabaseServerClient();
     const {

@@ -25,7 +25,7 @@ import type {
 export const getClaimDetailsFn = createServerFn({
   method: "GET",
 })
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z.object({ claimId: z.string().uuid() }).parse(input),
   )
   .handler(async ({ data }): Promise<ClaimDetailsDTO> => {

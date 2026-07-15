@@ -22,7 +22,7 @@ const submitClaimSchema = z.object({
 
 /** Submit a draft claim for verification. */
 export const submitSessionClaimFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => submitClaimSchema.parse(input))
+  .validator((input: unknown) => submitClaimSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const tutorId = await requireUserId(supabase);

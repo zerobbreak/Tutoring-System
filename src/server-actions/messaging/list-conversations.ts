@@ -14,7 +14,7 @@ const listConversationsSchema = z.object({
 });
 
 export const listConversationsFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => listConversationsSchema.parse(input ?? {}))
+  .validator((input: unknown) => listConversationsSchema.parse(input ?? {}))
   // @ts-expect-error TanStack ServerFn handler inference
   .handler(async ({ data }) => {
     const type = data.type;

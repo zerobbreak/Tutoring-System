@@ -16,6 +16,17 @@ This file is the living status board for the codebase. Whenever any meaningful c
 
 ## Completed
 
+- Replaced the venue text input in the tutor session request dialog (`src/components/tutor/sessions/tutor-request-session-dialog.tsx`) with a select dropdown listing active venues fetched via a new server action `listActiveVenuesFn` in `src/server-actions/tutor-sessions/list-active-venues.ts`. The dropdown preserves existing/custom venue values when resubmitting a session request.
+- Implemented a session delete cycle (`deleteCompletedSessions`) in `src/server-actions/session-automation/run-jobs.ts` that soft-deletes `scheduled_sessions` once their linked `session_claims` are fully completed (i.e. status is `APPROVED` and they exist in `payroll_export_claims` junction table). Associated venue unlock requests are cancelled on best-effort basis, and unit tests are colocated in `run-jobs.test.ts`.
+- Pushed database migrations to remote Supabase database (`20260606120000_venue_unlock_system.sql` and `20260714120000_fix_missing_venues_access_control.sql`) using `pnpm dlx supabase db push --include-all`.
+- Corrected a typo/error in the `20260606120000_venue_unlock_system.sql` migration, changing the non-existent function `public.set_updated_at` to the correct baseline trigger function `public.update_updated_at_column`.
+- Migrated all `createServerFn().inputValidator()` calls to `.validator()` across 116 files in the codebase to resolve TanStack Start deprecation warnings.
+
+
+- Repaired the missing `venues.access_control` schema path with a new migration and compatibility fallbacks in admin venue/schedule loaders plus the venue-unlock helper, so the admin section can render on older databases while the column is being restored.
+
+- Tutor session request dialog now blocks same-day bookings whose selected start time has already passed, auto-shifts the default start time to the next valid slot, and shows inline rejection feedback before submit.
+
 - **Venue unlock system:** migration (`venues.access_control`, `users.can_unlock_venues`, `venue_unlock_requests`, notification enum values); admin `/admin/venues` route + access control on venues; admin user `can_unlock_venues` toggle; schedule sync hooks (materialize + `syncVenueUnlockFromSchedule`); server actions (board, claim, release, tutor ping); lecturer `/lecturer/room-access` master timetable + `/lecturer/notifications`; admin schedules unlock filter; tutor opening badges + "I'm locked out" ping; session automation cron jobs (digest, JIT, urgent, auto-complete); unit tests in `venue-access.test.ts`.
 
 - Created `context/audit.md`.
@@ -60,6 +71,8 @@ This file is the living status board for the codebase. Whenever any meaningful c
 - The repository has a solid feature set, but the current focus is stabilizing the foundation.
 - TypeScript is exposing real correctness issues in routes, shells, and server actions.
 - The app is being standardized around shared documentation for code standards, theme tokens, and progress tracking.
-- Color usage is being centralized so future UI work stays consistent with the existing palette.
+- Centralized color usage to maintain consistency.
 - Any future repo-wide change should be reflected here immediately under the most relevant header.
 - Foundation consolidation track (Phases 1–5) is closed; no page-level `loadClaims`/`setBooting` list fetches remain on primary tutor/admin/lecturer surfaces.
+- Resolved "Invalid server function ID" and "Query data cannot be undefined" errors by performing a clean restart of the dev server, clearing stale Vite compilation caches that arose during the bulk migration of server actions to the new `.validator()` syntax.
+- Removed explicit `optimizeDeps.include: ['tslib']` from `vite.config.ts` to fix the dependency optimization warning since `tslib` is a transient dependency and not listed directly in `package.json`.

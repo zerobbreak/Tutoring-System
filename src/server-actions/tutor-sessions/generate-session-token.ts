@@ -10,7 +10,7 @@ const generateQRSchema = z.object({
 
 /** Generate/refresh a secure QR token for a session. */
 export const generateSessionTokenFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => generateQRSchema.parse(input))
+  .validator((input: unknown) => generateQRSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const tutorId = await requireUserId(supabase);

@@ -8,7 +8,7 @@ const schema = z.object({
 });
 
 export const deleteTutorHourAllocationFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => schema.parse(input))
+  .validator((input: unknown) => schema.parse(input))
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const supabase = createSupabaseServerClient();
     await requireLecturerId(supabase);

@@ -18,7 +18,7 @@ const reviewSchema = z.object({
 });
 
 export const reviewScheduleChangeRequestFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => reviewSchema.parse(input))
+  .validator((input: unknown) => reviewSchema.parse(input))
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const supabase = createSupabaseServerClient();
     const lecturerId = await requireLecturerId(supabase);

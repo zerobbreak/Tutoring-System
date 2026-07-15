@@ -107,7 +107,7 @@ export const listTutorScheduleImportsFn = createServerFn({
 
 /** Parse a CSV/XLSX upload and persist one `tutor_schedule_imports` row. */
 export const saveTutorScheduleImportFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => scheduleFileUploadSchema.parse(input))
+  .validator((input: unknown) => scheduleFileUploadSchema.parse(input))
   .handler(
     async ({
       data,
@@ -144,7 +144,7 @@ export const saveTutorScheduleImportFn = createServerFn({ method: "POST" })
 
 /** Remove one import row owned by the current tutor. */
 export const deleteTutorScheduleImportFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => deleteImportSchema.parse(input))
+  .validator((input: unknown) => deleteImportSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const tutorId = await requireUserId(supabase);
@@ -180,7 +180,7 @@ export const clearTutorScheduleImportsFn = createServerFn({
 export const ensureSessionClaimForScheduleEventFn = createServerFn({
   method: "POST",
 })
-  .inputValidator((input: unknown) => ensureSessionClaimSchema.parse(input))
+  .validator((input: unknown) => ensureSessionClaimSchema.parse(input))
   .handler(async ({ data }): Promise<{ claimId: string }> => {
     const supabase = createSupabaseServerClient();
     const tutorId = await requireUserId(supabase);

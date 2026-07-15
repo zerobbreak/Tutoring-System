@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAdminContext } from "#/lib/admin-server";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
+import { normalizeSupabaseNestedRow } from "#/lib/supabase-nested-row";
 import type { VenueScheduleDTO } from "./types";
 
 const inputSchema = z.object({
@@ -51,7 +52,7 @@ function extractStartTime(dtstart: unknown): string {
 }
 
 export const getVenueSchedulesFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => inputSchema.parse(input))
+  .validator((input: unknown) => inputSchema.parse(input))
   .handler(
     async ({ data }): Promise<{ schedules: VenueScheduleDTO[] }> => {
       const supabase = createSupabaseServerClient();
@@ -68,8 +69,8 @@ export const getVenueSchedulesFn = createServerFn({ method: "GET" })
       if (error) throw new Error(error.message);
 
       const schedules: VenueScheduleDTO[] = (rows ?? []).map((row) => {
-        const mod = row.modules as { code: string } | null;
-        const user = row.users as { user_metadata: Record<string, unknown> } | null;
+        const mod = normalizeSupabaseNestedRow(row.modules) as { code: string } | null;
+        const user = normalizeSupabaseNestedRow(row.users) as { user_metadata: Record<string, unknown> } | null;
         const fullName =
           user?.user_metadata?.full_name ??
           user?.user_metadata?.name ??

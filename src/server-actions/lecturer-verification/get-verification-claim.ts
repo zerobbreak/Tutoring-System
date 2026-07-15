@@ -20,7 +20,7 @@ const claimIdSchema = z.object({
 });
 
 export const getVerificationClaimFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => claimIdSchema.parse(input))
+  .validator((input: unknown) => claimIdSchema.parse(input))
   .handler(async ({ data }): Promise<VerificationClaimDetailDTO> => {
     const supabase = createSupabaseServerClient();
     await requireLecturerId(supabase);

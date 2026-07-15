@@ -8,7 +8,7 @@ const searchUsersSchema = z.object({
 });
 
 export const searchUsersFn = createServerFn({ method: "POST" })
-  .inputValidator((d: unknown) => searchUsersSchema.parse(d))
+  .validator((d: unknown) => searchUsersSchema.parse(d))
   .handler(async ({ data: { query } }) => {
     const supabase = createSupabaseServerClient();
     const userId = await requireUserId(supabase);

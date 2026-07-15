@@ -17,7 +17,7 @@ const updateSeriesSchema = z.object({
 });
 
 export const updateScheduleSeriesFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => updateSeriesSchema.parse(input))
+  .validator((input: unknown) => updateSeriesSchema.parse(input))
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const supabase = createSupabaseServerClient();
     await requireLecturerId(supabase);

@@ -60,7 +60,7 @@ async function findMatchingInvite(
  * Server Function to handle user registration via admin-issued invite code.
  */
 export const signUpServerFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => signUpInputSchema.parse(input))
+  .validator((input: unknown) => signUpInputSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const admin = getSupabaseAdmin();
@@ -215,7 +215,7 @@ const updateProfileInputSchema = z.object({
  * Server Function to update user profile
  */
 export const updateProfileServerFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => updateProfileInputSchema.parse(input))
+  .validator((input: unknown) => updateProfileInputSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { fullName } = data;

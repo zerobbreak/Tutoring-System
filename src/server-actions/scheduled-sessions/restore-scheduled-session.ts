@@ -9,7 +9,7 @@ import {
 import { restoreSessionSchema } from "./schemas";
 
 export const adminRestoreScheduledSessionFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => restoreSessionSchema.parse(input))
+  .validator((input: unknown) => restoreSessionSchema.parse(input))
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const supabase = createSupabaseServerClient();
     const { userId, institutionId } = await requireAdminContext(supabase);

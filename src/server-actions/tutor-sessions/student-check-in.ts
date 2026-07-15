@@ -25,7 +25,7 @@ export const studentRosterInputSchema = z.object({
 
 /** Session summary for the public check-in page (validates QR token). */
 export const getCheckInSessionPreviewFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         token: z.string().uuid(),
@@ -43,7 +43,7 @@ export const getCheckInSessionPreviewFn = createServerFn({ method: "GET" })
 
 /** Student self check-in via QR token (registers roster entry when new). */
 export const checkInStudentFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z
       .object({
         token: z.string().uuid(),

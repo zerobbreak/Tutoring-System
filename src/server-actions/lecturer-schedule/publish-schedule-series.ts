@@ -9,7 +9,7 @@ const publishSchema = z.object({
 });
 
 export const publishScheduleSeriesFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => publishSchema.parse(input))
+  .validator((input: unknown) => publishSchema.parse(input))
   .handler(async ({ data }): Promise<{ sessionCount: number }> => {
     const supabase = createSupabaseServerClient();
     const lecturerId = await requireLecturerId(supabase);

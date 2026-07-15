@@ -21,7 +21,7 @@ const rescheduleSchema = z.object({
 });
 
 export const rescheduleScheduledSessionFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => rescheduleSchema.parse(input))
+  .validator((input: unknown) => rescheduleSchema.parse(input))
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const supabase = createSupabaseServerClient();
     const lecturerId = await requireLecturerId(supabase);

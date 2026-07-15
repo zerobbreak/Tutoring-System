@@ -86,7 +86,7 @@ function filterClaims(
 }
 
 export const listVerificationQueueFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => listQueueSchema.parse(input ?? {}))
+  .validator((input: unknown) => listQueueSchema.parse(input ?? {}))
   .handler(async ({ data }): Promise<VerificationQueueDataDTO> => {
     const supabase = createSupabaseServerClient();
     const lecturerId = await requireLecturerId(supabase);

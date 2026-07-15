@@ -6,7 +6,7 @@ import { assertModuleInInstitution } from "./helpers";
 import { assignTutorSchema } from "./schemas";
 
 export const adminAssignTutorToModuleFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => assignTutorSchema.parse(input))
+  .validator((input: unknown) => assignTutorSchema.parse(input))
   .handler(async ({ data }): Promise<{ assignmentId: string }> => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);

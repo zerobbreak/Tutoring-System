@@ -18,7 +18,7 @@ const pageDataSchema = z.object({
 });
 
 export const getLecturerSchedulePageDataFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => pageDataSchema.parse(input))
+  .validator((input: unknown) => pageDataSchema.parse(input))
   .handler(async ({ data }): Promise<LecturerSchedulePageDataDTO> => {
     const supabase = createSupabaseServerClient();
     const lecturerId = await requireLecturerId(supabase);

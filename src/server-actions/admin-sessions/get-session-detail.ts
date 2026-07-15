@@ -20,7 +20,7 @@ const EVIDENCE_EXPECTED_STATUSES: readonly ClaimStatus[] = [
 ];
 
 export const getAdminSessionDetailFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => claimIdSchema.parse(input))
+  .validator((input: unknown) => claimIdSchema.parse(input))
   .handler(async ({ data }): Promise<AdminSessionDetailDTO> => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);

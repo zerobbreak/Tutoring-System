@@ -20,7 +20,7 @@ const updateSchema = z.object({
 });
 
 export const updateVenueFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => updateSchema.parse(input))
+  .validator((input: unknown) => updateSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);

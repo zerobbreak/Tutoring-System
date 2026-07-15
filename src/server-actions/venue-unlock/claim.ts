@@ -13,7 +13,7 @@ const schema = z.object({
 });
 
 export const claimVenueUnlockFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => schema.parse(input))
+  .validator((input: unknown) => schema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const ctx = await requireUnlockResponderContext(supabase);
@@ -50,7 +50,7 @@ export const claimVenueUnlockFn = createServerFn({ method: "POST" })
         .eq("scheduled_session_id", data.scheduledSessionId)
         .maybeSingle();
 
-      const claimant = existing?.users as { full_name: string } | null;
+      const claimant = existing?.users as unknown as { full_name: string } | null;
       if (claimant?.full_name) {
         throw new Error(`Already claimed by ${claimant.full_name}.`);
       }

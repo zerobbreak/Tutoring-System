@@ -185,7 +185,7 @@ async function loadClaimParties(
 export const searchInstitutionUsersForAdminFn = createServerFn({
   method: "POST",
 })
-  .inputValidator((input: unknown) => searchSchema.parse(input))
+  .validator((input: unknown) => searchSchema.parse(input))
   .handler(async ({ data }): Promise<AdminMessagingUserDTO[]> => {
     const supabase = createSupabaseServerClient();
     const { userId, institutionId } = await requireAdminContext(supabase);
@@ -210,7 +210,7 @@ export const searchInstitutionUsersForAdminFn = createServerFn({
 export const createAdminDirectConversationFn = createServerFn({
   method: "POST",
 })
-  .inputValidator((input: unknown) => directSchema.parse(input))
+  .validator((input: unknown) => directSchema.parse(input))
   .handler(async ({ data }): Promise<{ conversationId: string }> => {
     const supabase = createSupabaseServerClient();
     const { userId, institutionId } = await requireAdminContext(supabase);
@@ -252,7 +252,7 @@ export const createAdminDirectConversationFn = createServerFn({
   });
 
 export const createInstitutionNoticeFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => noticeSchema.parse(input))
+  .validator((input: unknown) => noticeSchema.parse(input))
   .handler(async ({ data }): Promise<{ conversationId: string }> => {
     const supabase = createSupabaseServerClient();
     const { userId, institutionId } = await requireAdminContext(supabase);
@@ -377,7 +377,7 @@ export const listOpenDisputesForMessagingFn = createServerFn({
 });
 
 export const joinAdminDisputeConversationFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => disputeIdSchema.parse(input))
+  .validator((input: unknown) => disputeIdSchema.parse(input))
   .handler(async ({ data }): Promise<{ conversationId: string }> => {
     const supabase = createSupabaseServerClient();
     const { userId, institutionId } = await requireAdminContext(supabase);

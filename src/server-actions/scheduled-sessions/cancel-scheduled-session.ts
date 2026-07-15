@@ -9,7 +9,7 @@ import {
 import { sessionActionSchema } from "./schemas";
 
 export const adminCancelScheduledSessionFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => sessionActionSchema.parse(input))
+  .validator((input: unknown) => sessionActionSchema.parse(input))
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const supabase = createSupabaseServerClient();
     const { userId, institutionId } = await requireAdminContext(supabase);
@@ -26,7 +26,7 @@ export const adminCancelScheduledSessionFn = createServerFn({ method: "POST" })
   });
 
 export const tutorCancelScheduledSessionFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => sessionActionSchema.parse(input))
+  .validator((input: unknown) => sessionActionSchema.parse(input))
   .handler(async ({ data }): Promise<{ ok: true }> => {
     const supabase = createSupabaseServerClient();
     const {

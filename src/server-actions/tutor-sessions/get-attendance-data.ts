@@ -7,7 +7,7 @@ import type { AttendanceRecordDTO } from "#/server-actions/tutor-sessions/types"
 
 /** Get the detailed attendance roster for a session. */
 export const getAttendanceDataFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z.object({ claimId: z.string().uuid() }).parse(input),
   )
   .handler(async ({ data }): Promise<AttendanceRecordDTO[]> => {

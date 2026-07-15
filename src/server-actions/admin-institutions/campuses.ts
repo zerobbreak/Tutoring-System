@@ -30,7 +30,7 @@ function mapCampus(row: Record<string, unknown>): CampusDTO {
 }
 
 export const createCampusFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => createSchema.parse(input))
+  .validator((input: unknown) => createSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);
@@ -60,7 +60,7 @@ export const createCampusFn = createServerFn({ method: "POST" })
   });
 
 export const updateCampusFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => updateSchema.parse(input))
+  .validator((input: unknown) => updateSchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);

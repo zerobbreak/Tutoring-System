@@ -66,7 +66,7 @@ async function loadActorsById(
 }
 
 export const listAuditLogFeedFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => listAuditFeedSchema.parse(input ?? {}))
+  .validator((input: unknown) => listAuditFeedSchema.parse(input ?? {}))
   .handler(async ({ data }): Promise<AuditLogFeedPageDTO> => {
     const supabase = createSupabaseServerClient();
     const { institutionId } = await requireAdminContext(supabase);

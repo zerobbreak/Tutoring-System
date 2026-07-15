@@ -103,6 +103,12 @@ export type TutorModuleOption = {
   name: string;
 };
 
+export type TutorActiveVenueOption = {
+  id: string;
+  name: string;
+  code: string | null;
+};
+
 export type ScanStudentForSessionResult = {
   success: true;
   studentId: string;
@@ -110,3 +116,4 @@ export type ScanStudentForSessionResult = {
   registered: boolean;
   alreadyPresent: boolean;
 };
+

@@ -18,7 +18,7 @@ export type TutorHourAllocationDTO = {
 };
 
 export const listTutorAllocationsFn = createServerFn({ method: "GET" })
-  .inputValidator((input: unknown) => schema.parse(input))
+  .validator((input: unknown) => schema.parse(input))
   .handler(async ({ data }): Promise<TutorHourAllocationDTO[]> => {
     const supabase = createSupabaseServerClient();
     await requireLecturerId(supabase);
