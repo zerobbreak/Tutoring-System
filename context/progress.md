@@ -69,6 +69,8 @@ This file is the living status board for the codebase. Whenever any meaningful c
 
 ## Next up
 
+- Institution branding (subscription): research in `context/research/institution-theming.md`; decisions agreed 2026-10-19 (one/two brand colours → generated accessible palette, fixed renameable-terms list, feature toggles outside the claim chain, subdomains + custom domains, plan-tiered). Order: (1) move `--lagoon`/`--sea-ink`/`--palm` and hard-coded teal/cyan/sky classes onto shadcn tokens, (2) restrict `plan_tier` edits in `update-institution-profile.ts` to SUPER_ADMIN, (3) build the branding adjuster.
+
 - Each test account (tutor, lecturer, admin) must draw a signature under Settings → Security before acting on claims; admins also need TOTP enrolled.
 - Optional: add signer names/times to the payroll CSV export.
 - Optional later: pre-session plan (SI-style) and AI grouping of struggles once data exists (see research file).
