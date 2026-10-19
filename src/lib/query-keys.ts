@@ -78,7 +78,10 @@ export const queryKeys = {
   },
   settings: {
     profile: ["settings", "profile"] as const,
+    signature: ["settings", "signature"] as const,
   },
+  claimSignatures: (claimId: string) =>
+    ["claim-signatures", claimId] as const,
   messaging: {
     all: ["messaging"] as const,
     conversations: ["messaging", "conversations"] as const,

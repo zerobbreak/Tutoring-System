@@ -37,6 +37,7 @@ import {
 import { toast } from "#/lib/toast";
 import { cn } from "#/lib/utils";
 import { StepUpMfaDialog } from "#/components/workflow/step-up-mfa-dialog";
+import { ClaimSignaturesSection } from "#/components/workflow/claim-signatures-section";
 import { canTutorReopenClaim } from "#/lib/claim-workflow/tutor-editable";
 import { SubmitClaimDialog } from "#/components/tutor/sessions/submit-claim-dialog";
 import {
@@ -371,6 +372,8 @@ export function ClaimDetailsView({ claimId }: ClaimDetailsViewProps) {
                 )}
               </CardContent>
             </Card>
+
+            <ClaimSignaturesSection claimId={claimId} />
           </div>
 
           <Card className="flex h-full flex-col border-border/80 bg-card shadow-sm md:col-span-1">
@@ -454,8 +457,9 @@ export function ClaimDetailsView({ claimId }: ClaimDetailsViewProps) {
             ? "Enter your authenticator code to reopen this claim for correction."
             : "Enter your authenticator code to continue."
         }
-        confirmLabel={stepUpMode === "reopen" ? "Reopen claim" : "Confirm"}
+        confirmLabel={stepUpMode === "reopen" ? "Sign and reopen" : "Confirm"}
         submitting={submitting}
+        signing={stepUpMode === "reopen"}
         onConfirm={handleStepUpConfirm}
       />
     </ScrollArea>

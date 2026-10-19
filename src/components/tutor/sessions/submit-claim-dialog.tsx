@@ -10,6 +10,7 @@ import {
   type SharedNotesDraft,
 } from "#/components/tutor/notes/session-shared-notes-fields";
 import { Skeleton } from "#/components/ui/skeleton";
+import { SigningAs } from "#/components/workflow/signing-as";
 import { queryKeys } from "#/lib/query-keys";
 import {
   getSessionNotesFn,
@@ -49,6 +50,7 @@ export function SubmitClaimDialog({
   const [noShowReason, setNoShowReason] = useState("");
   const [stepUpCode, setStepUpCode] = useState("");
   const [shared, setShared] = useState<SharedNotesDraft>(EMPTY_SHARED_NOTES);
+  const [signatureReady, setSignatureReady] = useState(false);
   const queryClient = useQueryClient();
 
   const notesQuery = useQuery({
@@ -80,7 +82,9 @@ export function SubmitClaimDialog({
   }, [open, notesQuery.data]);
 
   const handleSubmit = async () => {
-    if (!claim || busy || stepUpCode.length < 6 || !hasCovered) return;
+    if (!claim || busy || stepUpCode.length < 6 || !hasCovered || !signatureReady) {
+      return;
+    }
     if (noShow && noShowReason.trim().length < MIN_NO_SHOW_REASON) {
       const proceed = window.confirm(
         "No students attended but you have not provided a reason (at least 10 characters). Submit anyway? The claim will be escalated for admin review.",
@@ -179,6 +183,8 @@ export function SubmitClaimDialog({
           </div>
         ) : null}
 
+        {open ? <SigningAs onReadyChange={setSignatureReady} /> : null}
+
         <div className="space-y-2">
           <Label htmlFor="submit-claim-mfa-code">Authenticator code</Label>
           <Input
@@ -202,7 +208,9 @@ export function SubmitClaimDialog({
             Cancel
           </Button>
           <Button
-            disabled={busy || stepUpCode.length < 6 || !hasCovered}
+            disabled={
+              busy || stepUpCode.length < 6 || !hasCovered || !signatureReady
+            }
             onClick={() => void handleSubmit()}
           >
             {busy ? (
@@ -210,7 +218,7 @@ export function SubmitClaimDialog({
             ) : (
               <CheckCircle2 className="size-4" />
             )}
-            Confirm submit
+            Sign and submit
           </Button>
         </DialogFooter>
       </DialogContent>

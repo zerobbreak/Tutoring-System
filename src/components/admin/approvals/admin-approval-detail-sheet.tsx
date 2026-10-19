@@ -35,6 +35,7 @@ import {
 import { toast } from "#/lib/toast";
 import { cn } from "#/lib/utils";
 import { StepUpMfaDialog } from "#/components/workflow/step-up-mfa-dialog";
+import { ClaimSignaturesSection } from "#/components/workflow/claim-signatures-section";
 import {
   getApprovalClaimFn,
   performAdminApprovalActionFn,
@@ -354,6 +355,8 @@ export function AdminApprovalDetailSheet({
                 )}
               </DetailSection>
 
+              {claimId ? <ClaimSignaturesSection claimId={claimId} /> : null}
+
               <DetailSection
                 title="Session evidence"
                 description="Attendance register and supporting files."
@@ -472,8 +475,13 @@ export function AdminApprovalDetailSheet({
         onOpenChange={setStepUpOpen}
         title="Confirm admin action"
         description="Enter your authenticator code to record this institutional approval decision."
-        confirmLabel="Confirm action"
+        confirmLabel="Sign and confirm"
         submitting={submitting}
+        signing={
+          pendingAction === "APPROVE" ||
+          pendingAction === "REJECT" ||
+          pendingAction === "REQUEST_CLARIFICATION"
+        }
         onConfirm={runActionWithMfa}
       />
     </Sheet>

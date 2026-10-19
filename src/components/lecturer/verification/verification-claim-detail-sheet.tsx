@@ -11,6 +11,7 @@ import { ClaimEvidenceSection } from "#/components/lecturer/sheets/claim-evidenc
 import { ClaimVerificationTimelineSection } from "#/components/lecturer/sheets/claim-verification-timeline-section";
 import { DetailSection } from "#/components/lecturer/sheets/detail-section";
 import { PrivateSessionFeedbackForm } from "#/components/private-session-feedback/private-session-feedback-form";
+import { ClaimSignaturesSection } from "#/components/workflow/claim-signatures-section";
 import { VerificationDecisionPanel } from "#/components/lecturer/verification/verification-decision-panel";
 import { VerificationScheduleComparisonSection } from "#/components/lecturer/verification/verification-schedule-comparison-section";
 import { VerificationClaimDetailSheetHeader } from "#/components/lecturer/verification/verification-claim-detail-sheet-header";
@@ -122,6 +123,8 @@ export function VerificationClaimDetailSheet({
               ) : null}
 
               <ClaimVerificationTimelineSection timeline={timeline} />
+
+              {claimId ? <ClaimSignaturesSection claimId={claimId} /> : null}
 
               {showPrivateFeedback && claimId ? (
                 <DetailSection

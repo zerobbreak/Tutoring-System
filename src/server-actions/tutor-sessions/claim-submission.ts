@@ -12,6 +12,10 @@ import {
 } from "#/lib/session-claim-lifecycle";
 import { normalizeSupabaseNestedRow } from "#/lib/supabase-nested-row";
 import { isTutorSessionClaimVisible } from "#/lib/tutor-manual-session-claim";
+import {
+  loadSignerSignature,
+  recordClaimSignature,
+} from "#/server-actions/claim-signatures/sign-claim-step";
 
 type Db = SupabaseClient;
 
@@ -112,6 +116,10 @@ export async function submitClaimForVerification(
     mode.kind === "tutor" ? normalizeNoShowReason(mode.noShowReason) : "";
   const escalateNoShow = noShow && reason.length < 10;
 
+  // Tutor submits are signed with the saved signature; auto-submit is unsigned.
+  const signature =
+    mode.kind === "tutor" ? await loadSignerSignature(db, tutorId) : null;
+
   if (mode.kind === "tutor") await mode.attest();
 
   const now = new Date().toISOString();
@@ -153,6 +161,16 @@ export async function submitClaimForVerification(
     mfaConfirmed: isTutor,
     mfaMethod: isTutor ? "TOTP_STEP_UP" : null,
   });
+
+  if (signature) {
+    await recordClaimSignature(db, {
+      claimId,
+      signerId: tutorId,
+      signerRole: "TUTOR",
+      actionType: "SUBMITTED",
+      imageDataUrl: signature,
+    });
+  }
 
   return { escalated: escalateNoShow };
 }

@@ -7,6 +7,10 @@ import { assertClaimNotFrozen } from "#/server-actions/admin-approvals/assert-cl
 import { requireStepUpMfa } from "#/lib/mfa-auth-server";
 import { isTutorSessionClaimVisible } from "#/lib/tutor-manual-session-claim";
 import { requireUserId } from "#/server-actions/tutor-sessions/helpers";
+import {
+  loadSignerSignature,
+  recordClaimSignature,
+} from "#/server-actions/claim-signatures/sign-claim-step";
 
 const reopenClaimSchema = z.object({
   claimId: z.string().uuid(),
@@ -44,6 +48,7 @@ export const reopenSessionClaimFn = createServerFn({ method: "POST" })
       );
     }
     assertClaimNotFrozen(row.frozen_at as string | null, "reopen this session");
+    const signature = await loadSignerSignature(supabase, tutorId);
     await requireStepUpMfa(supabase, data.stepUpCode, "reopen this session");
 
     const { error: upErr } = await supabase
@@ -65,6 +70,14 @@ export const reopenSessionClaimFn = createServerFn({ method: "POST" })
       toStatus: "DRAFT",
       mfaConfirmed: true,
       mfaMethod: "TOTP_STEP_UP",
+    });
+
+    await recordClaimSignature(supabase, {
+      claimId: data.claimId,
+      signerId: tutorId,
+      signerRole: "TUTOR",
+      actionType: "REOPENED",
+      imageDataUrl: signature,
     });
 
     return { ok: true as const };

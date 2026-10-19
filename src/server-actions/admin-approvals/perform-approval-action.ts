@@ -3,11 +3,16 @@ import { z } from "zod";
 import { appendClaimWorkflowEvent } from "#/lib/claim-workflow-timeline";
 import type { ClaimStatus } from "#/lib/session-claim-display";
 import { requireAdminContext } from "#/lib/admin-server";
+import { requireStepUpMfa } from "#/lib/mfa-auth-server";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { getSupabaseAdmin } from "#/lib/supabase-admin";
 import { snapshotClaimCompensation } from "#/lib/snapshot-claim-compensation";
 import { assertScheduledSessionActiveForPayroll } from "#/server-actions/scheduled-sessions/session-lifecycle";
 import { assertClaimNotFrozen } from "./assert-claim-not-frozen";
+import {
+  loadSignerSignature,
+  recordClaimSignature,
+} from "#/server-actions/claim-signatures/sign-claim-step";
 import type { AdminApprovalActionKind } from "./types";
 
 const actionSchema = z.object({
@@ -20,6 +25,7 @@ const actionSchema = z.object({
     "FREEZE",
   ]),
   comment: z.string().max(2000).optional(),
+  stepUpCode: z.string().min(6).max(8),
 });
 
 type ActionConfig = {
@@ -103,6 +109,17 @@ export const performAdminApprovalActionFn = createServerFn({ method: "POST" })
       throw new Error("Escalation applies to disputed claims only.");
     }
 
+    // Status-changing decisions are signed; escalate/freeze are not.
+    const signature = config.nextStatus
+      ? await loadSignerSignature(supabase, userId)
+      : null;
+
+    await requireStepUpMfa(
+      supabase,
+      data.stepUpCode,
+      data.action.toLowerCase().replace(/_/g, " "),
+    );
+
     const updates: Record<string, unknown> = {};
     if (config.setFrozen) {
       updates.frozen_at = new Date().toISOString();
@@ -141,7 +158,19 @@ export const performAdminApprovalActionFn = createServerFn({ method: "POST" })
       fromStatus,
       toStatus,
       comment,
+      mfaConfirmed: true,
+      mfaMethod: "TOTP_STEP_UP",
     });
+
+    if (signature) {
+      await recordClaimSignature(supabase, {
+        claimId: data.claimId,
+        signerId: userId,
+        signerRole: "ADMIN",
+        actionType: config.actionType,
+        imageDataUrl: signature,
+      });
+    }
 
     if (data.action === "APPROVE") {
       const admin = getSupabaseAdmin();

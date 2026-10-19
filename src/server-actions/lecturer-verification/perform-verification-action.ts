@@ -6,6 +6,10 @@ import { requireStepUpMfa } from "#/lib/mfa-auth-server";
 import { requireLecturerId } from "#/lib/lecturer-server";
 import { createSupabaseServerClient } from "#/lib/supabase-server";
 import { assertClaimNotFrozen } from "#/server-actions/admin-approvals/assert-claim-not-frozen";
+import {
+  loadSignerSignature,
+  recordClaimSignature,
+} from "#/server-actions/claim-signatures/sign-claim-step";
 import type { VerificationActionKind } from "./types";
 
 const actionSchema = z.object({
@@ -79,6 +83,11 @@ export const performVerificationActionFn = createServerFn({ method: "POST" })
       );
     }
 
+    // Steps that change the claim's status are signed; clarification requests are not.
+    const signature = config.nextStatus
+      ? await loadSignerSignature(supabase, lecturerId)
+      : null;
+
     await requireStepUpMfa(
       supabase,
       data.stepUpCode,
@@ -114,6 +123,16 @@ export const performVerificationActionFn = createServerFn({ method: "POST" })
       mfaConfirmed: true,
       mfaMethod: "TOTP_STEP_UP",
     });
+
+    if (signature) {
+      await recordClaimSignature(supabase, {
+        claimId: data.claimId,
+        signerId: lecturerId,
+        signerRole: "LECTURER",
+        actionType: config.actionType,
+        imageDataUrl: signature,
+      });
+    }
 
     return {
       ok: true as const,

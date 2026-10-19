@@ -132,8 +132,9 @@ export function VerificationDecisionPanel({
         onOpenChange={setStepUpOpen}
         title="Confirm verification"
         description="Enter your authenticator code to record this verification decision."
-        confirmLabel="Confirm decision"
+        confirmLabel="Sign and confirm"
         submitting={submitting}
+        signing={pendingAction !== "REQUEST_CLARIFICATION"}
         onConfirm={runActionWithMfa}
       />
     </>

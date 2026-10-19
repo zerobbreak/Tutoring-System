@@ -6,12 +6,17 @@ type Fixtures = {
   claim: Record<string, unknown>;
   evidenceCount?: number;
   scheduled?: { status: string; deleted_at: string | null };
+  /** Saved signature image; null means the user has not drawn one. */
+  signature?: string | null;
 };
+
+const SIGNATURE = "data:image/png;base64,iVBORw0KGgo=";
 
 /** Minimal Supabase stand-in: answers per table and records writes. */
 function fakeDb(fixtures: Fixtures) {
   const updates: Record<string, unknown>[] = [];
   const events: Record<string, unknown>[] = [];
+  const signatures: Record<string, unknown>[] = [];
 
   const from = (table: string) => {
     let mode: "select" | "update" | "insert" = "select";
@@ -23,6 +28,10 @@ function fakeDb(fixtures: Fixtures) {
       }
       if (table === "attendance_evidence") {
         return { count: fixtures.evidenceCount ?? 0, error: null };
+      }
+      if (table === "user_signatures") {
+        const image = fixtures.signature === undefined ? SIGNATURE : fixtures.signature;
+        return { data: image ? { image_data_url: image } : null, error: null };
       }
       if (table === "scheduled_sessions") {
         return {
@@ -43,7 +52,7 @@ function fakeDb(fixtures: Fixtures) {
       },
       insert: (values: Record<string, unknown>) => {
         mode = "insert";
-        events.push(values);
+        (table === "claim_signatures" ? signatures : events).push(values);
         return builder;
       },
       maybeSingle: async () => result(),
@@ -55,7 +64,12 @@ function fakeDb(fixtures: Fixtures) {
     return builder;
   };
 
-  return { db: { from } as unknown as SupabaseClient, updates, events };
+  return {
+    db: { from } as unknown as SupabaseClient,
+    updates,
+    events,
+    signatures,
+  };
 }
 
 const scheduledDraft = {
@@ -215,5 +229,52 @@ describe("submitClaimForVerification", () => {
       mfa_confirmed: true,
       mfa_method: "TOTP_STEP_UP",
     });
+  });
+  it("tutor mode refuses to submit without a saved signature", async () => {
+    const { db, updates, events } = fakeDb({ claim: scheduledDraft, signature: null });
+    const attest = vi.fn().mockResolvedValue(undefined);
+
+    await expect(
+      submitClaimForVerification(db, {
+        claimId: "claim-1",
+        tutorId: "tutor-1",
+        mode: { kind: "tutor", attest },
+      }),
+    ).rejects.toThrow(/Add your signature/);
+    expect(attest).not.toHaveBeenCalled();
+    expect(updates).toHaveLength(0);
+    expect(events).toHaveLength(0);
+  });
+
+  it("tutor mode records a signature with a content hash", async () => {
+    const { db, signatures } = fakeDb({ claim: scheduledDraft });
+
+    await submitClaimForVerification(db, {
+      claimId: "claim-1",
+      tutorId: "tutor-1",
+      mode: { kind: "tutor", attest: vi.fn().mockResolvedValue(undefined) },
+    });
+
+    expect(signatures).toHaveLength(1);
+    expect(signatures[0]).toMatchObject({
+      claim_id: "claim-1",
+      signer_id: "tutor-1",
+      signer_role: "TUTOR",
+      action_type: "SUBMITTED",
+      image_data_url: SIGNATURE,
+    });
+    expect(signatures[0].content_hash).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it("auto mode is not signed", async () => {
+    const { db, signatures } = fakeDb({ claim: scheduledDraft, signature: null });
+
+    await submitClaimForVerification(db, {
+      claimId: "claim-1",
+      tutorId: "tutor-1",
+      mode: { kind: "auto" },
+    });
+
+    expect(signatures).toHaveLength(0);
   });
 });

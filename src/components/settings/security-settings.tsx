@@ -22,6 +22,7 @@ import {
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import { Separator } from "#/components/ui/separator";
+import { SignatureSettings } from "#/components/settings/signature-settings";
 import { supabase } from "#/lib/supabase";
 import { toast } from "#/lib/toast";
 import type { SettingsProfileDTO } from "#/server-actions/settings";
@@ -393,6 +394,8 @@ export function SecuritySettings({
           ))}
         </CardContent>
       </Card>
+
+      <SignatureSettings />
 
       <Card>
         <CardHeader>
