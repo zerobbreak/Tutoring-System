@@ -1,15 +1,14 @@
-import { Link } from "@tanstack/react-router";
 import { format, parseISO } from "date-fns";
+import { useEffect, useState } from "react";
 import {
   CalendarDays,
   Clock,
   MapPin,
   Send,
-  StickyNote,
   Trash2,
   Video,
 } from "lucide-react";
-import { APP_PATHS } from "#/lib/app-paths";
+import { SessionNotesPanel } from "#/components/tutor/notes/session-notes-panel";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import {
@@ -21,6 +20,7 @@ import {
   DialogTitle,
 } from "#/components/ui/dialog";
 import { ScrollArea } from "#/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "#/components/ui/tabs";
 import { PrivateSessionFeedbackReadBlock } from "#/components/private-session-feedback/private-session-feedback-read-block";
 import {
   claimBadgeLabel,
@@ -32,16 +32,23 @@ import type { TutorSessionClaimDTO } from "#/server-actions/tutor-sessions";
 export function TutorSessionWorkspaceDialog({
   open,
   claim,
+  initialTab = "overview",
   onOpenChange,
   onSubmit,
   onDiscard,
 }: {
   open: boolean;
   claim: TutorSessionClaimDTO | null;
+  initialTab?: "overview" | "notes";
   onOpenChange: (open: boolean) => void;
   onSubmit: (claim: TutorSessionClaimDTO) => void;
   onDiscard: (claimId: string) => void;
 }) {
+  const [tab, setTab] = useState(initialTab);
+  useEffect(() => {
+    if (open) setTab(initialTab);
+  }, [open, claim?.id, initialTab]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex max-h-[90vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
@@ -75,8 +82,23 @@ export function TutorSessionWorkspaceDialog({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[min(52vh,28rem)] flex-1 px-6 py-4">
+        <Tabs
+          value={tab}
+          onValueChange={(v) => setTab(v as "overview" | "notes")}
+          className="flex min-h-0 flex-1 flex-col gap-0"
+        >
+          <TabsList className="mx-6 mt-3 w-fit">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="notes">Notes</TabsTrigger>
+          </TabsList>
+        <ScrollArea className="max-h-[min(60vh,34rem)] flex-1 px-6 py-4">
           {claim ? (
+            <TabsContent value="notes" className="m-0">
+              <SessionNotesPanel claimId={claim.id} />
+            </TabsContent>
+          ) : null}
+          {claim ? (
+            <TabsContent value="overview" className="m-0">
             <div className="space-y-4 text-sm">
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5">
@@ -123,30 +145,30 @@ export function TutorSessionWorkspaceDialog({
               {claim.topics_covered ? (
                 <div className="rounded-lg border border-border/70 bg-card p-3">
                   <p className="text-xs font-semibold text-muted-foreground">
-                    Topics covered
+                    What we covered
                   </p>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
                     {claim.topics_covered}
                   </p>
                 </div>
-              ) : null}
-              {claim.notes ? (
-                <div className="rounded-lg border border-border/70 bg-card p-3">
-                  <p className="text-xs font-semibold text-muted-foreground">
-                    Session notes
-                  </p>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-                    {claim.notes}
-                  </p>
-                </div>
-              ) : null}
+              ) : (
+                <button
+                  type="button"
+                  className="w-full rounded-lg border border-dashed border-amber-500/40 bg-amber-500/5 p-3 text-left text-xs text-amber-900 hover:bg-amber-500/10 dark:text-amber-100"
+                  onClick={() => setTab("notes")}
+                >
+                  No notes yet — add what you covered before submitting.
+                </button>
+              )}
               <PrivateSessionFeedbackReadBlock
                 claimId={claim.id}
                 claimStatus={claim.status}
               />
             </div>
+            </TabsContent>
           ) : null}
         </ScrollArea>
+        </Tabs>
 
         <DialogFooter className="flex-col gap-3 border-t border-border/60 bg-muted/10 px-6 py-4 sm:flex-col">
           {claim?.status === "DRAFT" ? (
@@ -160,18 +182,6 @@ export function TutorSessionWorkspaceDialog({
             </Button>
           ) : null}
           <div className="flex w-full flex-wrap items-center gap-2">
-            <Button variant="outline" className="gap-2" asChild>
-              <Link
-                to={APP_PATHS.tutor.notes}
-                search={{
-                  claim: claim?.id,
-                  focus: Date.now(),
-                }}
-              >
-                <StickyNote className="size-4 text-(--lagoon-deep)" />
-                Open notes
-              </Link>
-            </Button>
             {claim?.status === "DRAFT" ? (
               <Button
                 type="button"

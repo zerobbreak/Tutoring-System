@@ -17,8 +17,6 @@ export type RawModule = {
 
 export type RawClaim = Omit<TutorSessionClaimDTO, "evidenceCount" | "module"> & {
   module: RawModule | RawModule[] | null;
-  source_scheduled_session_id?: string | null;
-  source_schedule_import_id?: string | null;
   admin_creation_approved_at?: string | null;
 };
 
@@ -61,6 +59,8 @@ export function mapClaimRow(r: RawClaim, evidenceCount: number): TutorSessionCla
     request_status: r.request_status ?? null,
     request_reason: r.request_reason ?? null,
     review_feedback: r.review_feedback ?? null,
+    source_scheduled_session_id: r.source_scheduled_session_id ?? null,
+    source_schedule_import_id: r.source_schedule_import_id ?? null,
     attendance_present_count: r.attendance_present_count,
     attendance_expected_count: r.attendance_expected_count,
     attendance_locked_at: r.attendance_locked_at ?? null,

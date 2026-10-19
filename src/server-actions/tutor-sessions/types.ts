@@ -21,6 +21,10 @@ export type TutorSessionClaimDTO = {
   request_status: string | null;
   request_reason: string | null;
   review_feedback: string | null;
+  /** Latest lecturer/admin comment when the claim was rejected or disputed. */
+  latest_review_comment?: string | null;
+  source_scheduled_session_id?: string | null;
+  source_schedule_import_id?: string | null;
   scheduled_session_id?: string | null;
   scheduled_starts_at?: string;
   scheduled_ends_at?: string;

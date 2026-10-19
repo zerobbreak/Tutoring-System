@@ -11,7 +11,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "db:push": "dlx supabase db push",
+    "db:push": "pnpm dlx supabase db push",
     "db:push:all": "supabase db push --include-all",
     "db:migration:list": "supabase migration list",
     "db:migration:repair": "supabase migration repair",

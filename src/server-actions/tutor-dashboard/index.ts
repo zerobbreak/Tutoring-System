@@ -263,8 +263,12 @@ export const getTutorDashboardDataFn = createServerFn({ method: "GET" }).handler
           thisWeek.reduce((s, c) => s + Number(c.hours ?? 0), 0) * 10,
         ) / 10,
       pendingClaimsCount: pendingCountRes.count ?? 0,
+      // Past drafts with no "what we covered" — they cannot be submitted yet.
       coverageGapCount: claimRows.filter(
-        (c) => !c.coverage_validated_at && c.status !== "DRAFT",
+        (c) =>
+          c.status === "DRAFT" &&
+          !c.topics_covered?.trim() &&
+          c.session_date < format(now, "yyyy-MM-dd"),
       ).length,
       claims: claimRows,
       chartSeries: buildDailyPointsFromClaims(

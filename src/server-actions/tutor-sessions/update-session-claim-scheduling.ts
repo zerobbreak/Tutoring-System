@@ -32,7 +32,7 @@ export const updateSessionClaimSchedulingFn = createServerFn({
     const { data: row, error: selErr } = await supabase
       .from("session_claims")
       .select(
-        "id, source_scheduled_session_id, source_schedule_import_id, admin_creation_approved_at",
+        "id, status, source_scheduled_session_id, source_schedule_import_id, admin_creation_approved_at",
       )
       .eq("id", data.claimId)
       .eq("tutor_id", tutorId)
@@ -44,6 +44,9 @@ export const updateSessionClaimSchedulingFn = createServerFn({
       throw new Error(
         "This session is awaiting admin approval before you can reschedule it.",
       );
+    }
+    if (row.status !== "DRAFT") {
+      throw new Error("Only draft sessions can be rescheduled.");
     }
 
     const { error: upErr } = await supabase

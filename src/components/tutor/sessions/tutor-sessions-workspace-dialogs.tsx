@@ -40,6 +40,7 @@ const TutorSessionWorkspaceDialog = lazy(() =>
 type TutorSessionsWorkspaceDialogsProps = {
   detailOpen: boolean;
   detailClaim: TutorSessionClaimDTO | null;
+  detailInitialTab?: "overview" | "notes";
   qrOpen: boolean;
   qrClaim: TutorSessionClaimDTO | null;
   uploadOpen: boolean;
@@ -69,6 +70,7 @@ type TutorSessionsWorkspaceDialogsProps = {
 export function TutorSessionsWorkspaceDialogs({
   detailOpen,
   detailClaim,
+  detailInitialTab,
   qrOpen,
   qrClaim,
   uploadOpen,
@@ -100,6 +102,7 @@ export function TutorSessionsWorkspaceDialogs({
         <TutorSessionWorkspaceDialog
           open={detailOpen}
           claim={detailClaim}
+          initialTab={detailInitialTab}
           onOpenChange={onDetailOpenChange}
           onSubmit={onSubmitClaim}
           onDiscard={onDiscardClaim}

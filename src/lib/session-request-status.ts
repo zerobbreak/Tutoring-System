@@ -48,6 +48,25 @@ export function isTutorManualRequestInPendingColumn(row: {
   );
 }
 
+/**
+ * Manual request still waiting on a reviewer: not rejected and the session has
+ * not happened yet. Rejected or expired requests drop to the calendar lanes.
+ */
+export function isSessionRequestAwaitingReview(
+  row: {
+    request_status?: string | null;
+    source_scheduled_session_id?: string | null;
+    source_schedule_import_id?: string | null;
+  },
+  sessionEnded: boolean,
+): boolean {
+  return (
+    isTutorManualRequestInPendingColumn(row) &&
+    row.request_status !== SESSION_REQUEST_STATUS.REJECTED &&
+    !sessionEnded
+  );
+}
+
 export function sessionRequestStatusLabel(
   status: SessionRequestStatus | null | undefined,
 ): string {

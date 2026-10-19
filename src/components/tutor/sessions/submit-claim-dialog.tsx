@@ -1,5 +1,20 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { invalidateSessionNotes } from "#/components/tutor/notes/session-notes-panel";
+import {
+  EMPTY_SHARED_NOTES,
+  SessionSharedNotesFields,
+  sharedNotesDirty,
+  sharedNotesDraftFrom,
+  type SharedNotesDraft,
+} from "#/components/tutor/notes/session-shared-notes-fields";
+import { Skeleton } from "#/components/ui/skeleton";
+import { queryKeys } from "#/lib/query-keys";
+import {
+  getSessionNotesFn,
+  updateSessionNotesFn,
+} from "#/server-actions/tutor-notes";
 import { Button } from "#/components/ui/button";
 import {
   Dialog,
@@ -33,6 +48,18 @@ export function SubmitClaimDialog({
   const [busy, setBusy] = useState(false);
   const [noShowReason, setNoShowReason] = useState("");
   const [stepUpCode, setStepUpCode] = useState("");
+  const [shared, setShared] = useState<SharedNotesDraft>(EMPTY_SHARED_NOTES);
+  const queryClient = useQueryClient();
+
+  const notesQuery = useQuery({
+    queryKey: queryKeys.tutor.sessionNotes(claim?.id ?? ""),
+    queryFn: () => getSessionNotesFn({ data: { claimId: claim!.id } }),
+    enabled: open && !!claim,
+  });
+  const savedShared = notesQuery.data
+    ? sharedNotesDraftFrom(notesQuery.data)
+    : EMPTY_SHARED_NOTES;
+  const hasCovered = shared.topicsCovered.trim().length > 0;
 
   const noShow = claim
     ? isNoShowWithEvidence({
@@ -48,8 +75,12 @@ export function SubmitClaimDialog({
     }
   }, [open]);
 
+  useEffect(() => {
+    if (open && notesQuery.data) setShared(sharedNotesDraftFrom(notesQuery.data));
+  }, [open, notesQuery.data]);
+
   const handleSubmit = async () => {
-    if (!claim || busy || stepUpCode.length < 6) return;
+    if (!claim || busy || stepUpCode.length < 6 || !hasCovered) return;
     if (noShow && noShowReason.trim().length < MIN_NO_SHOW_REASON) {
       const proceed = window.confirm(
         "No students attended but you have not provided a reason (at least 10 characters). Submit anyway? The claim will be escalated for admin review.",
@@ -59,6 +90,10 @@ export function SubmitClaimDialog({
 
     setBusy(true);
     try {
+      if (sharedNotesDirty(shared, savedShared)) {
+        await updateSessionNotesFn({ data: { claimId: claim.id, ...shared } });
+        await invalidateSessionNotes(queryClient, claim.id);
+      }
       const result = await submitSessionClaimFn({
         data: {
           claimId: claim.id,
@@ -85,7 +120,7 @@ export function SubmitClaimDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Submit claim</DialogTitle>
           <DialogDescription>
@@ -93,6 +128,22 @@ export function SubmitClaimDialog({
             verification. Enter your authenticator code to sign off.
           </DialogDescription>
         </DialogHeader>
+
+        <div className="space-y-2 rounded-lg border border-border/70 p-3">
+          <p className="text-xs text-muted-foreground">
+            Session notes — shared with your lecturer. Describe the work, not individual students.
+          </p>
+          {notesQuery.isLoading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : (
+            <SessionSharedNotesFields
+              idPrefix="submit-notes"
+              value={shared}
+              onChange={setShared}
+              disabled={busy}
+            />
+          )}
+        </div>
 
         {noShow ? (
           <div className="space-y-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-sm">
@@ -151,7 +202,7 @@ export function SubmitClaimDialog({
             Cancel
           </Button>
           <Button
-            disabled={busy || stepUpCode.length < 6}
+            disabled={busy || stepUpCode.length < 6 || !hasCovered}
             onClick={() => void handleSubmit()}
           >
             {busy ? (

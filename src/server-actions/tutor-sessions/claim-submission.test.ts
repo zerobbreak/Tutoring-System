@@ -66,6 +66,7 @@ const scheduledDraft = {
   hours: 2,
   session_date: "2026-10-19",
   attendance_present_count: 5,
+  topics_covered: "Recursion: base cases and tracing factorial",
   source_scheduled_session_id: "session-1",
   source_schedule_import_id: null,
   admin_creation_approved_at: null,
@@ -108,6 +109,26 @@ describe("submitClaimForVerification", () => {
     ).rejects.toThrow(/cancelled/);
     expect(updates).toHaveLength(0);
   });
+
+  it.each(["auto", "tutor"] as const)(
+    "%s mode refuses a claim with no 'what we covered' notes",
+    async (kind) => {
+      const attest = vi.fn(async () => {});
+      const { db, updates } = fakeDb({
+        claim: { ...scheduledDraft, topics_covered: "   " },
+      });
+
+      await expect(
+        submitClaimForVerification(db, {
+          claimId: "claim-1",
+          tutorId: "tutor-1",
+          mode: kind === "auto" ? { kind } : { kind, attest },
+        }),
+      ).rejects.toThrow(/what you covered/);
+      expect(updates).toHaveLength(0);
+      expect(attest).not.toHaveBeenCalled();
+    },
+  );
 
   it("auto mode escalates a no-show instead of submitting it normally", async () => {
     const { db, updates, events } = fakeDb({

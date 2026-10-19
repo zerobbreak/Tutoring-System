@@ -78,8 +78,8 @@ export function isSessionLive(claim: TutorSessionClaimDTO, now: Date): boolean {
   return now >= start && now <= end;
 }
 
+/** Starts within the next two hours. */
 export function isSessionUrgent(claim: TutorSessionClaimDTO, now: Date): boolean {
-  if (claim.status === "DISPUTED" || claim.status === "REJECTED") return true;
   const times = claimTimes(claim);
   const { start } = sessionBoundsLocal(
     claim.session_date,

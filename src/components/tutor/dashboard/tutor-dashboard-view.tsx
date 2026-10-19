@@ -367,8 +367,8 @@ export function TutorDashboardView({
         </DashboardPanelCard>
 
         <DashboardPanelCard
-          title="Coverage"
-          description="Claims still missing a coverage confirmation (non-draft)"
+          title="Notes needed"
+          description="Past draft sessions missing what you covered (needed to submit)"
         >
           <div
             className={`${DASHBOARD_PANEL_LIST_MIN_H} flex flex-col justify-center`}
@@ -381,7 +381,7 @@ export function TutorDashboardView({
               </p>
             )}
             <Button variant="link" className="mt-1 h-auto px-0 text-xs" asChild>
-              <Link to={APP_PATHS.tutor.notes}>Review in session notes</Link>
+              <Link to={APP_PATHS.tutor.notes}>Add notes</Link>
             </Button>
           </div>
         </DashboardPanelCard>

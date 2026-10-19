@@ -42,7 +42,10 @@ import {
   isTutorManualRequestInPendingColumn,
   sessionRequestStatusLabel,
 } from "#/lib/session-request-status";
-import type { SessionKanbanColumnId } from "#/lib/session-kanban-column";
+import {
+  isClaimSentBackStatus,
+  type SessionKanbanColumnId,
+} from "#/lib/session-kanban-column";
 import {
   claimBadgeLabel,
   claimBadgeVariant,
@@ -218,8 +221,13 @@ export function DraggableSessionCard({
   const isDraft = claim.status === "DRAFT";
   const pendingRequest = isTutorManualRequestInPendingColumn(claim);
   const canWorkSession = !pendingRequest;
+  const sentBack = !pendingRequest && isClaimSentBackStatus(claim.status);
+  const requestExpired =
+    pendingRequest &&
+    columnId !== "claimsPending" &&
+    claim.request_status !== "REJECTED";
   const dragDisabled =
-    columnId === "claimsPending" || draftSelectMode || pendingRequest;
+    columnId === "claimsPending" || draftSelectMode || pendingRequest || !isDraft;
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: claim.id,
@@ -266,6 +274,7 @@ export function DraggableSessionCard({
           "group/card overflow-hidden border border-border/70 bg-card shadow-sm transition-all hover:border-border hover:shadow-md",
           !pendingRequest && "border-l-[3px]",
           !pendingRequest && claimStatusRail(status),
+          sentBack && "bg-destructive/[0.03]",
           pendingRequest && "border-amber-500/30 bg-amber-500/[0.03]",
           live && "ring-1 ring-emerald-500/30",
           urgent && !live && "ring-1 ring-amber-500/25",
@@ -281,19 +290,32 @@ export function DraggableSessionCard({
       >
         {pendingRequest ? (
           <div className="border-b border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-[11px] font-medium text-amber-950 dark:text-amber-100">
-            {sessionRequestStatusLabel(
-              claim.request_status as
-                | "PENDING"
-                | "CHANGES_REQUESTED"
-                | "REJECTED"
-                | "APPROVED"
-                | null,
-            )}
+            {requestExpired
+              ? "Request expired — not reviewed before the session"
+              : sessionRequestStatusLabel(
+                  claim.request_status as
+                    | "PENDING"
+                    | "CHANGES_REQUESTED"
+                    | "REJECTED"
+                    | "APPROVED"
+                    | null,
+                )}
             {claim.review_feedback ? (
               <span className="mt-0.5 block font-normal text-amber-900/80 dark:text-amber-100/80">
                 {claim.review_feedback}
               </span>
             ) : null}
+          </div>
+        ) : null}
+
+        {sentBack ? (
+          <div className="border-b border-destructive/20 bg-destructive/10 px-3 py-1.5 text-[11px] font-medium text-destructive">
+            {status === "REJECTED"
+              ? "Rejected — reopen to fix and resubmit, or discard"
+              : "Disputed — reopen to respond and resubmit"}
+            <span className="mt-0.5 block font-normal text-foreground/80">
+              {claim.latest_review_comment ?? "No reason was given by the reviewer."}
+            </span>
           </div>
         ) : null}
 
@@ -332,7 +354,12 @@ export function DraggableSessionCard({
 
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5">
-                {live ? (
+                {sentBack ? (
+                  <Badge variant="destructive" className="gap-0.5 px-1.5 py-0 text-[10px]">
+                    <AlertTriangle className="size-3" />
+                    Needs your action
+                  </Badge>
+                ) : live ? (
                   <Badge variant="success" className="gap-0.5 px-1.5 py-0 text-[10px]">
                     <CircleDot className="size-3" />
                     Live now
@@ -416,8 +443,8 @@ export function DraggableSessionCard({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link
-                    to={APP_PATHS.tutor.notes}
-                    search={{ claim: claim.id, focus: Date.now() }}
+                    to={APP_PATHS.tutor.sessions}
+                    search={{ claim: claim.id, tab: "notes" }}
                   >
                     Session notes
                   </Link>
@@ -438,7 +465,22 @@ export function DraggableSessionCard({
         </CardHeader>
 
         <div className="space-y-3 border-t border-border/50 px-3 py-3">
-          {canWorkSession ? (
+          {sentBack ? (
+            <Button
+              asChild
+              variant="secondary"
+              size="sm"
+              className="w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Link
+                to={APP_PATHS.tutor.claimDetail}
+                params={{ claimId: claim.id }}
+              >
+                Review & reopen claim
+              </Link>
+            </Button>
+          ) : canWorkSession ? (
             <>
               <div className="space-y-1">
                 <div className="flex justify-between text-[11px] text-muted-foreground">

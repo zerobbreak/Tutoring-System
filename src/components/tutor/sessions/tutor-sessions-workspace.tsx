@@ -22,7 +22,7 @@ import { useTutorSessionsWorkspaceData } from "#/components/tutor/sessions/use-t
 import { useSessionUser } from "#/lib/use-session-user";
 import type { TutorSessionClaimDTO } from "#/server-actions/tutor-sessions";
 
-type SessionsSearch = { claim?: string };
+type SessionsSearch = { claim?: string; tab?: "notes" };
 
 type TutorSessionsWorkspaceProps = {
   search: SessionsSearch;
@@ -295,6 +295,7 @@ export function TutorSessionsWorkspace({
         <TutorSessionsWorkspaceDialogs
           detailOpen={detailOpen}
           detailClaim={detailClaim}
+          detailInitialTab={search.tab === "notes" ? "notes" : "overview"}
           qrOpen={qrOpen}
           qrClaim={qrClaim}
           uploadOpen={uploadOpen}

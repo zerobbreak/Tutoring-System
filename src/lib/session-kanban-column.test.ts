@@ -27,6 +27,16 @@ describe("sessionKanbanColumn", () => {
     ).toBe("claimsPending");
   });
 
+  it.each(["REJECTED", "DISPUTED"] as const)(
+    "returns past %s claims to the Past lane instead of awaiting approval",
+    (status) => {
+      const now = new Date(2026, 9, 19, 15, 0, 0);
+      expect(
+        sessionKanbanColumn(now, "2026-05-18", "14:00:00", "16:00:00", status),
+      ).toBe("completed");
+    },
+  );
+
   it("routes verified future sessions to upcoming", () => {
     const now = new Date(2026, 4, 10, 15, 0, 0);
     expect(

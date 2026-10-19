@@ -85,6 +85,26 @@ export const listTutorSessionClaimsFn = createServerFn({
     }
   }
 
+  // Reviewer reason for claims sent back to the tutor (newest action wins).
+  const reviewCommentMap = new Map<string, string>();
+  const sentBackIds = rows
+    .filter((r) => r.status === "REJECTED" || r.status === "DISPUTED")
+    .map((r) => r.id);
+  if (sentBackIds.length) {
+    const { data: actionRows, error: actErr } = await supabase
+      .from("verification_actions")
+      .select("claim_id, comment, acted_at")
+      .in("claim_id", sentBackIds)
+      .not("comment", "is", null)
+      .order("acted_at", { ascending: false });
+    if (actErr) throw new Error(actErr.message);
+    for (const row of actionRows ?? []) {
+      const id = row.claim_id as string;
+      const comment = (row.comment as string | null)?.trim();
+      if (comment && !reviewCommentMap.has(id)) reviewCommentMap.set(id, comment);
+    }
+  }
+
   return rows
     .filter((r) =>
       isTutorSessionClaimListed({
@@ -94,5 +114,8 @@ export const listTutorSessionClaimsFn = createServerFn({
         request_status: r.request_status as string | null,
       }),
     )
-    .map((r) => mapClaimRow(r, countMap.get(r.id) ?? 0));
+    .map((r) => ({
+      ...mapClaimRow(r, countMap.get(r.id) ?? 0),
+      latest_review_comment: reviewCommentMap.get(r.id) ?? null,
+    }));
 });

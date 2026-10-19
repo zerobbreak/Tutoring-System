@@ -3,6 +3,7 @@ import { DashboardKpiCards } from "./dashboard-kpi-cards";
 import { AttendanceAlertsPanel } from "./attendance-alerts-panel";
 import { ModulesListPanel } from "./modules-list-panel";
 import { PendingVerificationPanel } from "./pending-verification-panel";
+import { StudentStrugglesPanel } from "./student-struggles-panel";
 import { QuickActionsPanel } from "./quick-actions-panel";
 import { NotificationsInboxCard } from "#/components/notifications/notifications-inbox-card";
 import { TutorActivityPanel } from "./tutor-activity-panel";
@@ -82,6 +83,8 @@ export function LecturerDashboardView({
       </div>
 
       <WeeklySessionsPanel booting={booting} recentClaims={recentClaims} />
+
+      <StudentStrugglesPanel modules={modules} />
 
       <ModulesListPanel booting={booting} modules={modules} />
     </div>

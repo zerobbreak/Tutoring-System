@@ -7,11 +7,12 @@ import {
 } from "#/components/tutor/sessions/tutor-sessions-workspace-helpers";
 import { formatClock } from "#/lib/session-claim-display";
 import {
+  hasSessionEnded,
   sessionKanbanColumn,
   type ClaimStatus,
   type SessionKanbanColumnId,
 } from "#/lib/session-kanban-column";
-import { isTutorManualRequestInPendingColumn } from "#/lib/session-request-status";
+import { isSessionRequestAwaitingReview } from "#/lib/session-request-status";
 import { queryKeys } from "#/lib/query-keys";
 import type { TutorHourBudgetSummary } from "#/lib/tutor-hour-budget";
 import { subscribeToTutorSessionClaims } from "#/lib/tutor-sessions-realtime";
@@ -152,11 +153,16 @@ export function useTutorSessionsWorkspaceData(tutorId: string | null) {
       completed: [],
     };
     for (const c of filteredClaims) {
-      if (isTutorManualRequestInPendingColumn(c)) {
+      const times = claimTimes(c);
+      if (
+        isSessionRequestAwaitingReview(
+          c,
+          hasSessionEnded(now, c.session_date, times.start, times.end),
+        )
+      ) {
         buckets.claimsPending.push(c);
         continue;
       }
-      const times = claimTimes(c);
       buckets[
         sessionKanbanColumn(
           now,

@@ -14,12 +14,15 @@ export type SessionKanbanColumnId =
   | "upcoming"
   | "completed";
 
-/** Workflow lane — drafts use the calendar columns until submitted. */
-const CLAIMS_PENDING: readonly ClaimStatus[] = [
-  "PENDING_VERIFICATION",
-  "DISPUTED",
-  "REJECTED",
-] as const;
+/**
+ * Workflow lane — only claims waiting on a reviewer. Drafts use the calendar
+ * columns until submitted; rejected/disputed claims are back with the tutor,
+ * so they also return to the calendar (usually Past) flagged for action.
+ */
+const CLAIMS_PENDING: readonly ClaimStatus[] = ["PENDING_VERIFICATION"] as const;
+
+/** Claims a reviewer sent back to the tutor to fix or discard. */
+const SENT_BACK: readonly ClaimStatus[] = ["REJECTED", "DISPUTED"] as const;
 
 /** Parse "HH:mm" or "HH:mm:ss" fragment into hours and minutes. */
 function parseClockParts(clock: string): { h: number; m: number } {
@@ -51,6 +54,20 @@ export function sessionBoundsLocal(
 
 export function isClaimsPendingStatus(status: ClaimStatus): boolean {
   return (CLAIMS_PENDING as readonly string[]).includes(status);
+}
+
+export function isClaimSentBackStatus(status: ClaimStatus): boolean {
+  return (SENT_BACK as readonly string[]).includes(status);
+}
+
+/** Whether the session's end time has already passed. */
+export function hasSessionEnded(
+  now: Date,
+  sessionDate: string,
+  startTime: string,
+  endTime: string,
+): boolean {
+  return sessionBoundsLocal(sessionDate, startTime, endTime).end.getTime() < now.getTime();
 }
 
 /**

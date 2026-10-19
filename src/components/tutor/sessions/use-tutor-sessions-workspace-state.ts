@@ -14,7 +14,7 @@ import type { SessionKanbanColumnId } from "#/lib/session-kanban-column";
 import type { useTutorSessionsWorkspaceData } from "./use-tutor-sessions-workspace-data";
 import { toast } from "#/lib/toast";
 
-export type SessionsSearch = { claim?: string };
+export type SessionsSearch = { claim?: string; tab?: "notes" };
 
 export function useTutorSessionsWorkspaceState({
   search,
@@ -120,7 +120,7 @@ export function useTutorSessionsWorkspaceState({
     setDetailOpen(false);
     void navigate({
       to: APP_PATHS.tutor.sessions,
-      search: { claim: undefined },
+      search: { claim: undefined, tab: undefined },
       replace: true,
     });
   };
@@ -135,7 +135,7 @@ export function useTutorSessionsWorkspaceState({
     setDetailOpen(false);
     void navigate({
       to: APP_PATHS.tutor.sessions,
-      search: { claim: undefined },
+      search: { claim: undefined, tab: undefined },
       replace: true,
     });
   };

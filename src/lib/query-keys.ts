@@ -48,6 +48,8 @@ export const queryKeys = {
   lecturer: {
     all: ["lecturer"] as const,
     dashboard: ["lecturer", "dashboard"] as const,
+    studentStruggles: (filters: { moduleId?: string }) =>
+      ["lecturer", "student-struggles", filters] as const,
     verificationQueue: (filters: { search?: string; moduleId?: string }) =>
       ["lecturer", "verification-queue", filters] as const,
     schedule: (filters: { from: string; to: string }) =>
@@ -71,6 +73,8 @@ export const queryKeys = {
       ["tutor", "venue-unlock-status", filters] as const,
     earnings: ["tutor", "earnings"] as const,
     notesClaims: ["tutor", "notes-claims"] as const,
+    sessionNotes: (claimId: string) =>
+      ["tutor", "session-notes", claimId] as const,
   },
   settings: {
     profile: ["settings", "profile"] as const,

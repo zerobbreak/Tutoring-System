@@ -46,6 +46,7 @@ export async function submitClaimForVerification(
       hours,
       session_date,
       attendance_present_count,
+      topics_covered,
       source_scheduled_session_id,
       source_schedule_import_id,
       admin_creation_approved_at,
@@ -69,6 +70,11 @@ export async function submitClaimForVerification(
     throw new Error("Only draft claims can be submitted.");
   }
   assertClaimNotFrozen(row.frozen_at as string | null, "submit this session");
+  if (!(row.topics_covered as string | null)?.trim()) {
+    throw new Error(
+      "Add what you covered in this session (Notes) before submitting.",
+    );
+  }
 
   const linkedSessionId = row.source_scheduled_session_id as string | null;
   if (linkedSessionId) {

@@ -289,7 +289,7 @@ async function runSessionReminders(db: SupabaseClient): Promise<number> {
   const draftCutoff = subHours(now, DRAFT_REMINDER_HOURS).toISOString();
   const { data: staleDrafts, error: draftErr } = await db
     .from("session_claims")
-    .select("id, tutor_id, session_date, module:modules ( code )")
+    .select("id, tutor_id, session_date, topics_covered, module:modules ( code )")
     .eq("status", "DRAFT")
     .is("deleted_at", null);
 
@@ -306,7 +306,9 @@ async function runSessionReminders(db: SupabaseClient): Promise<number> {
       claimId: c.id as string,
       type: "CLAIM_DRAFT_REMINDER",
       subject: "Submit your session claim",
-      body: `Your draft claim for ${mod?.code ?? "a module"} on ${c.session_date} is ready to submit.`,
+      body: (c.topics_covered as string | null)?.trim()
+        ? `Your draft claim for ${mod?.code ?? "a module"} on ${c.session_date} is ready to submit.`
+        : `Add what you covered in your ${mod?.code ?? "module"} session on ${c.session_date}, then submit the claim. It can't be submitted without notes.`,
     });
     if (ok) sent += 1;
   }
