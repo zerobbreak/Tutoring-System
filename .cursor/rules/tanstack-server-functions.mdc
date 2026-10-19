@@ -17,13 +17,13 @@ Use `createServerFn` from `@tanstack/react-start`:
 
 ```ts
 export const myFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => mySchema.parse(input))
+  .validator((input: unknown) => mySchema.parse(input))
   .handler(async ({ data }) => {
   // ...
 });
 ```
 
-- **Validation**: Zod schemas + `.inputValidator()` for POST/inputs; export DTO types from the same module when shared with the client.
+- **Validation**: Zod schemas + `.validator()` for POST/inputs; export DTO types from the same module when shared with the client.
 - **Auth**: Use `createSupabaseServerClient()` and a small `requireUserId()` helper; throw clear errors (`Unauthorized`, validation messages).
 - **Location**: Domain logic in `src/server-actions/<domain>/`; shared auth/utilities in `src/lib/*-server.ts`.
 - **Methods**: `GET` for reads, `POST` for mutations — match existing files in that folder.

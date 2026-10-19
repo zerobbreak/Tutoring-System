@@ -88,7 +88,7 @@ Follow patterns in `.cursor/rules/tanstack-server-functions.mdc`. Review [TanSta
 
 ```ts
 export const myFn = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => mySchema.parse(input))
+  .validator((input: unknown) => mySchema.parse(input))
   .handler(async ({ data }) => {
     const supabase = createSupabaseServerClient();
     // auth via requireAdminContext, requireLecturerId, requireUserId, etc.
@@ -96,7 +96,7 @@ export const myFn = createServerFn({ method: "POST" })
 ```
 
 - **Location:** `src/server-actions/<domain>/`
-- **Validation:** Zod + `.inputValidator()` on all mutations
+- **Validation:** Zod + `.validator()` on all mutations
 - **Auth:** `createSupabaseServerClient()` + role-specific `require*()` helpers in `src/lib/`
 - **Methods:** `GET` for reads, `POST` for mutations
 

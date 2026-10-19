@@ -57,17 +57,17 @@ docs/                        # ARCHITECTURE, DATABASE, USER_TESTING, WORKFLOW_QA
 4. **Claim workflow**: transitions are defined in `src/lib/claim-workflow/transitions.ts` and mirrored by a DB trigger; change both together.
    - `DRAFT → PENDING_VERIFICATION` (tutor) → `VERIFIED` (lecturer) → `APPROVED` (admin).
    - Side branches: `REJECTED` / `DISPUTED` return to `DRAFT` for tutor edits; admin can send `VERIFIED` back to `PENDING_VERIFICATION`.
-   - Submit, verify and approve require **step-up TOTP** (`requireStepUpMfa`); test accounts need TOTP enrolled under Settings → Security.
+   - Submit, verify, approve and reopen require **step-up TOTP** (`requireStepUpMfa`); test accounts need TOTP enrolled under Settings → Security.
+   - Every DRAFT → PENDING_VERIFICATION goes through `submitClaimForVerification` (`server-actions/tutor-sessions/claim-submission.ts`): eligibility checks, no-show escalation, write and audit event. Tutor submit attests with TOTP; institution auto-submit (`institutions.auto_submit_claims`, SQL only, 2h after session end) runs the same checks and is logged as `AUTO_SUBMITTED` (not tutor-attested). Add new submit rules there, not in callers.
    - Approved claims are frozen (`frozen_at`, compensation snapshot); edits are rejected by both server and DB.
 5. **Payroll**: admin exports approved claims as CSV batches (`payroll_export_claims`). Export only, no payments.
 6. **Automation**: `server-actions/session-automation/run-jobs.ts` (`runSessionAutomationJobs`) locks ended attendance, refreshes QR tokens, auto-submits eligible claims, sends reminders, repairs draft/schedule mismatches, and soft-deletes sessions whose claims are paid out. Venue-unlock jobs (digest, JIT, urgent) live in `venue-unlock-jobs.ts`.
 
 ## Gotchas
 
-- Server functions use **`.validator()`**, not `.inputValidator()` (all ~116 files were migrated). The snippets in `AGENTS.md` and `.cursor/rules/tanstack-server-functions.mdc` still show the old name; follow the code.
+- Server functions use **`.validator()`**; `.inputValidator()` is the deprecated name (all ~116 files were migrated).
 - Supabase nested joins can come back as an array or an object; normalise them with `normalizeSupabaseNestedRow` (`lib/supabase-nested-row.ts`).
 - `getSupabaseAdmin()` returns `null` when the service key is missing; handle that case and import it only from server modules.
 - Deletes are mostly soft (`lib/soft-delete.ts`); filter out soft-deleted rows in new queries.
 - "Invalid server function ID" or "Query data cannot be undefined" after bulk server-fn edits means stale Vite caches: restart the dev server.
-- `context/code-standards.md` is a generic TanStack guide (mentions Prisma/JWT/Express). This repo's real choices are Supabase Auth + RLS + server functions; where they conflict, `AGENTS.md` and `.cursor/rules/` win.
 - Migrations: history before mid-2026 is squashed into `20260513000000_baseline_schema.sql`; the squash scripts in `scripts/` repair remote migration history. Apply with `pnpm db:push` (or `db:push:all` for out-of-order ones).

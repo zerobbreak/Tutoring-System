@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "#/components/ui/dialog";
+import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import { cn } from "#/lib/utils";
 import { isNoShowWithEvidence } from "#/lib/session-claim-lifecycle";
@@ -31,6 +32,7 @@ export function SubmitClaimDialog({
 }) {
   const [busy, setBusy] = useState(false);
   const [noShowReason, setNoShowReason] = useState("");
+  const [stepUpCode, setStepUpCode] = useState("");
 
   const noShow = claim
     ? isNoShowWithEvidence({
@@ -40,11 +42,14 @@ export function SubmitClaimDialog({
     : false;
 
   useEffect(() => {
-    if (!open) setNoShowReason("");
+    if (!open) {
+      setNoShowReason("");
+      setStepUpCode("");
+    }
   }, [open]);
 
   const handleSubmit = async () => {
-    if (!claim) return;
+    if (!claim || busy || stepUpCode.length < 6) return;
     if (noShow && noShowReason.trim().length < MIN_NO_SHOW_REASON) {
       const proceed = window.confirm(
         "No students attended but you have not provided a reason (at least 10 characters). Submit anyway? The claim will be escalated for admin review.",
@@ -58,6 +63,7 @@ export function SubmitClaimDialog({
         data: {
           claimId: claim.id,
           noShowReason: noShowReason.trim() || undefined,
+          stepUpCode,
         },
       });
       if (result.escalated) {
@@ -83,7 +89,8 @@ export function SubmitClaimDialog({
         <DialogHeader>
           <DialogTitle>Submit claim</DialogTitle>
           <DialogDescription>
-            Sends this session to pending verification with a timestamp.
+            Confirms this session took place and sends it to pending
+            verification. Enter your authenticator code to sign off.
           </DialogDescription>
         </DialogHeader>
 
@@ -121,11 +128,32 @@ export function SubmitClaimDialog({
           </div>
         ) : null}
 
+        <div className="space-y-2">
+          <Label htmlFor="submit-claim-mfa-code">Authenticator code</Label>
+          <Input
+            id="submit-claim-mfa-code"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={8}
+            value={stepUpCode}
+            onChange={(e) => setStepUpCode(e.target.value.replace(/\D/g, ""))}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void handleSubmit();
+            }}
+            placeholder="000000"
+            className="font-mono tracking-widest"
+            disabled={busy}
+          />
+        </div>
+
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button disabled={busy} onClick={() => void handleSubmit()}>
+          <Button
+            disabled={busy || stepUpCode.length < 6}
+            onClick={() => void handleSubmit()}
+          >
             {busy ? (
               <Loader2 className="size-4 animate-spin" />
             ) : (

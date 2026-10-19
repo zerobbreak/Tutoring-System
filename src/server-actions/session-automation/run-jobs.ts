@@ -11,6 +11,7 @@ import { isAttendanceLocked, qrWindowForScheduledSession } from "#/lib/session-q
 import { normalizeSupabaseNestedRow } from "#/lib/supabase-nested-row";
 import { runVenueUnlockAutomation } from "#/server-actions/session-automation/venue-unlock-jobs";
 import { cancelVenueUnlockForSoftDeletedSession } from "#/lib/schedule-sync/effects/venue-unlock";
+import { submitClaimForVerification } from "#/server-actions/tutor-sessions/claim-submission";
 
 const AUTO_SUBMIT_GRACE_HOURS = 2;
 const DRAFT_REMINDER_HOURS = 48;
@@ -169,19 +170,7 @@ async function autoSubmitEligibleClaims(db: SupabaseClient): Promise<number> {
 
     const { data: claims, error: claimErr } = await db
       .from("session_claims")
-      .select(
-        `
-        id,
-        tutor_id,
-        session_date,
-        end_time,
-        frozen_at,
-        auto_submitted_at,
-        source_scheduled_session_id,
-        module:modules!inner ( institution_id ),
-        scheduled:scheduled_sessions ( status, deleted_at )
-      `,
-      )
+      .select("id, tutor_id, session_date, end_time")
       .in("module_id", moduleIds)
       .eq("status", "DRAFT")
       .is("frozen_at", null)
@@ -199,19 +188,6 @@ async function autoSubmitEligibleClaims(db: SupabaseClient): Promise<number> {
     const requiresAttendance = instRow?.auto_submit_requires_attendance !== false;
 
     for (const claim of claims ?? []) {
-      const linkedId = claim.source_scheduled_session_id as string | null;
-      if (linkedId) {
-        const schedRaw = claim.scheduled;
-        const sched = Array.isArray(schedRaw) ? schedRaw[0] : schedRaw;
-        if (
-          !sched ||
-          (sched as { deleted_at?: string | null }).deleted_at ||
-          (sched as { status?: string }).status === "CANCELLED"
-        ) {
-          continue;
-        }
-      }
-
       const sessionEnd = `${claim.session_date}T${claim.end_time}`;
       if (sessionEnd > cutoff) continue;
 
@@ -220,28 +196,17 @@ async function autoSubmitEligibleClaims(db: SupabaseClient): Promise<number> {
         if (!ok) continue;
       }
 
-      const now = new Date().toISOString();
-      const { error: upErr } = await db
-        .from("session_claims")
-        .update({
-          status: "PENDING_VERIFICATION",
-          submitted_at: now,
-          auto_submitted_at: now,
-        })
-        .eq("id", claim.id as string)
-        .eq("status", "DRAFT");
-
-      if (upErr) continue;
-
-      await db.from("verification_actions").insert({
-        claim_id: claim.id as string,
-        actor_id: claim.tutor_id as string,
-        action_type: "AUTO_SUBMITTED",
-        from_status: "DRAFT",
-        to_status: "PENDING_VERIFICATION",
-        comment: "Submitted automatically by institution policy.",
-      });
-      submitted += 1;
+      // Same eligibility rules as tutor submit; ineligible claims stay DRAFT.
+      try {
+        await submitClaimForVerification(db, {
+          claimId: claim.id as string,
+          tutorId: claim.tutor_id as string,
+          mode: { kind: "auto" },
+        });
+        submitted += 1;
+      } catch {
+        continue;
+      }
     }
   }
 

@@ -6,6 +6,7 @@ export const CLAIM_WORKFLOW_ACTION = {
   TUTOR_SUBMITTED: "TUTOR_SUBMITTED",
   TUTOR_RESUBMITTED: "TUTOR_RESUBMITTED",
   NO_SHOW_ESCALATED: "NO_SHOW_ESCALATED",
+  AUTO_SUBMITTED: "AUTO_SUBMITTED",
 } as const;
 
 export type WorkflowActor = {
@@ -32,6 +33,8 @@ const ACTION_LABELS: Record<string, string> = {
   [CLAIM_WORKFLOW_ACTION.TUTOR_RESUBMITTED]: "Resubmitted for verification",
   [CLAIM_WORKFLOW_ACTION.NO_SHOW_ESCALATED]:
     "Escalated — no-show without explanation",
+  [CLAIM_WORKFLOW_ACTION.AUTO_SUBMITTED]:
+    "Auto-submitted by institution policy (not tutor-attested)",
   DRAFT_EXPIRED_PURGED: "Expired draft removed from workspace",
   APPROVED: "Approved by lecturer",
   SIGNED_APPROVAL: "Signed approval",

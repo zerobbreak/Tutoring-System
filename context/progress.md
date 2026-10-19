@@ -16,7 +16,9 @@ This file is the living status board for the codebase. Whenever any meaningful c
 
 ## Completed
 
-- Added root `CLAUDE.md` (imports `AGENTS.md`) with the working process, project map, schedule → claim → payroll flow, and gotchas (e.g. `.validator()` vs the stale `.inputValidator()` in AGENTS.md snippets).
+- Unified claim submission: new `submitClaimForVerification` in `src/server-actions/tutor-sessions/claim-submission.ts` is used by both tutor submit and institution auto-submit. Tutor submit now requires step-up TOTP (authenticator field in `submit-claim-dialog.tsx`), closing the gap where `submitSessionClaimFn` skipped MFA. Auto-submit now enforces the same rules it previously skipped (admin approval of tutor session requests, reserved-capacity check, no-show freeze/escalation) and logs `AUTO_SUBMITTED` as not tutor-attested. Tests in `claim-submission.test.ts`.
+- Added root `CLAUDE.md` (imports `AGENTS.md`) with the working process, project map, schedule → claim → payroll flow, and gotchas.
+- Fixed doc drift: `AGENTS.md` and `.cursor/rules/tanstack-server-functions.mdc` now show `.validator()` (was the deprecated `.inputValidator()`); rewrote the stack-specific sections of `context/code-standards.md` (stack, structure, query keys, server functions, auth/RLS, testing, env, checklist) to match the real Supabase + TanStack Start setup instead of Prisma/Express/JWT.
 - Added a rule to delete any temporary files, test files, scratch files, or scripts created to test or work on something after finding the solution (appended to [AGENTS.md](file:///c:/Users/uthac/OneDrive/Documents/programing/MERN/tutoring_system/AGENTS.md) and [.cursor/rules/codebase-maintenance.mdc](file:///c:/Users/uthac/OneDrive/Documents/programing/MERN/tutoring_system/.cursor/rules/codebase-maintenance.mdc)).
 - Replaced the venue text input in the tutor session request dialog (`src/components/tutor/sessions/tutor-request-session-dialog.tsx`) with a select dropdown listing active venues fetched via a new server action `listActiveVenuesFn` in `src/server-actions/tutor-sessions/list-active-venues.ts`. The dropdown preserves existing/custom venue values when resubmitting a session request.
 - Implemented a session delete cycle (`deleteCompletedSessions`) in `src/server-actions/session-automation/run-jobs.ts` that soft-deletes `scheduled_sessions` once their linked `session_claims` are fully completed (i.e. status is `APPROVED` and they exist in `payroll_export_claims` junction table). Associated venue unlock requests are cancelled on best-effort basis, and unit tests are colocated in `run-jobs.test.ts`.
@@ -63,6 +65,8 @@ This file is the living status board for the codebase. Whenever any meaningful c
 - Admin analytics page: `ScrollArea` on route (matches lecturer analytics) so KPI cards, charts, and tab panels scroll within the app shell.
 
 ## Next up
+
+- Decide whether institution auto-submit should stay (it can never carry tutor attestation) or be replaced by reminders/overdue flags; if kept, consider surfacing "auto-submitted" in the lecturer verification queue.
 
 - Optional: auth E2E smoke on responsive sidebar; lazy-load remaining admin dialogs (e.g. create-user).
 - Optional: structural split of `app-shell.tsx` (~411 lines).

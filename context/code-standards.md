@@ -25,31 +25,24 @@ Every feature must follow these principles:
 
 ## Frontend
 
-* React
-* TanStack Router
+* React 19
+* TanStack Router + TanStack Start (SSR)
 * TanStack Query
-* TanStack Table
-* TanStack Virtual
 * TypeScript
-* Tailwind CSS
-* Zod
+* Tailwind CSS 4 + shadcn/Radix (`src/components/ui/`)
+* React Hook Form + Zod
 
 ## Backend
 
-* Node.js
-* Fastify or Express
-* Prisma ORM
-* PostgreSQL
-* Redis (optional)
-* JWT Authentication
+* TanStack Start server functions (`createServerFn`) in `src/server-actions/<domain>/`
+* Supabase: Postgres, Auth, Storage, Realtime
+* Row Level Security (RLS) for tenancy and role access
+* SQL migrations in `supabase/migrations/`
 
-## Infrastructure
+## Tooling
 
-* Docker
-* GitHub Actions
-* Vercel / Azure / AWS
-* Sentry
-* OpenTelemetry
+* Vite, pnpm, Vitest + Testing Library
+* Electron wrapper (`electron/main.mjs`) for an optional desktop shell
 
 ---
 
@@ -58,39 +51,21 @@ Every feature must follow these principles:
 ```text
 src/
 │
-├── app/
-│   ├── router/
-│   ├── providers/
-│   └── layouts/
-│
-├── features/
-│   ├── auth/
-│   ├── users/
-│   ├── events/
-│   └── dashboard/
-│
+├── routes/                       # Thin file routes; role layouts in <role>/route.tsx
 ├── components/
-│   ├── ui/
-│   └── shared/
-│
-├── hooks/
-│
-├── services/
-│
-├── lib/
-│
-├── types/
-│
-├── utils/
-│
-└── routes/
+│   ├── <role>/<feature>/         # admin | lecturer | tutor feature views + use-*-data hooks
+│   ├── ui/                       # shadcn primitives
+│   └── messaging/, notifications/, sessions/, ...   # cross-role features
+├── server-actions/<domain>/      # Server functions per domain
+├── lib/                          # Supabase clients, auth helpers, query keys, shared business logic
+└── hooks/                        # Generic hooks only (e.g. use-mobile)
 ```
 
 ### Rules
 
-* Organize by feature, not by file type.
-* Each feature owns its components, hooks, services, and tests.
-* Shared functionality belongs in shared directories.
+* Organize by role and feature, not by file type.
+* A feature folder owns its views, data hooks, dialogs, and tests.
+* Shared business logic goes in `src/lib/` only once it has two or more callers.
 * Avoid deeply nested folders.
 
 ---
@@ -183,24 +158,30 @@ validateSearch: z.object({
 
 ## Query Keys
 
-Use centralized query keys.
+All query keys live in `src/lib/query-keys.ts`, grouped by role.
 
 ```typescript
-export const userKeys = {
-  all: ["users"],
-  detail: (id: string) => ["users", id],
+export const queryKeys = {
+  admin: {
+    all: ["admin"] as const,
+    users: (filters: { category: AdminUserCategory; search?: string }) =>
+      ["admin", "users", filters] as const,
+  },
 };
 ```
 
 ## Query Functions
 
-Keep query functions separate.
+Query functions call server functions; data hooks sit beside the feature (`use-<feature>-data.ts`).
 
 ```typescript
-export async function getUser(id: string) {
-  return api.get(`/users/${id}`);
-}
+useQuery({
+  queryKey: queryKeys.admin.users(filters),
+  queryFn: () => listAdminUsersFn({ data: filters }),
+});
 ```
+
+Use the shared loading/error UX in `src/lib/query-page-gate.tsx` and `src/lib/query-error.ts`.
 
 ## Cache Management
 
@@ -220,38 +201,28 @@ Always invalidate relevant queries.
 
 ```typescript
 queryClient.invalidateQueries({
-  queryKey: userKeys.all,
+  queryKey: queryKeys.admin.all,
 });
 ```
 
 ---
 
-# 7. API Layer Standards
+# 7. Server Function Standards
 
-Never call fetch directly from components.
-
-Bad:
+Components get data only through server functions in `src/server-actions/<domain>/`, never through `fetch` or a direct Supabase client call.
 
 ```typescript
-fetch("/api/users")
+export const myFn = createServerFn({ method: "POST" })
+  .validator((input: unknown) => mySchema.parse(input))
+  .handler(async ({ data }) => {
+    const supabase = createSupabaseServerClient();
+    // auth via requireAdminContext, requireLecturerId, requireUserId, ...
+  });
 ```
 
-Good:
-
-```typescript
-userService.getUsers()
-```
-
-### Service Pattern
-
-```typescript
-export const userService = {
-  getUsers,
-  createUser,
-  updateUser,
-  deleteUser,
-};
-```
+* `GET` for reads, `POST` for mutations.
+* Validate every input with Zod.
+* One server function per file when a domain grows; the folder's `index.ts` re-exports the public API.
 
 ---
 
@@ -305,38 +276,20 @@ Never trust client-side validation alone.
 
 ## Authentication
 
-Recommended:
-
-* JWT Access Tokens
-* Refresh Tokens
+* Supabase Auth owns sessions and password hashing; never handle raw passwords or tokens yourself.
+* TOTP MFA is enforced in the role layouts, and claim submit/verify/approve require step-up TOTP (`requireStepUpMfa`).
 
 ## Authorization
 
-Use:
+Roles: `TUTOR`, `LECTURER`, `ADMIN`, `SUPER_ADMIN`. Students have no accounts and use the public `/student/check-in` route.
 
-```typescript
-Admin
-Student
-Tutor
-Manager
-```
-
-Role-based access control.
+* Enforce access in server functions (`require*()` helpers in `src/lib/`) and in Postgres RLS. Client-side checks are only for UX.
+* The service-role client (`getSupabaseAdmin()`) bypasses RLS; use it only in server code for privileged flows, after an explicit role check.
 
 ## Security Rules
 
-Never:
-
-* Store passwords in plain text
-* Store secrets in source code
-* Expose private API keys
-
-Always hash passwords using:
-
-```typescript
-bcrypt
-argon2
-```
+* Keep secrets in `.env.local`; only `VITE_`-prefixed values may reach the browser.
+* Never expose `SUPABASE_SERVICE_ROLE_KEY` to client code.
 
 ---
 
@@ -504,27 +457,15 @@ Vitest
 
 Test:
 
-* Utilities
-* Hooks
-* Services
+* Business logic in `src/lib/` (claim transitions, schedule materialisation, conflicts)
+* Server-action helpers with clear inputs and outputs
+* Hooks with meaningful behaviour
 
-## Integration Testing
-
-Test:
-
-* API interactions
-* Query behavior
-* Authentication flows
+Colocate tests as `*.test.ts` beside the code and run them with `pnpm test`.
 
 ## E2E Testing
 
-Use:
-
-```text
-Playwright
-```
-
-Test critical user journeys.
+No automated E2E suite yet. Walk critical journeys manually using `docs/USER_TESTING.md` and `docs/WORKFLOW_QA.md`.
 
 ---
 
@@ -595,35 +536,22 @@ where necessary.
 
 # 20. Documentation Standards
 
-Every feature must include:
-
-* Purpose
-* Data flow
-* API usage
-* Permission requirements
-
-Every public service should contain documentation comments.
+* Add a short doc comment to exported server functions and non-obvious business rules.
+* Add markdown docs or README sections only when asked; record meaningful changes in `context/progress.md`.
 
 ---
 
 # 21. Environment Configuration
 
-Use:
+Use a single `.env.local` at the repo root (git-ignored via `*.local`):
 
 ```text
-.env.development
-.env.production
-.env.test
+VITE_SUPABASE_URL
+VITE_SUPABASE_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY
 ```
 
-Never commit:
-
-```text
-.env
-.env.local
-```
-
-Store secrets using deployment platform secret management.
+Never commit `.env` or `.env.local`. Store production secrets in the deployment platform's secret manager.
 
 ---
 
@@ -631,9 +559,8 @@ Store secrets using deployment platform secret management.
 
 Before deployment verify:
 
-* TypeScript passes
-* Linting passes
-* Tests pass
+* `pnpm exec tsc --noEmit` passes (there is no lint script)
+* `pnpm test` passes
 * No console logs
 * Environment variables configured
 * Monitoring enabled
